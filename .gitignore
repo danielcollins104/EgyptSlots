@@ -1,0 +1,18 @@
+# Dependencies & Build Output
+node_modules/
+dist/
+.vite/
+
+# Raw Heavy Source Archives & Unpacked PSD/Unity Bundles (Assets are already extracted/optimized in public/assets/)
+RSG Slot Asset Pack - Crowns of Kemet - Free/
+*.zip
+*.unitypackage
+*.unitypackage.gz
+*.psd
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*
