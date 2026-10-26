@@ -373,7 +373,7 @@ export default function App() {
           title="Open Daniel's Welcome Screen"
         >
           <img
-            src="/assets/neon/daniel_welcome_treasure.jpg"
+            src="/assets/neon/daniel_creative_ad_splash.jpg"
             alt="Daniel"
             className="dc-daniel-avatar"
           />
