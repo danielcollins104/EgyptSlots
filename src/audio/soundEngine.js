@@ -215,6 +215,71 @@ class SoundEngine {
     osc.start(now);
     osc.stop(now + 0.065);
   }
+
+  playBonusTrigger() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // Royal Egyptian Fanfare for Bonus Vault Unlock
+    const notes = [293.66, 369.99, 440.0, 587.33, 739.99, 880.0, 1174.66];
+    notes.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      const t = now + i * 0.075;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.58);
+    });
+  }
+
+  playBonusPick(isSpecial = false) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const freqs = isSpecial ? [587.33, 739.99, 880.0, 1174.66] : [440.0, 587.33, 739.99];
+    freqs.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = isSpecial ? 'triangle' : 'sine';
+      const t = now + i * 0.055;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.18, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.35);
+    });
+  }
+
+  playWheelTick(pitchBoost = 0) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    const f = 340 + pitchBoost * 15;
+    osc.frequency.setValueAtTime(f, now);
+    osc.frequency.exponentialRampToValueAtTime(110, now + 0.035);
+    gain.gain.setValueAtTime(0.14, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.045);
+  }
 }
 
 export const soundEngine = new SoundEngine();

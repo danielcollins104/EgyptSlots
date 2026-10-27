@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import PsdGoldNumber from './PsdGoldNumber';
 import NeonKeyedImage from './NeonKeyedImage';
-import { CASINO_BRAND } from '../config/slotConfig';
+import { CASINO_BRAND, THEME_COPY } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
 
 export default function BigWinPopup({ winCoins, coinValue, onClose }) {
@@ -41,7 +41,6 @@ export default function BigWinPopup({ winCoins, coinValue, onClose }) {
 
   return (
     <div className="bigwin-overlay" onClick={onClose}>
-      {/* Psychedelic Neon PSD FX Rays, Pattern, and Sparks */}
       <img
         src="/assets/psd/fx_rays.png"
         alt=""
@@ -62,12 +61,8 @@ export default function BigWinPopup({ winCoins, coinValue, onClose }) {
       />
 
       <div className="bigwin-modal" onClick={(e) => e.stopPropagation()}>
-        {/* DC Enterprises Casino Badge */}
-        <div className="bigwin-casino-ribbon">
-          DC ENTERPRISES CASINO • DANIEL PSYCHEDELIC NEON JACKPOT
-        </div>
+        <div className="bigwin-casino-ribbon">{THEME_COPY.bigWinRibbon}</div>
 
-        {/* AI-Generated Psychedelic Neon MEGA WIN Banner */}
         <div className="bigwin-neon-banner-wrap">
           <NeonKeyedImage
             src={CASINO_BRAND.megaWinNeonImage}
@@ -78,7 +73,6 @@ export default function BigWinPopup({ winCoins, coinValue, onClose }) {
           />
         </div>
 
-        {/* PSD Layers 395-418: 3D Engraved Numbers in Psychedelic Neon */}
         <div className="bigwin-numbers-stage">
           <div className="neon-psd-digits">
             <PsdGoldNumber value={displayCoins} height={90} gap={-5} />
@@ -89,7 +83,7 @@ export default function BigWinPopup({ winCoins, coinValue, onClose }) {
         </div>
 
         <button className="bigwin-collect-btn" onClick={onClose}>
-          COLLECT NEON WINNINGS
+          {THEME_COPY.bigWinCollectButton}
         </button>
       </div>
     </div>

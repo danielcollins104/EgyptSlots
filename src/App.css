@@ -10,13 +10,13 @@
 }
 
 :root {
-  --neon-magenta: #ff00ff;
-  --neon-pink: #ff007f;
-  --neon-cyan: #00ffff;
-  --neon-lime: #39ff14;
-  --neon-violet: #9d4edd;
-  --neon-yellow: #ffea00;
-  --kemet-dark: #070112;
+  --neon-magenta: #c084fc;
+  --neon-pink: #f472b6;
+  --neon-cyan: #00e5ff;
+  --neon-lime: #ffd700;
+  --neon-violet: #7c3aed;
+  --neon-yellow: #fde047;
+  --kemet-dark: #050816;
   --font-display: 'Amarante', 'Cinzel Decorative', serif;
   --font-royal: 'Cinzel', serif;
 }
@@ -30,63 +30,63 @@ body {
 }
 
 /* ============================================================================
-   PSYCHEDELIC NEON COLOR-GRADING FILTERS (GPU-OPTIMIZED — ZERO LAG)
+   COHESIVE IMPERIAL GOLD, LAPIS-LAZULI & CYAN-SAPPHIRE COLOR HARMONY
    ============================================================================ */
 
 .neon-temple-bg {
-  filter: hue-rotate(275deg) saturate(2.3) contrast(1.18) brightness(0.85);
+  filter: saturate(1.3) contrast(1.08) brightness(0.86);
 }
 
 .theme-acid .neon-temple-bg {
-  filter: hue-rotate(195deg) saturate(2.6) contrast(1.2) brightness(0.88);
+  filter: hue-rotate(-14deg) saturate(1.45) contrast(1.1) brightness(0.88);
 }
 
 .theme-laser .neon-temple-bg {
-  filter: hue-rotate(315deg) saturate(2.6) contrast(1.22) brightness(0.88);
+  filter: hue-rotate(18deg) saturate(1.4) contrast(1.1) brightness(0.88);
 }
 
 .neon-cabinet-filter {
-  filter: hue-rotate(275deg) saturate(2.3) contrast(1.14) brightness(1.05);
+  filter: saturate(1.22) contrast(1.06) brightness(1.04);
 }
 
 .theme-acid .neon-cabinet-filter {
-  filter: hue-rotate(195deg) saturate(2.6) contrast(1.16) brightness(1.06);
+  filter: hue-rotate(-10deg) saturate(1.35) contrast(1.08) brightness(1.06);
 }
 
 .theme-laser .neon-cabinet-filter {
-  filter: hue-rotate(310deg) saturate(2.5) contrast(1.16) brightness(1.06);
+  filter: hue-rotate(14deg) saturate(1.32) contrast(1.08) brightness(1.05);
 }
 
 .neon-frame-filter {
-  filter: hue-rotate(280deg) saturate(2.4) brightness(1.1);
+  filter: saturate(1.25) brightness(1.06);
 }
 
 .neon-char-filter {
-  filter: hue-rotate(18deg) saturate(2.2) contrast(1.1) brightness(1.06);
+  filter: saturate(1.22) contrast(1.06) brightness(1.05);
 }
 
 .neon-fx-shift {
-  filter: hue-rotate(290deg) saturate(2.5) brightness(1.2);
+  filter: saturate(1.35) brightness(1.12);
 }
 
 .neon-ui-filter {
-  filter: hue-rotate(285deg) saturate(2.3) brightness(1.12);
+  filter: saturate(1.2) brightness(1.06);
 }
 
 .neon-wing-filter {
-  filter: hue-rotate(275deg) saturate(2.4) contrast(1.12);
+  filter: saturate(1.25) contrast(1.06);
 }
 
 .neon-spin-filter {
-  filter: hue-rotate(45deg) saturate(2.4) brightness(1.15);
+  filter: saturate(1.3) brightness(1.1);
 }
 
 .neon-label-glow {
-  filter: hue-rotate(280deg) saturate(2.5) brightness(1.3);
+  filter: saturate(1.25) brightness(1.15);
 }
 
 .neon-psd-digits img {
-  filter: hue-rotate(290deg) saturate(2.5) brightness(1.18);
+  filter: saturate(1.3) brightness(1.12);
 }
 
 /* ============================================================================
@@ -638,12 +638,12 @@ body {
   padding: 8px 20px;
   background: linear-gradient(
     90deg,
-    rgba(10, 2, 24, 0.96) 0%,
-    rgba(36, 6, 68, 0.92) 50%,
-    rgba(10, 2, 24, 0.96) 100%
+    rgba(6, 10, 26, 0.96) 0%,
+    rgba(18, 24, 58, 0.94) 50%,
+    rgba(6, 10, 26, 0.96) 100%
   );
-  border-bottom: 2px solid #ff00ff;
-  box-shadow: 0 0 24px rgba(255, 0, 255, 0.55), 0 6px 24px rgba(0, 0, 0, 0.85);
+  border-bottom: 2px solid #f59e0b;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.35), 0 6px 24px rgba(0, 0, 0, 0.85);
 }
 
 .dc-topbar-brand {
@@ -657,7 +657,7 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #00ffff 0%, #ff00ff 55%, #39ff14 100%);
+  background: linear-gradient(135deg, #ffd700 0%, #f59e0b 55%, #00e5ff 100%);
   border: 2px solid #ffffff;
   color: #090114;
   font-family: var(--font-display);
@@ -666,7 +666,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 18px #ff00ff, 0 0 28px #00ffff;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.65);
 }
 
 .dc-brand-titles {
@@ -678,11 +678,10 @@ body {
   font-family: var(--font-display);
   font-size: 1.12rem;
   letter-spacing: 0.14em;
-  background: linear-gradient(90deg, #00ffff 0%, #ff00ff 50%, #ffea00 100%);
+  background: linear-gradient(90deg, #fde047 0%, #f59e0b 50%, #00e5ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 900;
-  filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.6));
 }
 
 .dc-creator-tag {
@@ -691,9 +690,8 @@ body {
   gap: 5px;
   font-size: 0.7rem;
   letter-spacing: 0.16em;
-  color: #39ff14;
+  color: #00e5ff;
   font-weight: 800;
-  text-shadow: 0 0 8px rgba(57, 255, 20, 0.6);
 }
 
 .dc-topbar-actions {
@@ -709,23 +707,22 @@ body {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1.5px solid rgba(0, 255, 255, 0.55);
-  background: rgba(24, 5, 48, 0.88);
-  color: #00ffff;
+  border: 1.5px solid rgba(251, 191, 36, 0.55);
+  background: rgba(12, 18, 44, 0.9);
+  color: #fde047;
   font-family: var(--font-royal);
   font-size: 0.75rem;
   font-weight: 800;
   cursor: pointer;
   transition: all 0.18s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
 }
 
 .dc-action-btn:hover:not(:disabled) {
-  background: rgba(68, 12, 118, 0.95);
-  border-color: #ff00ff;
+  background: rgba(30, 41, 88, 0.96);
+  border-color: #00e5ff;
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 0 16px #ff00ff;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
 }
 
 .dc-action-btn:disabled {
@@ -734,22 +731,20 @@ body {
 }
 
 .dc-action-btn.special-anubis {
-  background: linear-gradient(90deg, #00b4d8 0%, #7209b7 100%);
-  border-color: #00ffff;
+  background: linear-gradient(90deg, #0284c7 0%, #4f46e5 100%);
+  border-color: #00e5ff;
   color: #fff;
-  box-shadow: 0 0 14px rgba(0, 255, 255, 0.5);
 }
 
 .dc-action-btn.special-bigwin {
-  background: linear-gradient(90deg, #ff007f 0%, #ff8800 100%);
-  border-color: #ffea00;
+  background: linear-gradient(90deg, #d97706 0%, #b45309 100%);
+  border-color: #fde047;
   color: #fff;
-  box-shadow: 0 0 14px rgba(255, 0, 127, 0.6);
 }
 
 .dc-action-btn.active-mode {
-  background: linear-gradient(90deg, #9d4edd 0%, #ff00ff 100%);
-  border-color: #39ff14;
+  background: linear-gradient(90deg, #4338ca 0%, #7c3aed 100%);
+  border-color: #fde047;
   color: #fff;
 }
 
@@ -965,20 +960,20 @@ body {
   gap: 10px;
   padding: 2px 18px;
   border-radius: 999px;
-  background: rgba(12, 2, 28, 0.9);
-  border: 1.5px solid #00ffff;
+  background: rgba(8, 14, 38, 0.94);
+  border: 1.5px solid #fbbf24;
   font-family: var(--font-royal);
   font-size: clamp(0.55rem, 0.9vw, 0.74rem);
   font-weight: 800;
   letter-spacing: 0.18em;
-  color: #39ff14;
-  box-shadow: 0 0 12px rgba(0, 255, 255, 0.55), 0 0 20px rgba(255, 0, 255, 0.4);
+  color: #fde047;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.45);
   pointer-events: none;
   white-space: nowrap;
 }
 
 .arch-dot {
-  color: #ff00ff;
+  color: #00e5ff;
 }
 
 /* ============================================================================
@@ -994,8 +989,8 @@ body {
   z-index: 8;
   overflow: hidden;
   border-radius: 14px;
-  background: radial-gradient(circle at center, rgba(38, 5, 76, 0.65) 0%, rgba(9, 1, 20, 0.85) 100%);
-  box-shadow: inset 0 0 28px rgba(255, 0, 255, 0.35);
+  background: radial-gradient(circle at center, rgba(14, 24, 62, 0.88) 0%, rgba(5, 8, 22, 0.95) 100%);
+  box-shadow: inset 0 0 28px rgba(0, 229, 255, 0.25);
 }
 
 .phaser-reel-canvas-host {
@@ -1456,9 +1451,9 @@ body {
   gap: 12px;
   padding: 8px 18px;
   border-radius: 14px;
-  background: linear-gradient(90deg, rgba(16, 3, 36, 0.95) 0%, rgba(38, 6, 72, 0.95) 50%, rgba(16, 3, 36, 0.95) 100%);
-  border: 2px solid #00ffff;
-  box-shadow: 0 0 24px rgba(0, 255, 255, 0.45), 0 0 40px rgba(255, 0, 255, 0.3), 0 10px 26px rgba(0, 0, 0, 0.9);
+  background: linear-gradient(90deg, rgba(8, 14, 36, 0.96) 0%, rgba(20, 28, 66, 0.96) 50%, rgba(8, 14, 36, 0.96) 100%);
+  border: 2px solid #fbbf24;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.35), 0 10px 26px rgba(0, 0, 0, 0.9);
 }
 
 .pediment-win-box,
@@ -1472,24 +1467,23 @@ body {
 .pediment-label {
   font-size: 0.62rem;
   letter-spacing: 0.18em;
-  color: #ff00ff;
+  color: #00e5ff;
   font-weight: 800;
-  text-shadow: 0 0 8px #ff00ff;
 }
 
 .pediment-zero {
   font-family: var(--font-display);
   font-size: 1rem;
-  color: #00ffff;
-  opacity: 0.7;
+  color: #fde047;
+  opacity: 0.85;
 }
 
 .pediment-cash-val {
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 900;
-  color: #39ff14;
-  text-shadow: 0 0 12px #39ff14;
+  color: #fde047;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.65);
 }
 
 .pediment-ticker {
@@ -1501,12 +1495,11 @@ body {
   font-size: clamp(0.72rem, 1.05vw, 0.88rem);
   font-weight: 800;
   letter-spacing: 0.09em;
-  color: #00ffff;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+  color: #fde047;
 }
 
 .ticker-sparkle {
-  color: #ff00ff;
+  color: #00e5ff;
   flex-shrink: 0;
 }
 
@@ -2023,5 +2016,729 @@ body {
   .cabinet-status-pediment {
     grid-template-columns: 1fr;
     text-align: center;
+  }
+}
+
+/* ============================================================================
+   11. 3D ROYAL BONUS COLLECTOR METER, VERIFIED WIN PILL & 3D BONUS GAMES
+   ============================================================================ */
+
+.dc-action-btn.special-bonus {
+  background: linear-gradient(135deg, #b45309 0%, #ef4444 50%, #7c2d12 100%);
+  border-color: #fde047;
+  color: #fffbeb;
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.45);
+}
+
+.dc-action-btn.special-bonus-direct {
+  background: linear-gradient(135deg, #065f46 0%, #10b981 55%, #047857 100%);
+  border-color: #fde047;
+  color: #fffbeb;
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.45);
+}
+
+.cabinet-bonus-and-win-bar {
+  width: 96%;
+  margin-top: -10px;
+  margin-bottom: 6px;
+  z-index: 16;
+  display: grid;
+  grid-template-columns: 1.05fr 1.35fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.scarab-collector-meter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(12, 24, 58, 0.96) 0%, rgba(5, 10, 26, 0.98) 100%);
+  border: 2px solid #f59e0b;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(254, 240, 138, 0.45);
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.scarab-collector-meter:hover {
+  transform: translateY(-2px);
+  border-color: #fde047;
+}
+
+.meter-scarab-3d-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  margin-top: -6px;
+  margin-bottom: -6px;
+  transform: rotate(-8deg) scale(1.14);
+}
+
+.meter-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meter-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-royal);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.meter-title {
+  color: #fde047;
+}
+
+.meter-count {
+  color: #6ee7b7;
+}
+
+.meter-gem-pips {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
+}
+
+.meter-gem-pip {
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  transition: all 0.25s ease;
+}
+
+.meter-gem-pip.charged {
+  background: radial-gradient(circle at 35% 30%, #a7f3d0 0%, #10b981 55%, #065f46 100%);
+  border-color: #fef08a;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.75);
+}
+
+.verified-win-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(45, 10, 32, 0.95) 0%, rgba(14, 24, 58, 0.96) 100%);
+  border: 2px solid #ffd700;
+  color: #fef08a;
+  font-family: var(--font-royal);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.verified-win-pill.idle-pill {
+  background: linear-gradient(90deg, rgba(9, 16, 40, 0.92) 0%, rgba(15, 23, 42, 0.92) 100%);
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #bae6fd;
+  font-size: 0.66rem;
+}
+
+.verified-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   12. 3D ROYAL BONUS MODAL (TOMB OF JEWELED RELICS + 3D WHEEL OF KEMET)
+   ============================================================================ */
+
+.bonus-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  background: radial-gradient(circle at center, rgba(16, 8, 38, 0.88) 0%, rgba(3, 5, 14, 0.96) 100%);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  animation: fadeIn 0.28s ease-out;
+}
+
+.bonus-modal-cabinet {
+  width: min(1060px, 96vw);
+  max-height: 93vh;
+  overflow-y: auto;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #0d1636 0%, #070c20 55%, #120924 100%);
+  border: 3px solid #f59e0b;
+  box-shadow: 0 24px 65px rgba(0, 0, 0, 0.92), inset 0 0 0 2px rgba(254, 240, 138, 0.32);
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bonus-modal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bonus-header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bonus-title-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #78350f 0%, #b45309 50%, #78350f 100%);
+  border: 2px solid #fde047;
+  color: #fffbeb;
+  font-family: var(--font-royal);
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.bonus-game-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.bonus-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 2px solid rgba(251, 191, 36, 0.45);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  font-family: var(--font-royal);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bonus-tab-btn.active {
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #b45309 100%);
+  border-color: #fffbeb;
+  color: #1e0b02;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.45);
+}
+
+/* 4 Jewel-Toned Progressive Jackpot Cards */
+.bonus-jackpot-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.bonus-jackpot-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 2.5px solid #f59e0b;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.bonus-jackpot-card.jp-mini {
+  background: radial-gradient(circle at 30% 30%, #065f46 0%, #022c22 100%);
+}
+.bonus-jackpot-card.jp-minor {
+  background: radial-gradient(circle at 30% 30%, #0c4a6e 0%, #082f49 100%);
+}
+.bonus-jackpot-card.jp-major {
+  background: radial-gradient(circle at 30% 30%, #581c87 0%, #2e1065 100%);
+}
+.bonus-jackpot-card.jp-grand {
+  background: radial-gradient(circle at 30% 30%, #881337 0%, #4c0519 100%);
+  border-color: #fde047;
+}
+
+.bonus-jackpot-card.jp-hit-glow {
+  border-color: #ffffff;
+  box-shadow: 0 0 24px #fde047;
+  transform: scale(1.03);
+}
+
+.jp-floating-3d-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin: -8px 0 -8px -4px;
+  transform: rotate(-6deg) scale(1.15);
+}
+
+.jp-card-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.jp-tier-label {
+  font-family: var(--font-royal);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #fde047;
+}
+
+.jp-tier-coins {
+  font-family: var(--font-display);
+  font-size: 0.94rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.bonus-stats-ribbon {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.bonus-stat-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1.5px solid rgba(251, 191, 36, 0.45);
+  font-family: var(--font-royal);
+  font-size: 0.72rem;
+  color: #cbd5e1;
+}
+
+.bonus-stat-pill strong {
+  font-size: 0.95rem;
+  color: #fde047;
+}
+
+.bonus-stat-pill.mult-pill {
+  background: linear-gradient(90deg, rgba(88, 28, 135, 0.85), rgba(124, 45, 18, 0.85));
+  border-color: #fde047;
+}
+
+.bonus-live-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #451a03 0%, #78350f 50%, #451a03 100%);
+  border: 1.5px solid #fde047;
+  color: #fef08a;
+  font-family: var(--font-royal);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+/* ============================================================================
+   13. 3D POP-OUT JEWEL-TONED RELIC VAULT GRID (12 TILES)
+   ============================================================================ */
+
+.vault-3d-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 6px 4px;
+}
+
+.vault-3d-tile {
+  position: relative;
+  height: 128px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Recessed Brushed 24k Gold Bezel + Rich Velvet Jewel Cushion (82% of cell) */
+.vault-tile-velvet-cushion {
+  position: absolute;
+  width: 84%;
+  height: 82%;
+  border-radius: 18px;
+  border: 4px solid #f59e0b;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.85),
+    inset 0 0 0 2px #fef08a,
+    inset 0 6px 16px rgba(0, 0, 0, 0.7);
+  transition: transform 0.22s ease, border-color 0.22s ease;
+}
+
+.vault-tile-ruby .vault-tile-velvet-cushion {
+  background: radial-gradient(circle at 42% 38%, #9f1239 0%, #4c0519 70%, #1f020a 100%);
+}
+.vault-tile-emerald .vault-tile-velvet-cushion {
+  background: radial-gradient(circle at 42% 38%, #047857 0%, #064e3b 70%, #022c22 100%);
+}
+.vault-tile-amethyst .vault-tile-velvet-cushion {
+  background: radial-gradient(circle at 42% 38%, #7e22ce 0%, #4c1d95 70%, #1e0936 100%);
+}
+.vault-tile-sapphire .vault-tile-velvet-cushion {
+  background: radial-gradient(circle at 42% 38%, #0369a1 0%, #0c4a6e 70%, #061c2e 100%);
+}
+.vault-tile-cyan .vault-tile-velvet-cushion {
+  background: radial-gradient(circle at 42% 38%, #0f766e 0%, #134e4a 70%, #042f2e 100%);
+}
+.vault-tile-gold .vault-tile-velvet-cushion {
+  background: radial-gradient(circle at 42% 38%, #b45309 0%, #78350f 70%, #2a0f02 100%);
+}
+
+.corner-gem {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #fde047 55%, #b45309 100%);
+  border: 1px solid #451a03;
+}
+.corner-gem.tl {
+  top: 5px;
+  left: 5px;
+}
+.corner-gem.tr {
+  top: 5px;
+  right: 5px;
+}
+.corner-gem.bl {
+  bottom: 5px;
+  left: 5px;
+}
+.corner-gem.br {
+  bottom: 5px;
+  right: 5px;
+}
+
+/* 3D Pop-Out Artifact Layer that Bursts Past the Velvet Tile Frame! */
+.vault-tile-pop-artifact {
+  position: relative;
+  z-index: 3;
+  width: 118px;
+  height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(var(--tile-tilt, -5deg)) translateY(-6px);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.vault-pop-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.vault-3d-tile:not(:disabled):hover .vault-tile-velvet-cushion {
+  border-color: #ffffff;
+  transform: scale(1.03);
+}
+
+.vault-3d-tile:not(:disabled):hover .vault-tile-pop-artifact {
+  transform: rotate(0deg) translateY(-14px) scale(1.14);
+}
+
+.vault-3d-tile.tile-picked-win .vault-tile-velvet-cushion {
+  border-color: #fef08a;
+  box-shadow: 0 0 22px rgba(251, 191, 36, 0.65), inset 0 0 14px rgba(254, 240, 138, 0.35);
+}
+
+.vault-3d-tile.tile-picked-win .vault-tile-pop-artifact {
+  transform: rotate(0deg) translateY(-18px) scale(0.88);
+  opacity: 0.35;
+}
+
+.vault-3d-tile.tile-unpicked-dim {
+  opacity: 0.58;
+}
+
+.vault-tile-caption {
+  position: absolute;
+  bottom: 4px;
+  z-index: 4;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(9, 14, 34, 0.92);
+  border: 1.5px solid #fde047;
+  color: #fef08a;
+  font-family: var(--font-royal);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.vault-prize-overlay {
+  position: absolute;
+  inset: 8px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.92) 0%, rgba(7, 10, 25, 0.96) 100%);
+  border: 2px solid #fde047;
+  border-radius: 14px;
+  padding: 4px;
+  animation: bigWinPop 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vault-prize-tag {
+  font-family: var(--font-royal);
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: #6ee7b7;
+  text-align: center;
+}
+
+.vault-coins-unit {
+  font-family: var(--font-royal);
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: #fde047;
+}
+
+/* ============================================================================
+   14. 3D WHEEL OF KEMET CHAMBER
+   ============================================================================ */
+
+.wheel-chamber-layout {
+  display: grid;
+  grid-template-columns: 440px 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 6px 10px;
+}
+
+.wheel-canvas-container {
+  position: relative;
+  width: 420px;
+  height: 420px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kemet-wheel-canvas {
+  width: 420px;
+  height: 420px;
+  display: block;
+  will-change: transform;
+}
+
+.wheel-top-pointer {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: 2.1rem;
+  color: #fde047;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.95);
+  pointer-events: none;
+}
+
+.wheel-center-scarab-btn {
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  border: 3px solid #fef08a;
+  background: radial-gradient(circle at 35% 35%, #065f46 0%, #022c22 100%);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.85);
+  cursor: pointer;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.2s ease;
+}
+
+.wheel-center-scarab-btn:not(:disabled):hover {
+  transform: scale(1.08);
+}
+
+.wheel-center-scarab-img {
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+  margin-top: -12px;
+}
+
+.wheel-center-scarab-btn span {
+  margin-top: -10px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #78350f;
+  border: 1.5px solid #fde047;
+  color: #fffbeb;
+  font-family: var(--font-royal);
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.wheel-controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 2px solid rgba(251, 191, 36, 0.45);
+}
+
+.wheel-controls-panel h3 {
+  margin: 0;
+  font-family: var(--font-royal);
+  font-size: 1.2rem;
+  color: #fde047;
+}
+
+.wheel-controls-panel p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+}
+
+.wheel-spin-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  border: 2.5px solid #fef08a;
+  background: linear-gradient(135deg, #d97706 0%, #ef4444 50%, #991b1b 100%);
+  color: #ffffff;
+  font-family: var(--font-royal);
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(239, 68, 68, 0.45);
+}
+
+.wheel-spin-cta-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.spin-icon-anim {
+  animation: rotateFast 0.9s linear infinite;
+}
+
+/* Bonus Footer */
+.bonus-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1.5px solid rgba(251, 191, 36, 0.35);
+}
+
+.bonus-total-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bonus-total-label {
+  font-family: var(--font-royal);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fde047;
+}
+
+.bonus-total-usd {
+  font-family: var(--font-royal);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #6ee7b7;
+}
+
+.bonus-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bonus-switch-game-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 2px solid #38bdf8;
+  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%);
+  color: #ffffff;
+  font-family: var(--font-royal);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bonus-collect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 12px;
+  border: 2px solid #fef08a;
+  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
+  color: #ffffff;
+  font-family: var(--font-royal);
+  font-size: 0.84rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+}
+
+@media (max-width: 920px) {
+  .cabinet-bonus-and-win-bar {
+    grid-template-columns: 1fr;
+  }
+  .bonus-jackpot-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .vault-3d-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .wheel-chamber-layout {
+    grid-template-columns: 1fr;
   }
 }

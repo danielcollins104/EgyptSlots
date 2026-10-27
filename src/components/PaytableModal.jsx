@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Trophy, Grid, Layers } from 'lucide-react';
-import { SYMBOLS, PAYLINES, CASINO_BRAND } from '../config/slotConfig';
+import { SYMBOLS, PAYLINES, CASINO_BRAND, THEME_COPY } from '../config/slotConfig';
 import PsdGoldNumber from './PsdGoldNumber';
 import NeonKeyedImage from './NeonKeyedImage';
 
@@ -17,7 +17,7 @@ export default function PaytableModal({ isOpen, onClose, level = 1 }) {
             <div className="paytable-casino-tag">
               {CASINO_BRAND.casinoFullTitle} • BY {CASINO_BRAND.creatorName.toUpperCase()}
             </div>
-            <h2 className="paytable-title">DC ENTERPRISES — PSYCHEDELIC NEON PAYTABLE</h2>
+            <h2 className="paytable-title">{THEME_COPY.paytableHeading}</h2>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
             <X size={22} />
@@ -35,13 +35,13 @@ export default function PaytableModal({ isOpen, onClose, level = 1 }) {
             className={`paytable-tab ${tab === 'paylines' ? 'active' : ''}`}
             onClick={() => setTab('paylines')}
           >
-            <Grid size={16} /> 15 Neon Laser Paylines
+            <Grid size={16} /> {CASINO_BRAND.baseLines} Laser Paylines
           </button>
           <button
             className={`paytable-tab ${tab === 'psd' ? 'active' : ''}`}
             onClick={() => setTab('psd')}
           >
-            <Layers size={16} /> Generated & PSD Assets
+            <Layers size={16} /> Theme &amp; Engine Assets
           </button>
         </div>
 
@@ -51,7 +51,36 @@ export default function PaytableModal({ isOpen, onClose, level = 1 }) {
               {SYMBOLS.map((sym) => (
                 <div key={sym.id} className={`paytable-card tier-${sym.tier}`}>
                   <div className="paytable-symbol-preview">
-                    {sym.isGeneratedNeon ? (
+                    {sym.is3DRoyal ? (
+                      <div
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: 14,
+                          border: '3px solid #f59e0b',
+                          background: `radial-gradient(circle at 40% 35%, ${sym.tileBgStart}, ${sym.tileBgEnd})`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow:
+                            'inset 0 0 10px rgba(0,0,0,0.8), 0 6px 14px rgba(0,0,0,0.7)',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "'Cinzel Decorative', 'Amarante', serif",
+                            fontSize: '3.1rem',
+                            fontWeight: 900,
+                            color: sym.gemPrimary,
+                            WebkitTextStroke: '2.5px #fde047',
+                            transform: `rotate(${sym.tiltDeg}deg) scale(1.18)`,
+                            textShadow: '3px 6px 8px rgba(0,0,0,0.9)',
+                          }}
+                        >
+                          {sym.letter}
+                        </span>
+                      </div>
+                    ) : sym.isGeneratedNeon ? (
                       <NeonKeyedImage
                         src={sym.image}
                         alt={sym.name}
@@ -134,28 +163,24 @@ export default function PaytableModal({ isOpen, onClose, level = 1 }) {
 
           {tab === 'psd' && (
             <div className="psd-showcase-section">
-              <p className="psd-showcase-intro">
-                Combining AI-generated psychedelic neon assets (the <strong>DC ENTERPRISES</strong> winged scarab logo,
-                <strong> Neon Bastet Pharaoh Queen</strong>, <strong>A/K/Q/J Neon Low Symbols</strong>, and <strong>MEGA WIN</strong> banner)
-                with the 425-layer <code>crowns_of_kemet_merged.psd</code> extractions:
-              </p>
+              <p className="psd-showcase-intro">{THEME_COPY.paytableAssetIntro}</p>
               <div className="psd-sample-row">
                 <div className="psd-sample-box">
-                  <h4>Custom Generated "DC ENTERPRISES" Winged Neon Logo</h4>
+                  <h4>{CASINO_BRAND.casinoName} Crest Logo</h4>
                   <NeonKeyedImage
                     src={CASINO_BRAND.logoImage}
-                    alt="DC Enterprises Logo"
+                    alt={CASINO_BRAND.casinoName}
                     style={{ height: 110, width: 'auto' }}
                   />
                 </div>
                 <div className="psd-sample-box">
-                  <h4>PSD 3D Engraved Numbers (Neon Overdrive)</h4>
+                  <h4>3D Engraved Gold Numbers</h4>
                   <div className="neon-psd-digits">
                     <PsdGoldNumber value="0123456789.," height={48} gap={0} />
                   </div>
                 </div>
                 <div className="psd-sample-box">
-                  <h4>PSD Bottom UI Controls (Neon Recolored)</h4>
+                  <h4>Bottom Cabinet Controls</h4>
                   <div className="psd-controls-mini neon-ui-filter">
                     <img src="/assets/psd/btn_autoplay.png" alt="Autoplay" height={44} />
                     <img src="/assets/psd/btn_spin_base.png" alt="Spin" height={58} />

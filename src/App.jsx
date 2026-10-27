@@ -9,12 +9,30 @@ import {
   RotateCcw,
   Crown,
   Palette,
+  Gem,
+  Gift,
+  CheckCircle2,
 } from 'lucide-react';
-import { CASINO_BRAND, SYMBOLS, PAYLINES } from './config/slotConfig';
+import {
+  CASINO_BRAND,
+  THEME_ASSETS,
+  GUARDIANS,
+  THEME_COPY,
+  COLOR_PALETTES,
+  BONUS_CONFIG,
+  SYMBOLS,
+  PAYLINES,
+  getWildSymbol,
+  getExpandingSymbol,
+  getBonusSymbol,
+  getTopHighSymbol,
+  getRegularSymbols,
+} from './config/slotConfig';
 import { soundEngine } from './audio/soundEngine';
 import SplashScreen from './components/SplashScreen';
 import BigWinPopup from './components/BigWinPopup';
 import PaytableModal from './components/PaytableModal';
+import BonusGameModal from './components/BonusGameModal';
 import PsdGoldNumber from './components/PsdGoldNumber';
 import NeonKeyedImage from './components/NeonKeyedImage';
 import PhaserReelEngine from './engine/PhaserReelEngine';
@@ -22,12 +40,7 @@ import './App.css';
 
 const COLS = 5;
 const ROWS = 3;
-
-const NEON_THEMES = [
-  { id: 'ultraviolet', label: 'Neon: Ultraviolet Cyber' },
-  { id: 'acid', label: 'Neon: Acid Rainbow' },
-  { id: 'laser', label: 'Neon: Laser Pink/Cyan' },
-];
+const BONUS_METER_GOAL = 12;
 
 function pickWeightedSymbol(pool, excludeExpanding = false) {
   const filtered = excludeExpanding ? pool.filter((s) => !s.isExpanding) : pool;
@@ -41,13 +54,18 @@ function pickWeightedSymbol(pool, excludeExpanding = false) {
 }
 
 function generateInitialGrid() {
-  const byId = Object.fromEntries(SYMBOLS.map((s) => [s.id, s]));
+  const wildSym = getWildSymbol();
+  const expSym = getExpandingSymbol();
+  const topHigh = getTopHighSymbol();
+  const regs = getRegularSymbols();
+  const r = (idx) => regs[idx % regs.length] || topHigh;
+
   return [
-    [byId.neon_a, byId.eye, byId.neon_q],
-    [byId.anubis, byId.anubis, byId.anubis],
-    [byId.scarab, byId.wild, byId.neon_k],
-    [byId.eye, byId.ankh, byId.neon_j],
-    [byId.neon_a, byId.necklace, byId.eye],
+    [r(4), topHigh, r(6)],
+    [expSym, expSym, expSym],
+    [r(2), wildSym, r(5)],
+    [topHigh, r(1), r(7)],
+    [r(4), r(3), topHigh],
   ];
 }
 
@@ -56,12 +74,12 @@ export default function App() {
   const [muted, setMuted] = useState(false);
   const [neonThemeIdx, setNeonThemeIdx] = useState(0);
 
-  // PSD Bottom UI State (matches PSD defaults: 250000 coins, level 1, bet 15, coin value 0.02)
+  // Bottom UI State
   const [coins, setCoins] = useState(CASINO_BRAND.defaultCoins);
   const [level, setLevel] = useState(1);
   const [coinValueIdx, setCoinValueIdx] = useState(CASINO_BRAND.defaultCoinValueIndex);
 
-  // Initial Reel Grid & Phaser Spin Trigger
+  // Initial Reel Grid & Spin Trigger
   const [initialGrid] = useState(() => generateInitialGrid());
   const [initialExpandedCols] = useState([false, true, false, false, false]);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -74,25 +92,32 @@ export default function App() {
   const [winningCells, setWinningCells] = useState(new Set());
   const [activeWinLineIdx, setActiveWinLineIdx] = useState(0);
   const [bigWinAmount, setBigWinAmount] = useState(0);
-  const [statusMessage, setStatusMessage] = useState(
-    'WELCOME DANIEL TO DC ENTERPRISES CASINO — PHASER 3 WEBGL REEL ENGINE READY!'
-  );
+  const [statusMessage, setStatusMessage] = useState(THEME_COPY.welcomeTicker);
 
-  // Autoplay & Modals
+  // Autoplay, Bonus Mechanisms & Modals
   const [autoPlayCount, setAutoPlayCount] = useState(0);
   const [paytableOpen, setPaytableOpen] = useState(false);
-  const [anubisAction, setAnubisAction] = useState(false);
-  const [anubisBlinking, setAnubisBlinking] = useState(false);
+  const [bonusMeter, setBonusMeter] = useState(4);
+  const [bonusSession, setBonusSession] = useState(null);
+  const [guardianAction, setGuardianAction] = useState(false);
+  const [guardianBlinking, setGuardianBlinking] = useState(false);
 
   const currentBet = CASINO_BRAND.baseLines * level;
   const coinValue = CASINO_BRAND.coinValues[coinValueIdx];
-  const currentTheme = NEON_THEMES[neonThemeIdx];
+  const currentTheme = COLOR_PALETTES[neonThemeIdx % COLOR_PALETTES.length];
 
-  // Periodic Anubis eye blink
+  // Dynamically sync browser document title to the active theme
+  useEffect(() => {
+    if (CASINO_BRAND.pageTitle) {
+      document.title = CASINO_BRAND.pageTitle;
+    }
+  }, []);
+
+  // Periodic Guardian eye blink (if configured on the left or right guardian)
   useEffect(() => {
     const interval = setInterval(() => {
-      setAnubisBlinking(true);
-      setTimeout(() => setAnubisBlinking(false), 180);
+      setGuardianBlinking(true);
+      setTimeout(() => setGuardianBlinking(false), 180);
     }, 3800);
     return () => clearInterval(interval);
   }, []);
@@ -105,7 +130,7 @@ export default function App() {
     }
     const timer = setInterval(() => {
       setActiveWinLineIdx((prev) => (prev + 1) % winningLines.length);
-    }, 1400);
+    }, 1600);
     return () => clearInterval(timer);
   }, [winningLines]);
 
@@ -115,66 +140,180 @@ export default function App() {
     soundEngine.setMuted(next);
   };
 
-  // Evaluate 15 paylines on a 5x3 grid
+  /**
+   * Hardened, 100% Authentic Slot Win Evaluator:
+   *  1. Evaluates all 15 paylines strictly left-to-right starting at Reel 1 (c = 0).
+   *  2. Bonus Scatter symbols (`sym.isBonus`) NEVER pay on paylines and Wilds NEVER substitute for Scatters.
+   *  3. On each payline, evaluates both:
+   *     - Any pure-wild prefix starting at Reel 1 (`pureWildCount >= 3`), AND
+   *     - The first non-wild regular symbol chain starting at Reel 1 (`regMatchCount >= 3`),
+   *     awarding whichever valid combination pays higher.
+   *  4. Evaluates 3+ `isBonus` Scatter symbols anywhere on the 5×3 grid (awards Scatter payout + Bonus Game).
+   */
   const evaluateGridWins = useCallback((finalGrid, betLevel) => {
     const wins = [];
     const winCoordSet = new Set();
     let totalCoinsWon = 0;
 
+    // 1. Evaluate 15 Left-to-Right Paylines
     for (const line of PAYLINES) {
       const lineSymbols = line.rows.map((r, c) => finalGrid[c][r]);
 
-      let targetSym = lineSymbols.find((s) => !s.isWild);
-      if (!targetSym) {
-        targetSym = lineSymbols[0];
+      if (!lineSymbols[0] || lineSymbols[0].isBonus) {
+        continue;
       }
 
-      let matchCount = 0;
-      let hasPyramidWild = false;
-
+      // A) Count consecutive pure Wilds starting from c = 0
+      let pureWildCount = 0;
       for (let c = 0; c < COLS; c++) {
-        const sym = lineSymbols[c];
-        if (sym.id === targetSym.id || sym.isWild) {
-          matchCount++;
-          if (sym.id === 'wild') hasPyramidWild = true;
+        if (lineSymbols[c]?.isWild) {
+          pureWildCount++;
         } else {
           break;
         }
       }
+      const pureWildSym = lineSymbols[0];
+      const pureWildWin =
+        pureWildCount >= 3 ? (pureWildSym.payouts?.[pureWildCount] || 0) * betLevel : 0;
 
-      if (matchCount >= 3) {
-        const basePayout = targetSym.payouts[matchCount] || 0;
-        const wildMultiplier = hasPyramidWild && !targetSym.isWild ? 2 : 1;
-        const lineWin = basePayout * betLevel * wildMultiplier;
-
-        if (lineWin > 0) {
-          totalCoinsWon += lineWin;
-          const cells = [];
-          for (let c = 0; c < matchCount; c++) {
-            const r = line.rows[c];
-            cells.push([c, r]);
-            winCoordSet.add(`${c}-${r}`);
-          }
-          wins.push({
-            line,
-            symbol: targetSym,
-            matchCount,
-            lineWin,
-            wildMultiplier,
-            cells,
-          });
+      // B) Find the first non-wild, non-bonus symbol along the contiguous chain from c = 0
+      let firstRegularSym = null;
+      for (let c = 0; c < COLS; c++) {
+        const s = lineSymbols[c];
+        if (!s || s.isBonus) break;
+        if (!s.isWild) {
+          firstRegularSym = s;
+          break;
         }
+      }
+
+      let regMatchCount = 0;
+      let hasDoublingWild = false;
+      let regWin = 0;
+
+      if (firstRegularSym) {
+        for (let c = 0; c < COLS; c++) {
+          const s = lineSymbols[c];
+          if (!s || s.isBonus) break;
+          if (s.id === firstRegularSym.id || s.isWild) {
+            regMatchCount++;
+            if (s.doublesLineWin || (s.isWild && !s.isExpanding)) {
+              hasDoublingWild = true;
+            }
+          } else {
+            break;
+          }
+        }
+        if (regMatchCount >= 3) {
+          const basePayout = firstRegularSym.payouts?.[regMatchCount] || 0;
+          const wildMult = hasDoublingWild ? 2 : 1;
+          regWin = basePayout * betLevel * wildMult;
+        }
+      }
+
+      // Pick the highest valid left-to-right win on this payline
+      let bestSym = null;
+      let bestCount = 0;
+      let bestWin = 0;
+      let bestWildMult = 1;
+
+      if (regWin >= pureWildWin && regWin > 0) {
+        bestSym = firstRegularSym;
+        bestCount = regMatchCount;
+        bestWin = regWin;
+        bestWildMult = hasDoublingWild ? 2 : 1;
+      } else if (pureWildWin > 0) {
+        bestSym = pureWildSym;
+        bestCount = pureWildCount;
+        bestWin = pureWildWin;
+        bestWildMult = 1;
+      }
+
+      if (bestWin > 0 && bestCount >= 3) {
+        totalCoinsWon += bestWin;
+        const cells = [];
+        for (let c = 0; c < bestCount; c++) {
+          const r = line.rows[c];
+          cells.push([c, r]);
+          winCoordSet.add(`${c}-${r}`);
+        }
+        wins.push({
+          line,
+          symbol: bestSym,
+          matchCount: bestCount,
+          lineWin: bestWin,
+          wildMultiplier: bestWildMult,
+          cells,
+          isScatter: false,
+        });
       }
     }
 
-    return { wins, winCoordSet, totalCoinsWon };
+    // 2. Evaluate 3+ Bonus Scatters anywhere on the 5×3 grid & count meter charges
+    const bonusCells = [];
+    let bonusSymRef = null;
+    let meterChargesEarned = 0;
+
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const sym = finalGrid[c][r];
+        if (!sym) continue;
+        if (sym.isBonus) {
+          bonusCells.push([c, r]);
+          bonusSymRef = sym;
+          meterChargesEarned += 2;
+        } else if (sym.isWild && !sym.isExpanding) {
+          meterChargesEarned += 1;
+        }
+      }
+      // If entire column is expanded 1x3 Guardian, count +1 charge for that column
+      if (
+        finalGrid[c][0]?.isExpanding &&
+        finalGrid[c][1]?.isExpanding &&
+        finalGrid[c][2]?.isExpanding
+      ) {
+        meterChargesEarned += 1;
+      }
+    }
+
+    let scatterWinCoins = 0;
+    if (bonusCells.length >= 3 && bonusSymRef) {
+      const cappedCount = Math.min(5, bonusCells.length);
+      scatterWinCoins = (bonusSymRef.payouts?.[cappedCount] || 75) * betLevel;
+      totalCoinsWon += scatterWinCoins;
+      bonusCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
+
+      wins.unshift({
+        line: {
+          id: 'BONUS',
+          name: `${bonusCells.length}× ${bonusSymRef.name}`,
+          rows: [1, 1, 1, 1, 1],
+          color: '#fbbf24',
+        },
+        symbol: bonusSymRef,
+        matchCount: bonusCells.length,
+        lineWin: scatterWinCoins,
+        wildMultiplier: 1,
+        cells: bonusCells,
+        isScatter: true,
+      });
+    }
+
+    return {
+      wins,
+      winCoordSet,
+      totalCoinsWon,
+      bonusCount: bonusCells.length,
+      scatterWinCoins,
+      meterChargesEarned,
+    };
   }, []);
 
   const handleColumnStop = useCallback((colIdx, didExpand) => {
     if (didExpand) {
-      setAnubisAction(true);
+      setGuardianAction(true);
       soundEngine.playAnubisExpand();
-      setTimeout(() => setAnubisAction(false), 1200);
+      setTimeout(() => setGuardianAction(false), 1200);
     }
   }, []);
 
@@ -186,9 +325,27 @@ export default function App() {
     }
 
     const { nextGrid, activeLevel, spinBet, forcedMode } = pending;
-    const { wins, winCoordSet, totalCoinsWon } = evaluateGridWins(nextGrid, activeLevel);
+    const {
+      wins,
+      winCoordSet,
+      totalCoinsWon,
+      bonusCount,
+      scatterWinCoins,
+      meterChargesEarned,
+    } = evaluateGridWins(nextGrid, activeLevel);
 
     setIsSpinning(false);
+
+    // Update the 3D Bonus Collector Meter
+    let meterTriggeredBonus = false;
+    setBonusMeter((prev) => {
+      const nextVal = prev + meterChargesEarned;
+      if (nextVal >= BONUS_METER_GOAL && bonusCount < 3) {
+        meterTriggeredBonus = true;
+        return 0;
+      }
+      return Math.min(BONUS_METER_GOAL, nextVal);
+    });
 
     if (totalCoinsWon > 0) {
       setCoins((prev) => prev + totalCoinsWon);
@@ -198,36 +355,105 @@ export default function App() {
 
       const isBig = totalCoinsWon >= spinBet * 8 || forcedMode === 'bigwin';
       soundEngine.playWin(isBig);
-      setAnubisAction(true);
-      setTimeout(() => setAnubisAction(false), 1800);
+      setGuardianAction(true);
+      setTimeout(() => setGuardianAction(false), 1800);
 
-      if (isBig) {
+      if (bonusCount >= 3) {
+        setStatusMessage(
+          `3D BONUS UNLOCKED! ${bonusCount}× ${
+            getBonusSymbol().name
+          } PAID ${scatterWinCoins.toLocaleString()} COINS + BONUS FEATURE!`
+        );
+      } else if (isBig) {
         setBigWinAmount(totalCoinsWon);
         setStatusMessage(
-          `MEGA NEON JACKPOT! DANIEL WON ${totalCoinsWon.toLocaleString()} COINS AT DC ENTERPRISES!`
+          `${THEME_COPY.megaWinTickerPrefix} ${totalCoinsWon.toLocaleString()} COINS AT ${
+            CASINO_BRAND.casinoFullTitle
+          }!`
         );
       } else {
+        const firstWin = wins[0];
         setStatusMessage(
-          `NEON WINNER! ${wins.length} PAYLINE${
+          `VERIFIED WIN! ${wins.length} PAYLINE${
             wins.length > 1 ? 'S' : ''
-          } PAID ${totalCoinsWon.toLocaleString()} COINS ($${(
-            totalCoinsWon * coinValue
-          ).toFixed(2)})!`
+          } (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${totalCoinsWon.toLocaleString()} COINS!`
         );
       }
     } else {
-      setStatusMessage('NO WINNING PAYLINES — SPIN AGAIN AT DC ENTERPRISES CASINO!');
+      setStatusMessage(THEME_COPY.noWinTicker);
     }
-  }, [evaluateGridWins, coinValue]);
+
+    // Launch the 3D Bonus Games if 3+ Scatters landed OR Collector Meter filled!
+    if (bonusCount >= 3) {
+      setAutoPlayCount(0);
+      setTimeout(() => {
+        soundEngine.playBonusTrigger();
+        setBonusSession({
+          triggerReason: `${bonusCount}× ${BONUS_CONFIG.scatterTriggerName}`,
+          initialPicks: bonusCount + 1,
+          wheelSpins: Math.max(1, bonusCount - 2),
+          startingMultiplier: bonusCount >= 4 ? 2 : 1,
+          scatterWinCoins,
+          defaultGame: 'vault',
+        });
+      }, 900);
+    } else if (meterTriggeredBonus) {
+      setAutoPlayCount(0);
+      setTimeout(() => {
+        soundEngine.playBonusTrigger();
+        setBonusSession({
+          triggerReason: BONUS_CONFIG.meterTriggerName,
+          initialPicks: 4,
+          wheelSpins: 1,
+          startingMultiplier: 2,
+          scatterWinCoins: 0,
+          defaultGame: 'vault',
+        });
+      }, 750);
+    }
+  }, [evaluateGridWins]);
+
+  const openBonusGamesManually = (defaultGame = 'vault') => {
+    if (isSpinning) return;
+    soundEngine.playBonusTrigger();
+    setAutoPlayCount(0);
+    setBonusSession({
+      triggerReason: BONUS_CONFIG.vipDirectTriggerName,
+      initialPicks: 4,
+      wheelSpins: 2,
+      startingMultiplier: bonusMeter >= BONUS_METER_GOAL ? 2 : 1,
+      scatterWinCoins: 0,
+      defaultGame,
+    });
+    if (bonusMeter >= BONUS_METER_GOAL) {
+      setBonusMeter(0);
+    }
+  };
+
+  const handleCompleteBonus = (totalBonusCoins) => {
+    const extraCoinsBeyondScatter =
+      totalBonusCoins - (bonusSession?.scatterWinCoins || 0);
+    if (extraCoinsBeyondScatter > 0) {
+      setCoins((prev) => prev + extraCoinsBeyondScatter);
+    }
+    setLastWinCoins(totalBonusCoins);
+    setBonusSession(null);
+    if (totalBonusCoins > 0) {
+      setBigWinAmount(totalBonusCoins);
+      setStatusMessage(
+        `3D BONUS COMPLETED! ${CASINO_BRAND.creatorName.toUpperCase()} WON ${totalBonusCoins.toLocaleString()} TOTAL BONUS COINS!`
+      );
+    }
+  };
 
   const triggerSpin = useCallback(
     (forcedMode = null, overrideLevel = null) => {
-      if (isSpinning) return;
+      if (isSpinning || bonusSession) return;
       const activeLevel = overrideLevel ?? level;
       const spinBet = CASINO_BRAND.baseLines * activeLevel;
 
       if (coins < spinBet) {
-        setStatusMessage('INSUFFICIENT COINS! CLICK RESET BANKROLL OR LOWER BET LEVEL.');
+        setStatusMessage(THEME_COPY.insufficientCoinsTicker);
         setAutoPlayCount(0);
         return;
       }
@@ -238,11 +464,16 @@ export default function App() {
       setWinningCells(new Set());
       setBigWinAmount(0);
       setIsSpinning(true);
-      setStatusMessage('PHASER 3 REELS SPINNING — DC ENTERPRISES CASINO!');
+      setStatusMessage(THEME_COPY.spinningTicker);
 
       soundEngine.playSpinStart();
 
-      const byId = Object.fromEntries(SYMBOLS.map((s) => [s.id, s]));
+      const wildSym = getWildSymbol();
+      const expSym = getExpandingSymbol();
+      const bonusSym = getBonusSymbol();
+      const topHigh = getTopHighSymbol();
+      const regs = getRegularSymbols();
+      const r = (idx) => regs[idx % regs.length] || topHigh;
 
       const nextGrid = Array.from({ length: COLS }, () =>
         Array.from({ length: ROWS }, () => pickWeightedSymbol(SYMBOLS, true))
@@ -252,22 +483,28 @@ export default function App() {
       if (forcedMode === 'anubis') {
         nextExpanded[1] = true;
         nextExpanded[3] = true;
-        nextGrid[0][1] = byId.eye;
-        nextGrid[1] = [byId.anubis, byId.anubis, byId.anubis];
-        nextGrid[2][1] = byId.eye;
-        nextGrid[3] = [byId.anubis, byId.anubis, byId.anubis];
-        nextGrid[4][1] = byId.eye;
+        nextGrid[0] = [r(5), topHigh, r(7)];
+        nextGrid[1] = [expSym, expSym, expSym];
+        nextGrid[2] = [r(6), topHigh, r(4)];
+        nextGrid[3] = [expSym, expSym, expSym];
+        nextGrid[4] = [r(7), topHigh, r(5)];
       } else if (forcedMode === 'bigwin') {
-        nextGrid[0] = [byId.eye, byId.eye, byId.neon_a];
-        nextGrid[1] = [byId.eye, byId.wild, byId.neon_k];
-        nextGrid[2] = [byId.wild, byId.eye, byId.eye];
-        nextGrid[3] = [byId.eye, byId.wild, byId.neon_q];
-        nextGrid[4] = [byId.eye, byId.eye, byId.neon_j];
+        nextGrid[0] = [topHigh, topHigh, r(4)];
+        nextGrid[1] = [topHigh, wildSym, r(5)];
+        nextGrid[2] = [wildSym, topHigh, topHigh];
+        nextGrid[3] = [topHigh, wildSym, r(6)];
+        nextGrid[4] = [topHigh, topHigh, r(7)];
+      } else if (forcedMode === 'bonus') {
+        nextGrid[0] = [r(4), bonusSym, r(6)];
+        nextGrid[1] = [r(2), r(5), r(7)];
+        nextGrid[2] = [r(6), bonusSym, r(1)];
+        nextGrid[3] = [r(3), r(4), r(5)];
+        nextGrid[4] = [r(7), bonusSym, r(2)];
       } else {
         for (let c = 1; c <= 3; c++) {
-          if (Math.random() < 0.12) {
+          if (Math.random() < 0.11) {
             nextExpanded[c] = true;
-            nextGrid[c] = [byId.anubis, byId.anubis, byId.anubis];
+            nextGrid[c] = [expSym, expSym, expSym];
           }
         }
       }
@@ -286,24 +523,24 @@ export default function App() {
         targetExpanded: nextExpanded,
       });
     },
-    [isSpinning, level, coins]
+    [isSpinning, bonusSession, level, coins]
   );
 
   // Autoplay handler
   useEffect(() => {
-    if (autoPlayCount > 0 && !isSpinning && bigWinAmount === 0) {
+    if (autoPlayCount > 0 && !isSpinning && bigWinAmount === 0 && !bonusSession) {
       const timer = setTimeout(() => {
         setAutoPlayCount((prev) => Math.max(0, prev - 1));
         triggerSpin();
       }, 950);
       return () => clearTimeout(timer);
     }
-  }, [autoPlayCount, isSpinning, bigWinAmount, triggerSpin]);
+  }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, triggerSpin]);
 
   // Spacebar shortcut to Spin
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (e.code === 'Space' && !showSplash && !paytableOpen) {
+      if (e.code === 'Space' && !showSplash && !paytableOpen && !bonusSession) {
         e.preventDefault();
         if (bigWinAmount > 0) {
           setBigWinAmount(0);
@@ -314,7 +551,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showSplash, paytableOpen, bigWinAmount, triggerSpin]);
+  }, [showSplash, paytableOpen, bonusSession, bigWinAmount, triggerSpin]);
 
   const handleLevelChange = (delta) => {
     if (isSpinning) return;
@@ -348,18 +585,18 @@ export default function App() {
 
   return (
     <div className={`casino-app-root theme-${currentTheme.id}`}>
-      {/* Welcome Screen with Daniel's Treasure Chest Photo */}
+      {/* Welcome Screen */}
       {showSplash && <SplashScreen onEnterCasino={() => setShowSplash(false)} />}
 
-      {/* Main Egyptian Temple Background with Psychedelic Neon Blacklight Shader */}
+      {/* Main Stage Background */}
       <div
         className="temple-background neon-temple-bg"
-        style={{ backgroundImage: "url('/assets/background/background.png')" }}
+        style={{ backgroundImage: `url('${THEME_ASSETS.mainBackground}')` }}
       />
 
-      {/* Ambient Psychedelic PSD Spark & Ray Overlays */}
+      {/* Ambient Spark & Ray Overlays */}
       <img
-        src="/assets/psd/fx_sparks.png"
+        src={THEME_ASSETS.ambientSparksImage}
         alt=""
         className="ambient-sparks neon-fx-shift"
         draggable={false}
@@ -370,51 +607,72 @@ export default function App() {
         <div
           className="dc-topbar-brand"
           onClick={() => setShowSplash(true)}
-          title="Open Daniel's Welcome Screen"
+          title="Open Welcome Screen"
         >
           <img
-            src="/assets/neon/daniel_creative_ad_splash.jpg"
-            alt="Daniel"
+            src={THEME_ASSETS.splashCreativeImage}
+            alt={CASINO_BRAND.creatorName}
             className="dc-daniel-avatar"
           />
           <div className="dc-crest-badge">DC</div>
           <div className="dc-brand-titles">
             <span className="dc-casino-name">{CASINO_BRAND.casinoFullTitle}</span>
             <span className="dc-creator-tag">
-              <Crown size={12} /> CREATED BY {CASINO_BRAND.creatorName.toUpperCase()} • PHASER 3 ENGINE
+              <Crown size={12} /> CREATED BY {CASINO_BRAND.creatorName.toUpperCase()} •{' '}
+              {CASINO_BRAND.shortTitle}
             </span>
           </div>
         </div>
 
-        {/* Interactive Demo Feature Buttons & Neon Spectrum Switcher */}
+        {/* Interactive Demo Feature Buttons & Color Spectrum Switcher */}
         <div className="dc-topbar-actions">
+          <button
+            className="dc-action-btn special-bonus"
+            onClick={() => triggerSpin('bonus')}
+            disabled={isSpinning}
+            title={THEME_COPY.bonusSpinButtonTooltip}
+          >
+            <Gift size={15} />
+            <span>{THEME_COPY.bonusSpinButtonLabel}</span>
+          </button>
+
+          <button
+            className="dc-action-btn special-bonus-direct"
+            onClick={() => openBonusGamesManually('vault')}
+            disabled={isSpinning}
+            title={THEME_COPY.bonusOpenButtonTooltip}
+          >
+            <Gem size={15} />
+            <span>{THEME_COPY.bonusOpenButtonLabel}</span>
+          </button>
+
           <button
             className="dc-action-btn special-anubis"
             onClick={() => triggerSpin('anubis')}
             disabled={isSpinning}
-            title="Demo Dual 1x3 Expanding Guardians (Neon Anubis & Neon Bastet)!"
+            title={THEME_COPY.expandDemoButtonTooltip}
           >
             <Flame size={15} />
-            <span>Dual 1×3 Expand</span>
+            <span>{THEME_COPY.expandDemoButtonLabel}</span>
           </button>
 
           <button
             className="dc-action-btn special-bigwin"
             onClick={() => triggerSpin('bigwin')}
             disabled={isSpinning}
-            title="Demo the AI-Generated MEGA WIN Neon Banner & PSD 3D Digits!"
+            title={THEME_COPY.megaWinDemoButtonTooltip}
           >
             <Trophy size={15} />
-            <span>Force Mega Win</span>
+            <span>{THEME_COPY.megaWinDemoButtonLabel}</span>
           </button>
 
           <button
             className="dc-action-btn active-mode"
             onClick={() => {
               soundEngine.playButtonClick();
-              setNeonThemeIdx((p) => (p + 1) % NEON_THEMES.length);
+              setNeonThemeIdx((p) => (p + 1) % COLOR_PALETTES.length);
             }}
-            title="Cycle Psychedelic Neon Color Spectrum"
+            title="Cycle Color Spectrum"
           >
             <Palette size={15} />
             <span>{currentTheme.label}</span>
@@ -428,7 +686,7 @@ export default function App() {
             }}
           >
             <BookOpen size={15} />
-            <span>Paytable & Assets</span>
+            <span>Paytable &amp; Rules</span>
           </button>
 
           <button
@@ -436,7 +694,7 @@ export default function App() {
             onClick={() => {
               soundEngine.playButtonClick();
               setCoins(CASINO_BRAND.defaultCoins);
-              setStatusMessage('BANKROLL RESET TO 250,000 COINS BY DANIEL!');
+              setStatusMessage(THEME_COPY.resetBankrollTicker);
             }}
             title="Reset Coins to 250,000"
           >
@@ -449,48 +707,66 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Slot Machine Stage: Left Guardian (Anubis) + Center Cabinet + Right Guardian (Bastet) */}
+      {/* Main Slot Machine Stage: Left Guardian + Center Cabinet + Right Guardian */}
       <main className="slot-stage-container">
-        {/* Left Guardian: Psychedelic Neon Anubis */}
-        <aside className={`anubis-guardian-column left-col ${anubisAction ? 'anubis-action-surge' : ''}`}>
+        {/* Left Guardian Character (Configured in `GUARDIANS.left`) */}
+        <aside
+          className={`anubis-guardian-column left-col ${
+            guardianAction ? 'anubis-action-surge' : ''
+          }`}
+        >
           <div className="anubis-guardian-figure">
-            <img
-              src="/assets/psd/anubis_blue_light.png"
-              alt=""
-              className="guardian-blue-aura"
-              draggable={false}
-            />
-            <img
-              src="/assets/characters/anubis.png"
-              alt="Neon Anubis Guardian"
-              className="guardian-body-img neon-char-filter"
-              draggable={false}
-            />
-            {anubisBlinking && (
+            {GUARDIANS.left.auraImage && (
               <img
-                src="/assets/psd/anubis_eyes_closed.png"
+                src={GUARDIANS.left.auraImage}
+                alt=""
+                className="guardian-blue-aura"
+                draggable={false}
+              />
+            )}
+            {GUARDIANS.left.keyedBackground ? (
+              <NeonKeyedImage
+                src={GUARDIANS.left.bodyImage}
+                alt={GUARDIANS.left.name}
+                className="guardian-body-img neon-char-filter"
+                threshold={26}
+                feather={44}
+              />
+            ) : (
+              <img
+                src={GUARDIANS.left.bodyImage}
+                alt={GUARDIANS.left.name}
+                className="guardian-body-img neon-char-filter"
+                draggable={false}
+              />
+            )}
+            {guardianBlinking && GUARDIANS.left.eyesClosedImage && (
+              <img
+                src={GUARDIANS.left.eyesClosedImage}
                 alt=""
                 className="guardian-blink-overlay neon-char-filter"
                 draggable={false}
               />
             )}
-            <img
-              src="/assets/psd/anubis_hand_fire.png"
-              alt=""
-              className="guardian-hand-flame"
-              draggable={false}
-            />
+            {GUARDIANS.left.handFxImage && (
+              <img
+                src={GUARDIANS.left.handFxImage}
+                alt=""
+                className="guardian-hand-flame"
+                draggable={false}
+              />
+            )}
           </div>
           <div className="guardian-pedestal-plaque">
             <img
-              src="/assets/psd/logo_short_frame.png"
+              src={GUARDIANS.plaqueFrameImage}
               alt=""
               className="neon-frame-filter"
               draggable={false}
             />
             <div className="guardian-plaque-txt">
-              <span>NEON GUARDIAN</span>
-              <strong>DANIEL VIP</strong>
+              <span>{GUARDIANS.left.plaqueTop}</span>
+              <strong>{GUARDIANS.left.plaqueBottom}</strong>
             </div>
           </div>
         </aside>
@@ -498,49 +774,47 @@ export default function App() {
         {/* Center Slot Machine Cabinet */}
         <section className="slot-cabinet-wrapper">
           <div className="reel-cabinet-box">
-            {/* PSD Layer 3: reel_glow.png in Neon */}
             <img
-              src="/assets/psd/reel_glow.png"
+              src={THEME_ASSETS.reelGlowImage}
               alt=""
               className="psd-reel-glow neon-fx-shift"
               draggable={false}
             />
 
-            {/* PSD Layer 4: reel_shadow.png */}
             <img
-              src="/assets/psd/reel_shadow.png"
+              src={THEME_ASSETS.reelShadowImage}
               alt=""
               className="psd-reel-shadow"
               draggable={false}
             />
 
-            {/* Custom Generated Winged Psychedelic Neon "DC ENTERPRISES" Logo mounted at the top arch */}
+            {/* Top Arch Logo */}
             <div className="cabinet-dc-neon-logo">
               <NeonKeyedImage
                 src={CASINO_BRAND.logoImage}
-                alt="DC ENTERPRISES"
+                alt={CASINO_BRAND.casinoName}
                 className="cabinet-dc-logo-img"
                 threshold={26}
                 feather={48}
               />
             </div>
 
-            {/* Horus Falcon Frame in Psychedelic Neon (reel_frame_filled.png) */}
+            {/* Reel Cabinet Frame */}
             <img
-              src="/assets/reel/reel_frame_filled.png"
+              src={THEME_ASSETS.reelFrameImage}
               alt="Reel Frame"
               className="psd-reel-frame-img neon-cabinet-filter"
               draggable={false}
             />
 
-            {/* Engraved Neon Nameplate on the Top Arch Beam */}
+            {/* Engraved Nameplate on the Top Arch Beam */}
             <div className="cabinet-arch-engraving">
-              <span>DC ENTERPRISES CASINO</span>
+              <span>{CASINO_BRAND.casinoFullTitle}</span>
               <span className="arch-dot">⚡</span>
-              <span>CREATED BY DANIEL</span>
+              <span>CREATED BY {CASINO_BRAND.creatorName.toUpperCase()}</span>
             </div>
 
-            {/* 5x3 Reel Window Driven by Phaser 3 Hardware-Accelerated Spin Engine */}
+            {/* 5x3 Reel Window */}
             <div className="reel-window-viewport">
               <PhaserReelEngine
                 initialGrid={initialGrid}
@@ -554,7 +828,7 @@ export default function App() {
               />
             </div>
 
-            {/* PSD Bottom Control Bar in Psychedelic Neon */}
+            {/* Bottom Control Bar */}
             <div className="psd-bottom-control-bar">
               <img
                 src="/assets/psd/ui_base_bar.png"
@@ -617,7 +891,9 @@ export default function App() {
               {/* Center Button Group: AUTOPLAY + SPIN + MAX BET */}
               <div className="psd-ui-center-buttons">
                 <button
-                  className={`psd-wing-btn autoplay-wing ${autoPlayCount > 0 ? 'active-auto' : ''}`}
+                  className={`psd-wing-btn autoplay-wing ${
+                    autoPlayCount > 0 ? 'active-auto' : ''
+                  }`}
                   onClick={handleAutoPlayToggle}
                 >
                   <img
@@ -741,7 +1017,71 @@ export default function App() {
             </div>
           </div>
 
-          {/* Lower Cabinet Ticker & Engraved DC Enterprises Casino / Daniel Pediment */}
+          {/* 3D Bonus Collector Meter & Live Verified Winning Combination Pill */}
+          <div className="cabinet-bonus-and-win-bar">
+            <div
+              className="scarab-collector-meter"
+              onClick={() => openBonusGamesManually('vault')}
+              title="Land Wilds (+1) or 3D Bonus Symbols (+2) to charge! Click anytime to preview the 3D Bonus Games!"
+            >
+              <img
+                src={THEME_COPY.collectorMeterIcon}
+                alt="Bonus Collector"
+                className="meter-scarab-3d-icon"
+                draggable={false}
+              />
+              <div className="meter-body">
+                <div className="meter-header-row">
+                  <span className="meter-title">{THEME_COPY.collectorMeterTitle}</span>
+                  <span className="meter-count">
+                    {bonusMeter} / {BONUS_METER_GOAL} {THEME_COPY.collectorMeterUnit} (2× MULT AT 12)
+                  </span>
+                </div>
+                <div className="meter-gem-pips">
+                  {Array.from({ length: BONUS_METER_GOAL }, (_, idx) => (
+                    <span
+                      key={idx}
+                      className={`meter-gem-pip ${idx < bonusMeter ? 'charged' : ''}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {winningLines.length > 0 ? (
+              (() => {
+                const activeW = winningLines[activeWinLineIdx % winningLines.length];
+                return (
+                  <div
+                    className="verified-win-pill"
+                    style={{ borderColor: activeW?.line?.color || '#ffd700' }}
+                  >
+                    <CheckCircle2 size={15} className="verified-icon" />
+                    <span>
+                      {activeW.isScatter
+                        ? `SCATTER BONUS: ${activeW.matchCount}× ${
+                            activeW.symbol.name
+                          } = +${activeW.lineWin.toLocaleString()} COINS`
+                        : `LINE #${activeW.line.id} (${activeW.line.name}): ${
+                            activeW.matchCount
+                          }× ${activeW.symbol.name}${
+                            activeW.wildMultiplier > 1 ? ' [2× WILD]' : ''
+                          } = +${activeW.lineWin.toLocaleString()} COINS (${
+                            (activeWinLineIdx % winningLines.length) + 1
+                          }/${winningLines.length})`}
+                    </span>
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="verified-win-pill idle-pill">
+                <Gem size={14} />
+                <span>{THEME_COPY.idleBreakdownHint}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Lower Cabinet Ticker & Pediment */}
           <div className="cabinet-status-pediment">
             <div className="pediment-win-box">
               <span className="pediment-label">LAST WIN</span>
@@ -771,31 +1111,76 @@ export default function App() {
           </div>
         </section>
 
-        {/* Right Guardian: Psychedelic Neon Bastet Pharaoh Queen */}
-        <aside className={`anubis-guardian-column right-col ${anubisAction ? 'anubis-action-surge' : ''}`}>
+        {/* Right Guardian Character (Configured in `GUARDIANS.right`) */}
+        <aside
+          className={`anubis-guardian-column right-col ${
+            guardianAction ? 'anubis-action-surge' : ''
+          }`}
+        >
           <div className="anubis-guardian-figure bastet-figure">
-            <NeonKeyedImage
-              src={CASINO_BRAND.bastetCharacterImage}
-              alt="Neon Bastet Guardian"
-              className="guardian-body-img bastet-guardian-img"
-              threshold={26}
-              feather={44}
-            />
+            {GUARDIANS.right.auraImage && (
+              <img
+                src={GUARDIANS.right.auraImage}
+                alt=""
+                className="guardian-blue-aura"
+                draggable={false}
+              />
+            )}
+            {GUARDIANS.right.keyedBackground ? (
+              <NeonKeyedImage
+                src={GUARDIANS.right.bodyImage}
+                alt={GUARDIANS.right.name}
+                className="guardian-body-img bastet-guardian-img"
+                threshold={26}
+                feather={44}
+              />
+            ) : (
+              <img
+                src={GUARDIANS.right.bodyImage}
+                alt={GUARDIANS.right.name}
+                className="guardian-body-img bastet-guardian-img"
+                draggable={false}
+              />
+            )}
+            {guardianBlinking && GUARDIANS.right.eyesClosedImage && (
+              <img
+                src={GUARDIANS.right.eyesClosedImage}
+                alt=""
+                className="guardian-blink-overlay neon-char-filter"
+                draggable={false}
+              />
+            )}
+            {GUARDIANS.right.handFxImage && (
+              <img
+                src={GUARDIANS.right.handFxImage}
+                alt=""
+                className="guardian-hand-flame"
+                draggable={false}
+              />
+            )}
           </div>
           <div className="guardian-pedestal-plaque">
             <img
-              src="/assets/psd/logo_short_frame.png"
+              src={GUARDIANS.plaqueFrameImage}
               alt=""
               className="neon-frame-filter"
               draggable={false}
             />
             <div className="guardian-plaque-txt">
-              <span>QUEEN BASTET</span>
-              <strong>DC ENTERPRISES</strong>
+              <span>{GUARDIANS.right.plaqueTop}</span>
+              <strong>{GUARDIANS.right.plaqueBottom}</strong>
             </div>
           </div>
         </aside>
       </main>
+
+      {/* 3D Bonus Games Modal */}
+      <BonusGameModal
+        bonusSession={bonusSession}
+        currentBet={currentBet}
+        coinValue={coinValue}
+        onCompleteBonus={handleCompleteBonus}
+      />
 
       {/* Big Win / Mega Win Celebration Pop-Up */}
       <BigWinPopup
@@ -804,7 +1189,7 @@ export default function App() {
         onClose={() => setBigWinAmount(0)}
       />
 
-      {/* Paytable & PSD/Generated Asset Showcase Modal */}
+      {/* Paytable Modal */}
       <PaytableModal
         isOpen={paytableOpen}
         onClose={() => setPaytableOpen(false)}
