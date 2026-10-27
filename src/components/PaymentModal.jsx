@@ -15,6 +15,7 @@ import {
   Gift,
   Clock,
   History,
+  ExternalLink,
 } from 'lucide-react';
 import { SWEEPSTAKES_CONFIG } from '../config/sweepstakesConfig';
 import { paymentService } from '../services/paymentService';
@@ -346,8 +347,44 @@ export default function PaymentModal({
                 {/* Card or Chime Input Fields */}
                 {provider === 'stripe' ? (
                   <div className="card-fields-box">
+                    {selectedPkg.stripePaymentLink && (
+                      <div className="stripe-official-box">
+                        <a
+                          href={selectedPkg.stripePaymentLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="stripe-hosted-checkout-btn"
+                          onClick={() => {
+                            soundEngine.playButtonClick(640);
+                            setCheckoutFeedback({
+                              type: 'success',
+                              text: `Opening official Stripe checkout in new tab for ${selectedPkg.goldCoins.toLocaleString()} GC + FREE ${selectedPkg.freeSweepsCoins} SC!`,
+                            });
+                          }}
+                        >
+                          <div className="stripe-btn-top">
+                            <CreditCard size={18} />
+                            <span>PAY ${selectedPkg.priceUsd.toFixed(2)} VIA STRIPE CHECKOUT</span>
+                            <ExternalLink size={16} />
+                          </div>
+                          <div className="stripe-supported-badges">
+                            <span>Apple Pay</span>
+                            <span>•</span>
+                            <span>Google Pay</span>
+                            <span>•</span>
+                            <span>Cards</span>
+                            <span>•</span>
+                            <span>256-Bit SSL</span>
+                          </div>
+                        </a>
+                        <div className="checkout-alt-divider">
+                          <span>OR IN-GAME TEST CHECKOUT</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="field-group">
-                      <label>CARD NUMBER (OR STRIPE TEST CARD)</label>
+                      <label>CARD NUMBER (OR TEST CARD)</label>
                       <input
                         type="text"
                         placeholder="4242 •••• •••• 4242"
