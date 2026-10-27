@@ -315,7 +315,7 @@ export default function PaymentModal({
               {/* Left Side: Order Summary & Provider Selector */}
               <div className="checkout-bar-left">
                 <div className="checkout-selection-pill">
-                  <div className="summary-pill-badge">SELECTED</div>
+                  <Coins size={15} className="shelf-gc-icon" />
                   <div className="summary-pill-text">
                     <strong>{selectedPkg.goldCoins.toLocaleString()} GC</strong>
                     <span className="sc-highlight">+ {selectedPkg.freeSweepsCoins.toFixed(2)} Free SC</span>
