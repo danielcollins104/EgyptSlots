@@ -3721,31 +3721,290 @@ body {
   font-size: 0.8rem;
 }
 
-@media (max-width: 920px) {
-  .cabinet-bonus-and-win-bar {
-    grid-template-columns: 1fr;
+/* ============================================================================
+   10. REAL-TIME WIN CELEBRATION SPLASH & ANIMATIONS
+   ============================================================================ */
+
+.win-splash-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.15) 70%, transparent 100%);
+  animation: winSplashOverlayFade 0.25s ease-out forwards;
+}
+
+@keyframes winSplashOverlayFade {
+  0% {
+    opacity: 0;
   }
-  .bonus-jackpot-bar {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .vault-3d-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .wheel-chamber-layout {
-    grid-template-columns: 1fr;
-  }
-  .dc-sweepstakes-control-center {
-    width: 100%;
-    justify-content: center;
-  }
-  .payment-live-balance-strip {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .balance-strip-divider {
-    display: none;
-  }
-  .store-packages-grid {
-    grid-template-columns: repeat(2, 1fr);
+  100% {
+    opacity: 1;
   }
 }
+
+.win-splash-rays {
+  position: absolute;
+  width: 140%;
+  height: 140%;
+  object-fit: contain;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.85;
+  animation: spinRaysContinuous 16s linear infinite;
+}
+
+@keyframes spinRaysContinuous {
+  0% {
+    transform: rotate(0deg) scale(0.95);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(360deg) scale(0.95);
+  }
+}
+
+.win-splash-sparks {
+  position: absolute;
+  width: 120%;
+  height: 120%;
+  object-fit: contain;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  animation: pulseWinSparks 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes pulseWinSparks {
+  0% {
+    transform: scale(0.9);
+    filter: brightness(1) drop-shadow(0 0 10px #fbbf24);
+  }
+  100% {
+    transform: scale(1.1);
+    filter: brightness(1.3) drop-shadow(0 0 24px #f59e0b);
+  }
+}
+
+/* Floating Gold Coins Particles */
+.win-splash-coins-particle-wrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.splash-coin {
+  position: absolute;
+  font-size: 1.5rem;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+  animation: floatUpCoin 2.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+.splash-coin-1 { left: 15%; animation-delay: 0s; }
+.splash-coin-2 { left: 28%; animation-delay: 0.3s; }
+.splash-coin-3 { left: 42%; animation-delay: 0.6s; }
+.splash-coin-4 { left: 55%; animation-delay: 0.2s; }
+.splash-coin-5 { left: 68%; animation-delay: 0.7s; }
+.splash-coin-6 { left: 82%; animation-delay: 0.4s; }
+.splash-coin-7 { left: 22%; animation-delay: 0.9s; }
+.splash-coin-8 { left: 75%; animation-delay: 0.5s; }
+
+@keyframes floatUpCoin {
+  0% {
+    bottom: -30px;
+    opacity: 0;
+    transform: scale(0.6) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.1) rotate(45deg);
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    bottom: 110%;
+    opacity: 0;
+    transform: scale(0.8) rotate(360deg);
+  }
+}
+
+/* Center 3D Celebration Plaque */
+.win-splash-plaque {
+  position: relative;
+  width: min(86%, 420px);
+  padding: 22px 24px 18px;
+  border-radius: 20px;
+  background: radial-gradient(circle at center, rgba(30, 20, 5, 0.96) 0%, rgba(10, 8, 4, 0.98) 100%);
+  border: 2px solid #fbbf24;
+  box-shadow:
+    0 0 35px rgba(245, 158, 11, 0.6),
+    inset 0 0 25px rgba(251, 191, 36, 0.3),
+    0 16px 40px rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: winSplashPop 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  z-index: 10;
+}
+
+@keyframes winSplashPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) translateY(40px);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1.08) translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.tier-mega .win-splash-plaque {
+  border-color: #39ff14;
+  box-shadow:
+    0 0 45px rgba(57, 255, 20, 0.7),
+    inset 0 0 30px rgba(57, 255, 20, 0.35),
+    0 20px 50px rgba(0, 0, 0, 0.95);
+}
+
+.tier-nice .win-splash-plaque {
+  border-color: #00e5ff;
+  box-shadow:
+    0 0 40px rgba(0, 229, 255, 0.65),
+    inset 0 0 25px rgba(0, 229, 255, 0.3),
+    0 18px 45px rgba(0, 0, 0, 0.9);
+}
+
+.win-splash-frame-img {
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  object-fit: fill;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.75));
+  opacity: 0.85;
+}
+
+.win-splash-crest {
+  margin-top: -34px;
+  margin-bottom: 4px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2a1b04 0%, #080602 100%);
+  border: 2px solid #fbbf24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.8);
+  animation: floatCrest 2s ease-in-out infinite alternate;
+}
+
+@keyframes floatCrest {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-4px); }
+}
+
+.crest-icon.gold-glow {
+  color: #39ff14;
+  filter: drop-shadow(0 0 8px #39ff14);
+}
+
+.crest-icon.cyan-glow {
+  color: #00e5ff;
+  filter: drop-shadow(0 0 8px #00e5ff);
+}
+
+.crest-icon.amber-glow {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 8px #fbbf24);
+}
+
+.win-splash-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 18px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.8) 0%, rgba(30, 20, 5, 0.95) 50%, rgba(0, 0, 0, 0.8) 100%);
+  border: 1.5px solid #fbbf24;
+  font-family: var(--font-royal);
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+  text-shadow: 0 0 10px #fbbf24;
+  margin-bottom: 8px;
+}
+
+.ribbon-sparkle {
+  color: #fef08a;
+  animation: pulseSparkle 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes pulseSparkle {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.2); opacity: 1; }
+}
+
+.win-splash-digits-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 0;
+}
+
+.win-splash-digits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.85));
+}
+
+.win-splash-unit-tag {
+  font-family: var(--font-royal);
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+.sc-won-tag {
+  color: #34d399;
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+}
+
+.gc-won-tag {
+  color: #fef08a;
+  text-shadow: 0 0 12px rgba(245, 158, 11, 0.8);
+}
+
+.win-splash-sub {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+@media (max-width: 920px) {
+  .win-splash-plaque {
+    width: 92%;
+    padding: 18px 16px 14px;
+  }
+}
+

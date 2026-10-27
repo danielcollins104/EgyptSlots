@@ -167,6 +167,76 @@ class SoundEngine {
     });
   }
 
+  triggerHaptics(pattern = [40, 50, 60]) {
+    try {
+      if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+        navigator.vibrate(pattern);
+      }
+    } catch {
+      // Haptics unavailable on non-touch desktop browsers
+    }
+  }
+
+  playWinCelebration(tier = 'standard') {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    // Trigger haptics synchronized with win tiers
+    if (tier === 'mega') {
+      this.triggerHaptics([80, 50, 100, 50, 150, 60, 220, 60, 300]);
+    } else if (tier === 'big') {
+      this.triggerHaptics([60, 40, 80, 40, 120, 50, 160]);
+    } else if (tier === 'nice') {
+      this.triggerHaptics([50, 40, 80, 40, 100]);
+    } else {
+      this.triggerHaptics([40, 50, 60]);
+    }
+
+    const now = this.ctx.currentTime;
+    const frequencies =
+      tier === 'mega'
+        ? [369.99, 440.0, 554.37, 587.33, 739.99, 880.0, 1108.73, 1174.66, 1479.98]
+        : tier === 'big'
+        ? [369.99, 440.0, 554.37, 587.33, 739.99, 880.0, 1174.66]
+        : tier === 'nice'
+        ? [392.0, 493.88, 587.33, 739.99, 880.0]
+        : [440.0, 554.37, 659.25, 880.0];
+
+    frequencies.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = tier === 'mega' || tier === 'big' ? 'triangle' : 'sine';
+      const t = now + i * 0.065;
+      osc.frequency.setValueAtTime(freq, t);
+
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.4);
+    });
+
+    // Rapid coin clink sparkles
+    const clinkCount = tier === 'mega' ? 8 : tier === 'big' ? 5 : 3;
+    for (let c = 0; c < clinkCount; c++) {
+      const cOsc = this.ctx.createOscillator();
+      const cGain = this.ctx.createGain();
+      cOsc.type = 'sine';
+      const ct = now + 0.1 + c * 0.065;
+      cOsc.frequency.setValueAtTime(1800 + Math.random() * 800, ct);
+      cGain.gain.setValueAtTime(0.08, ct);
+      cGain.gain.exponentialRampToValueAtTime(0.001, ct + 0.07);
+
+      cOsc.connect(cGain);
+      cGain.connect(this.ctx.destination);
+      cOsc.start(ct);
+      cOsc.stop(ct + 0.08);
+    }
+  }
+
   playWin(isBigWin = false) {
     if (this.muted) return;
     this.init();

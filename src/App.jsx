@@ -40,6 +40,7 @@ import PaymentModal from './components/PaymentModal';
 import { soundEngine } from './audio/soundEngine';
 import SplashScreen from './components/SplashScreen';
 import BigWinPopup from './components/BigWinPopup';
+import WinCelebrationSplash from './components/WinCelebrationSplash';
 import PaytableModal from './components/PaytableModal';
 import BonusGameModal from './components/BonusGameModal';
 import PsdGoldNumber from './components/PsdGoldNumber';
@@ -136,6 +137,7 @@ export default function App() {
 
   // Win state
   const [lastWinCoins, setLastWinCoins] = useState(0);
+  const [winSplashAmount, setWinSplashAmount] = useState(0);
   const [winningLines, setWinningLines] = useState([]);
   const [winningCells, setWinningCells] = useState(new Set());
   const [activeWinLineIdx, setActiveWinLineIdx] = useState(0);
@@ -432,6 +434,7 @@ export default function App() {
         setGoldCoins((prev) => prev + finalWin);
       }
       setLastWinCoins(finalWin);
+      setWinSplashAmount(finalWin);
       setWinningLines(wins);
       setWinningCells(winCoordSet);
 
@@ -470,7 +473,9 @@ export default function App() {
         );
       }
     } else {
-      setStatusMessage(THEME_COPY.noWinTicker);
+      // Do not display losses; bet was already subtracted from total at spin start
+      setWinSplashAmount(0);
+      setStatusMessage(`${CASINO_BRAND.casinoFullTitle} • ${CASINO_BRAND.edition}`);
     }
 
     // Launch the 3D Bonus Games if 3+ Scatters landed OR Collector Meter filled!
@@ -597,6 +602,7 @@ export default function App() {
       }
 
       setLastWinCoins(0);
+      setWinSplashAmount(0);
       setWinningLines([]);
       setWinningCells(new Set());
       setBigWinAmount(0);
@@ -1069,6 +1075,14 @@ export default function App() {
                 winningLines={winningLines}
                 winningCells={winningCells}
                 activeWinLineIdx={activeWinLineIdx}
+              />
+
+              {/* Real-Time Win Celebration Image & Animation Plaque */}
+              <WinCelebrationSplash
+                winAmount={winSplashAmount}
+                currencyMode={currencyMode}
+                betAmount={currentBet}
+                onClose={() => setWinSplashAmount(0)}
               />
             </div>
 
