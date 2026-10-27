@@ -43,6 +43,7 @@ import BigWinPopup from './components/BigWinPopup';
 import WinCelebrationSplash from './components/WinCelebrationSplash';
 import PaytableModal from './components/PaytableModal';
 import BonusGameModal from './components/BonusGameModal';
+import FreeSpinsScreen from './components/FreeSpinsScreen';
 import PsdGoldNumber from './components/PsdGoldNumber';
 import NeonKeyedImage from './components/NeonKeyedImage';
 import DcLogoPlaque from './components/DcLogoPlaque';
@@ -149,6 +150,8 @@ export default function App() {
   const [paytableOpen, setPaytableOpen] = useState(false);
   const [bonusMeter, setBonusMeter] = useState(4);
   const [bonusSession, setBonusSession] = useState(null);
+  const [freeSpinsOpen, setFreeSpinsOpen] = useState(false);
+  const [freeSpinsCount, setFreeSpinsCount] = useState(10);
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
 
@@ -478,19 +481,14 @@ export default function App() {
       setStatusMessage(`${CASINO_BRAND.casinoFullTitle} • ${CASINO_BRAND.edition}`);
     }
 
-    // Launch the 3D Bonus Games if 3+ Scatters landed OR Collector Meter filled!
+    // Launch the Celestial Free Spins Feature if 3+ Scatters landed!
     if (bonusCount >= 3) {
       setAutoPlayCount(0);
+      const awardedSpins = bonusCount >= 5 ? 15 : bonusCount === 4 ? 12 : 10;
       setTimeout(() => {
         soundEngine.playBonusTrigger();
-        setBonusSession({
-          triggerReason: `${bonusCount}× ${BONUS_CONFIG.scatterTriggerName}`,
-          initialPicks: bonusCount + 1,
-          wheelSpins: Math.max(1, bonusCount - 2),
-          startingMultiplier: bonusCount >= 4 ? 2 : 1,
-          scatterWinCoins: isSC ? finalScatterWin : scatterWinCoins,
-          defaultGame: 'vault',
-        });
+        setFreeSpinsCount(awardedSpins);
+        setFreeSpinsOpen(true);
       }, 900);
     } else if (meterTriggeredBonus) {
       setAutoPlayCount(0);
@@ -559,6 +557,34 @@ export default function App() {
     }
   };
 
+  const triggerFreeSpinsManually = (spins = 10) => {
+    if (isSpinning || freeSpinsOpen) return;
+    setAutoPlayCount(0);
+    setFreeSpinsCount(spins);
+    setFreeSpinsOpen(true);
+    soundEngine.playBonusTrigger();
+  };
+
+  const handleCompleteFreeSpins = (totalBonusWon) => {
+    setFreeSpinsOpen(false);
+    if (totalBonusWon > 0) {
+      if (currencyMode === 'SC') {
+        setSweepsCoins((prev) => Number((prev + totalBonusWon).toFixed(2)));
+      } else {
+        setGoldCoins((prev) => prev + totalBonusWon);
+      }
+      setLastWinCoins(totalBonusWon);
+      setBigWinAmount(totalBonusWon);
+      setStatusMessage(
+        `CELESTIAL FREE SPINS COMPLETED! WON +${
+          currencyMode === 'SC'
+            ? `$${totalBonusWon.toFixed(2)} USD`
+            : `${totalBonusWon.toLocaleString()} GC`
+        } TOTAL BONUS!`
+      );
+    }
+  };
+
   const handlePurchaseSuccess = (pkg) => {
     setGoldCoins((prev) => prev + pkg.goldCoins);
     setSweepsCoins((prev) => Number((prev + pkg.freeSweepsCoins).toFixed(2)));
@@ -578,7 +604,7 @@ export default function App() {
 
   const triggerSpin = useCallback(
     (forcedMode = null, overrideLevel = null) => {
-      if (isSpinning || bonusSession) return;
+      if (isSpinning || bonusSession || freeSpinsOpen) return;
       const activeLevel = overrideLevel ?? level;
       const isSC = currencyMode === 'SC';
       const spinBetGC = Math.max(1, Math.round(CASINO_BRAND.baseLines * activeLevel * (coinValue >= 1 ? coinValue : 1)));
@@ -671,19 +697,19 @@ export default function App() {
 
   // Autoplay handler
   useEffect(() => {
-    if (autoPlayCount > 0 && !isSpinning && bigWinAmount === 0 && !bonusSession) {
+    if (autoPlayCount > 0 && !isSpinning && bigWinAmount === 0 && !bonusSession && !freeSpinsOpen) {
       const timer = setTimeout(() => {
         setAutoPlayCount((prev) => Math.max(0, prev - 1));
         triggerSpin();
       }, 950);
       return () => clearTimeout(timer);
     }
-  }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, triggerSpin]);
+  }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, freeSpinsOpen, triggerSpin]);
 
   // Spacebar shortcut to Spin
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (e.code === 'Space' && !showSplash && !paytableOpen && !bonusSession) {
+      if (e.code === 'Space' && !showSplash && !paytableOpen && !bonusSession && !freeSpinsOpen) {
         e.preventDefault();
         if (bigWinAmount > 0) {
           setBigWinAmount(0);
@@ -895,6 +921,16 @@ export default function App() {
           >
             <Gem size={15} />
             <span>{THEME_COPY.bonusOpenButtonLabel}</span>
+          </button>
+
+          <button
+            className="dc-action-btn special-freespins"
+            onClick={() => triggerFreeSpinsManually(10)}
+            disabled={isSpinning || freeSpinsOpen}
+            title="Launch 10 Automated Celestial Free Spins with 3× Multiplier & Retriggers!"
+          >
+            <Sparkles size={15} />
+            <span>Free Spins (10)</span>
           </button>
 
           <button
@@ -1472,6 +1508,16 @@ export default function App() {
         sweepsCoins={sweepsCoins}
         onPurchaseSuccess={handlePurchaseSuccess}
         onRedeemSuccess={handleRedeemSuccess}
+      />
+
+      {/* Automated Celestial Free Spins Bonus Stage */}
+      <FreeSpinsScreen
+        isOpen={freeSpinsOpen}
+        initialSpins={freeSpinsCount}
+        betAmount={currentBet}
+        coinValue={coinValue}
+        currencyMode={currencyMode}
+        onComplete={handleCompleteFreeSpins}
       />
     </div>
   );
