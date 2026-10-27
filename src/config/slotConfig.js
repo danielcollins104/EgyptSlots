@@ -32,7 +32,7 @@ export const ACTIVE_THEME = {
     edition: 'DANIEL 3D ROYAL JEWEL VIP EDITION',
     logoImage: '/assets/psd/logo_long_frame.png',
     logoFrameImage: '/assets/psd/logo_long_frame.png',
-    megaWinNeonImage: '/assets/neon/mega_win_neon.jpg',
+    megaWinNeonImage: '/assets/neon/mega_win_royal_gold.png',
     baseLines: 15,
     defaultCoins: 250000,
     coinValues: [
