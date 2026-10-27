@@ -13,6 +13,10 @@ export default function BigWinPopup({
 
   useEffect(() => {
     if (!winCoins || winCoins <= 0) return;
+    try {
+      soundEngine.playWin(true);
+    } catch (_) {}
+
     let frameId;
     const duration = 2100;
     const start = performance.now();
@@ -36,21 +40,10 @@ export default function BigWinPopup({
         setDisplayCoins(current);
       }
 
-      // Play audio ticks decoupled from render cycle to prevent micro-stutter
-      if (now - lastTickTime > 80 && progress < 0.98) {
-        lastTickTime = now;
-        try {
-          soundEngine.playCoinTick();
-        } catch (_) {}
-      }
-
       if (progress < 1) {
         frameId = requestAnimationFrame(animate);
       } else {
         setDisplayCoins(currencyMode === 'SC' ? Number(winCoins.toFixed(2)) : winCoins);
-        try {
-          soundEngine.playWin(true);
-        } catch (_) {}
       }
     };
 

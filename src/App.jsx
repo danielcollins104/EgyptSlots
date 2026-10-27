@@ -134,11 +134,15 @@ export default function App() {
   const [initialExpandedCols] = useState([false, true, false, false, false]);
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinTrigger, setSpinTrigger] = useState(null);
+  const [spinId, setSpinId] = useState(0);
   const pendingSpinRef = useRef(null);
 
   // Win state
   const [lastWinCoins, setLastWinCoins] = useState(0);
   const [winSplashAmount, setWinSplashAmount] = useState(0);
+  const handleCloseWinSplash = useCallback(() => {
+    setWinSplashAmount(0);
+  }, []);
   const [winningLines, setWinningLines] = useState([]);
   const [winningCells, setWinningCells] = useState(new Set());
   const [activeWinLineIdx, setActiveWinLineIdx] = useState(0);
@@ -437,14 +441,20 @@ export default function App() {
         setGoldCoins((prev) => prev + finalWin);
       }
       setLastWinCoins(finalWin);
-      setWinSplashAmount(finalWin);
       setWinningLines(wins);
       setWinningCells(winCoordSet);
 
       const isBig = finalWin >= spinBet * 8 || forcedMode === 'bigwin';
-      soundEngine.playWin(isBig);
       setGuardianAction(true);
       setTimeout(() => setGuardianAction(false), 1800);
+
+      if (isBig) {
+        setBigWinAmount(finalWin);
+        setWinSplashAmount(0); // Mega Win modal handles display and sound
+      } else {
+        setBigWinAmount(0);
+        setWinSplashAmount(finalWin); // WinCelebrationSplash handles display and sound once
+      }
 
       if (bonusCount >= 3) {
         setStatusMessage(
@@ -629,6 +639,7 @@ export default function App() {
 
       setLastWinCoins(0);
       setWinSplashAmount(0);
+      setSpinId((s) => s + 1);
       setWinningLines([]);
       setWinningCells(new Set());
       setBigWinAmount(0);
@@ -1118,7 +1129,8 @@ export default function App() {
                 winAmount={winSplashAmount}
                 currencyMode={currencyMode}
                 betAmount={currentBet}
-                onClose={() => setWinSplashAmount(0)}
+                spinId={spinId}
+                onClose={handleCloseWinSplash}
               />
             </div>
 

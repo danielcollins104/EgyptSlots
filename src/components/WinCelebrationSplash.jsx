@@ -7,11 +7,14 @@ export default function WinCelebrationSplash({
   winAmount = 0,
   currencyMode = 'GC',
   betAmount = 1,
+  spinId = 0,
   onClose,
 }) {
   const [displayAmount, setDisplayAmount] = useState(0);
   const [visible, setVisible] = useState(false);
-  const timerRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const lastProcessedSpinRef = useRef(-1);
 
   const isSC = currencyMode === 'SC';
   const ratio = betAmount > 0 ? winAmount / betAmount : 1;
@@ -19,33 +22,44 @@ export default function WinCelebrationSplash({
   let tier = 'standard';
   let tierTitle = 'WINNER!';
   let tierSub = 'VERIFIED PAYLINE WIN';
-  let tierColor = '#fbbf24';
+  let tierColor = '#f59e0b';
 
   if (ratio >= 8) {
     tier = 'mega';
     tierTitle = 'MEGA WIN!';
     tierSub = 'COLOSSAL PAYOUT!';
-    tierColor = '#39ff14';
+    tierColor = '#fde047';
   } else if (ratio >= 3) {
     tier = 'nice';
     tierTitle = 'SUPER WIN!';
     tierSub = 'SPECTACULAR HIT!';
-    tierColor = '#00e5ff';
+    tierColor = '#60a5fa';
   }
 
   useEffect(() => {
+    // If no win or already processed this exact spin, never re-trigger
     if (!winAmount || winAmount <= 0) {
       setVisible(false);
       return;
     }
 
+    if (spinId === lastProcessedSpinRef.current) {
+      return;
+    }
+    lastProcessedSpinRef.current = spinId;
+
+    // Show celebration plaque strictly once for this spin
     setVisible(true);
-    soundEngine.playWinCelebration(tier);
+
+    // Play win celebration sound and haptics EXACTLY ONCE
+    try {
+      soundEngine.playWinCelebration(tier);
+    } catch (_) {}
 
     // Roll up counter animation
     const startTime = performance.now();
-    const duration = Math.min(1800, Math.max(700, ratio * 200));
-    let lastTick = 0;
+    const duration = Math.min(1600, Math.max(600, ratio * 180));
+    let lastRendered = -1;
     let animId;
 
     const animateRoll = (now) => {
@@ -56,31 +70,33 @@ export default function WinCelebrationSplash({
         ? Number((winAmount * eased).toFixed(2))
         : Math.round(winAmount * eased);
 
-      setDisplayAmount(current);
-
-      if (now - lastTick > 65 && progress < 1) {
-        soundEngine.playCoinTick();
-        lastTick = now;
+      if (current !== lastRendered) {
+        lastRendered = current;
+        setDisplayAmount(current);
       }
 
       if (progress < 1) {
         animId = requestAnimationFrame(animateRoll);
+      } else {
+        setDisplayAmount(isSC ? Number(winAmount.toFixed(2)) : winAmount);
       }
     };
 
     animId = requestAnimationFrame(animateRoll);
 
-    // Auto dismiss after 2.8s
-    timerRef.current = setTimeout(() => {
+    // Auto dismiss after 2.4s and notify parent - strictly one-shot!
+    const timer = setTimeout(() => {
       setVisible(false);
-      if (onClose) onClose();
-    }, 2800);
+      if (onCloseRef.current) {
+        onCloseRef.current();
+      }
+    }, 2400);
 
     return () => {
       cancelAnimationFrame(animId);
-      if (timerRef.current) clearTimeout(timerRef.current);
+      clearTimeout(timer);
     };
-  }, [winAmount, isSC, ratio, tier, onClose]);
+  }, [winAmount, spinId, isSC, ratio, tier]);
 
   if (!visible || !winAmount || winAmount <= 0) return null;
 
@@ -89,7 +105,7 @@ export default function WinCelebrationSplash({
       className={`win-splash-overlay tier-${tier}`}
       onClick={() => {
         setVisible(false);
-        if (onClose) onClose();
+        if (onCloseRef.current) onCloseRef.current();
       }}
       title="Click to collect and continue"
     >
