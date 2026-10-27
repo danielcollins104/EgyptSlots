@@ -4,7 +4,12 @@ import NeonKeyedImage from './NeonKeyedImage';
 import { CASINO_BRAND, THEME_COPY } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
 
-export default function BigWinPopup({ winCoins, coinValue, onClose }) {
+export default function BigWinPopup({
+  winCoins,
+  coinValue = 1.0,
+  currencyMode = 'GC',
+  onClose,
+}) {
   const [displayCoins, setDisplayCoins] = useState(0);
 
   useEffect(() => {
@@ -18,7 +23,10 @@ export default function BigWinPopup({ winCoins, coinValue, onClose }) {
       const elapsed = now - start;
       const progress = Math.min(1, elapsed / duration);
       const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(winCoins * eased);
+      const current =
+        currencyMode === 'SC'
+          ? Number((winCoins * eased).toFixed(2))
+          : Math.round(winCoins * eased);
       setDisplayCoins(current);
 
       if (now - lastTick > 75 && progress < 1) {
@@ -33,11 +41,12 @@ export default function BigWinPopup({ winCoins, coinValue, onClose }) {
 
     frameId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frameId);
-  }, [winCoins]);
+  }, [winCoins, currencyMode]);
 
   if (!winCoins || winCoins <= 0) return null;
 
-  const cashValue = (displayCoins * coinValue).toFixed(2);
+  const isSC = currencyMode === 'SC';
+  const cashValue = isSC ? Number(displayCoins).toFixed(2) : (displayCoins * coinValue).toFixed(2);
 
   return (
     <div className="bigwin-overlay" onClick={onClose}>
@@ -78,7 +87,8 @@ export default function BigWinPopup({ winCoins, coinValue, onClose }) {
             <PsdGoldNumber value={displayCoins} height={90} gap={-5} />
           </div>
           <div className="bigwin-cash-sub">
-            COINS WON • CASH VALUE: <span>${cashValue}</span>
+            {isSC ? 'SWEEPS COINS WON • REAL PRIZE VALUE: ' : 'GOLD COINS WON • SOCIAL VALUE: '}
+            <span>${cashValue}{isSC ? ' USD' : ''}</span>
           </div>
         </div>
 

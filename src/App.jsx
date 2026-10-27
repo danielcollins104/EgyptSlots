@@ -12,6 +12,13 @@ import {
   Gem,
   Gift,
   CheckCircle2,
+  CreditCard,
+  Coins,
+  DollarSign,
+  KeyRound,
+  History,
+  ShoppingCart,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   CASINO_BRAND,
@@ -28,6 +35,8 @@ import {
   getTopHighSymbol,
   getRegularSymbols,
 } from './config/slotConfig';
+import { SWEEPSTAKES_CONFIG } from './config/sweepstakesConfig';
+import PaymentModal from './components/PaymentModal';
 import { soundEngine } from './audio/soundEngine';
 import SplashScreen from './components/SplashScreen';
 import BigWinPopup from './components/BigWinPopup';
@@ -35,6 +44,7 @@ import PaytableModal from './components/PaytableModal';
 import BonusGameModal from './components/BonusGameModal';
 import PsdGoldNumber from './components/PsdGoldNumber';
 import NeonKeyedImage from './components/NeonKeyedImage';
+import DcLogoPlaque from './components/DcLogoPlaque';
 import PhaserReelEngine from './engine/PhaserReelEngine';
 import './App.css';
 
@@ -74,8 +84,38 @@ export default function App() {
   const [muted, setMuted] = useState(false);
   const [neonThemeIdx, setNeonThemeIdx] = useState(0);
 
+  // Sweepstakes Dual-Currency Economy Model (GC vs SC)
+  const [currencyMode, setCurrencyMode] = useState(() => {
+    try {
+      return localStorage.getItem('dc_casino_currency_mode') || 'GC';
+    } catch {
+      return 'GC';
+    }
+  });
+
+  const [goldCoins, setGoldCoins] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dc_casino_gold_coins');
+      return saved !== null ? parseInt(saved, 10) : SWEEPSTAKES_CONFIG.defaultGoldCoins;
+    } catch {
+      return SWEEPSTAKES_CONFIG.defaultGoldCoins;
+    }
+  });
+
+  const [sweepsCoins, setSweepsCoins] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dc_casino_sweeps_coins');
+      return saved !== null ? parseFloat(saved) : SWEEPSTAKES_CONFIG.defaultSweepsCoins;
+    } catch {
+      return SWEEPSTAKES_CONFIG.defaultSweepsCoins;
+    }
+  });
+
+  // Payment Modal State
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentModalTab, setPaymentModalTab] = useState('store');
+
   // Bottom UI State
-  const [coins, setCoins] = useState(CASINO_BRAND.defaultCoins);
   const [level, setLevel] = useState(1);
   const [coinValueIdx, setCoinValueIdx] = useState(CASINO_BRAND.defaultCoinValueIndex);
 
@@ -102,9 +142,31 @@ export default function App() {
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
 
-  const currentBet = CASINO_BRAND.baseLines * level;
+  // Bet calculations for GC and SC
+  const currentBetGC = CASINO_BRAND.baseLines * level;
+  const currentBetSC = Number((CASINO_BRAND.baseLines * level * 0.01).toFixed(2));
+  const currentBet = currencyMode === 'GC' ? currentBetGC : currentBetSC;
   const coinValue = CASINO_BRAND.coinValues[coinValueIdx];
   const currentTheme = COLOR_PALETTES[neonThemeIdx % COLOR_PALETTES.length];
+
+  // Sync balances and currencyMode to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('dc_casino_currency_mode', currencyMode);
+    } catch {}
+  }, [currencyMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('dc_casino_gold_coins', String(goldCoins));
+    } catch {}
+  }, [goldCoins]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('dc_casino_sweeps_coins', sweepsCoins.toFixed(2));
+    } catch {}
+  }, [sweepsCoins]);
 
   // Dynamically sync browser document title to the active theme
   useEffect(() => {
@@ -347,36 +409,46 @@ export default function App() {
       return Math.min(BONUS_METER_GOAL, nextVal);
     });
 
+    const isSC = currencyMode === 'SC';
+    const finalWin = isSC ? Number((totalCoinsWon * 0.01).toFixed(2)) : totalCoinsWon;
+    const finalScatterWin = isSC ? Number((scatterWinCoins * 0.01).toFixed(2)) : scatterWinCoins;
+
     if (totalCoinsWon > 0) {
-      setCoins((prev) => prev + totalCoinsWon);
-      setLastWinCoins(totalCoinsWon);
+      if (isSC) {
+        setSweepsCoins((prev) => Number((prev + finalWin).toFixed(2)));
+      } else {
+        setGoldCoins((prev) => prev + totalCoinsWon);
+      }
+      setLastWinCoins(finalWin);
       setWinningLines(wins);
       setWinningCells(winCoordSet);
 
-      const isBig = totalCoinsWon >= spinBet * 8 || forcedMode === 'bigwin';
+      const isBig = finalWin >= spinBet * 8 || forcedMode === 'bigwin';
       soundEngine.playWin(isBig);
       setGuardianAction(true);
       setTimeout(() => setGuardianAction(false), 1800);
 
       if (bonusCount >= 3) {
         setStatusMessage(
-          `3D BONUS UNLOCKED! ${bonusCount}× ${
-            getBonusSymbol().name
-          } PAID ${scatterWinCoins.toLocaleString()} COINS + BONUS FEATURE!`
+          `3D BONUS UNLOCKED! ${bonusCount}× ${getBonusSymbol().name} PAID ${
+            isSC ? `${finalScatterWin.toFixed(2)} SC ($${finalScatterWin.toFixed(2)} USD)` : `${scatterWinCoins.toLocaleString()} GC`
+          } + BONUS FEATURE!`
         );
       } else if (isBig) {
-        setBigWinAmount(totalCoinsWon);
+        setBigWinAmount(finalWin);
         setStatusMessage(
-          `${THEME_COPY.megaWinTickerPrefix} ${totalCoinsWon.toLocaleString()} COINS AT ${
-            CASINO_BRAND.casinoFullTitle
-          }!`
+          `${THEME_COPY.megaWinTickerPrefix} ${
+            isSC ? `${finalWin.toFixed(2)} SC ($${finalWin.toFixed(2)} USD PRIZE)` : `${totalCoinsWon.toLocaleString()} GC`
+          } AT ${CASINO_BRAND.casinoFullTitle}!`
         );
       } else {
         const firstWin = wins[0];
         setStatusMessage(
           `VERIFIED WIN! ${wins.length} PAYLINE${
             wins.length > 1 ? 'S' : ''
-          } (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${totalCoinsWon.toLocaleString()} COINS!`
+          } (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
+            isSC ? `${finalWin.toFixed(2)} SC ($${finalWin.toFixed(2)} USD)` : `${totalCoinsWon.toLocaleString()} GC`
+          }!`
         );
       }
     } else {
@@ -393,7 +465,7 @@ export default function App() {
           initialPicks: bonusCount + 1,
           wheelSpins: Math.max(1, bonusCount - 2),
           startingMultiplier: bonusCount >= 4 ? 2 : 1,
-          scatterWinCoins,
+          scatterWinCoins: isSC ? finalScatterWin : scatterWinCoins,
           defaultGame: 'vault',
         });
       }, 900);
@@ -411,7 +483,7 @@ export default function App() {
         });
       }, 750);
     }
-  }, [evaluateGridWins]);
+  }, [evaluateGridWins, currencyMode]);
 
   const openBonusGamesManually = (defaultGame = 'vault') => {
     if (isSpinning) return;
@@ -431,34 +503,81 @@ export default function App() {
   };
 
   const handleCompleteBonus = (totalBonusCoins) => {
+    const isSC = currencyMode === 'SC';
     const extraCoinsBeyondScatter =
       totalBonusCoins - (bonusSession?.scatterWinCoins || 0);
-    if (extraCoinsBeyondScatter > 0) {
-      setCoins((prev) => prev + extraCoinsBeyondScatter);
+
+    if (isSC) {
+      const extraSC = Number((extraCoinsBeyondScatter * 0.01).toFixed(2));
+      const totalSC = Number((totalBonusCoins * 0.01).toFixed(2));
+      if (extraSC > 0) {
+        setSweepsCoins((prev) => Number((prev + extraSC).toFixed(2)));
+      }
+      setLastWinCoins(totalSC);
+      setBonusSession(null);
+      if (totalSC > 0) {
+        setBigWinAmount(totalSC);
+        setStatusMessage(
+          `3D BONUS COMPLETED! ${CASINO_BRAND.creatorName.toUpperCase()} WON ${totalSC.toFixed(2)} SC ($${totalSC.toFixed(2)} USD PRIZE)!`
+        );
+      }
+    } else {
+      if (extraCoinsBeyondScatter > 0) {
+        setGoldCoins((prev) => prev + extraCoinsBeyondScatter);
+      }
+      setLastWinCoins(totalBonusCoins);
+      setBonusSession(null);
+      if (totalBonusCoins > 0) {
+        setBigWinAmount(totalBonusCoins);
+        setStatusMessage(
+          `3D BONUS COMPLETED! ${CASINO_BRAND.creatorName.toUpperCase()} WON ${totalBonusCoins.toLocaleString()} TOTAL BONUS GOLD COINS!`
+        );
+      }
     }
-    setLastWinCoins(totalBonusCoins);
-    setBonusSession(null);
-    if (totalBonusCoins > 0) {
-      setBigWinAmount(totalBonusCoins);
-      setStatusMessage(
-        `3D BONUS COMPLETED! ${CASINO_BRAND.creatorName.toUpperCase()} WON ${totalBonusCoins.toLocaleString()} TOTAL BONUS COINS!`
-      );
-    }
+  };
+
+  const handlePurchaseSuccess = (pkg) => {
+    setGoldCoins((prev) => prev + pkg.goldCoins);
+    setSweepsCoins((prev) => Number((prev + pkg.freeSweepsCoins).toFixed(2)));
+    soundEngine.playWin(true);
+    setStatusMessage(
+      `PURCHASE COMPLETE! CREDITED +${pkg.goldCoins.toLocaleString()} GC & +${pkg.freeSweepsCoins.toFixed(2)} FREE SC!`
+    );
+  };
+
+  const handleRedeemSuccess = (amountSC) => {
+    setSweepsCoins((prev) => Math.max(0, Number((prev - amountSC).toFixed(2))));
+    soundEngine.playWin(false);
+    setStatusMessage(
+      `PRIZE REDEMPTION SUBMITTED! $${amountSC.toFixed(2)} USD SENT TO YOUR ACCOUNT.`
+    );
   };
 
   const triggerSpin = useCallback(
     (forcedMode = null, overrideLevel = null) => {
       if (isSpinning || bonusSession) return;
       const activeLevel = overrideLevel ?? level;
-      const spinBet = CASINO_BRAND.baseLines * activeLevel;
+      const isSC = currencyMode === 'SC';
+      const spinBetGC = CASINO_BRAND.baseLines * activeLevel;
+      const spinBetSC = Number((CASINO_BRAND.baseLines * activeLevel * 0.01).toFixed(2));
+      const activeSpinBet = isSC ? spinBetSC : spinBetGC;
 
-      if (coins < spinBet) {
-        setStatusMessage(THEME_COPY.insufficientCoinsTicker);
-        setAutoPlayCount(0);
-        return;
+      if (isSC) {
+        if (sweepsCoins < spinBetSC) {
+          setStatusMessage('INSUFFICIENT SWEEPS COINS! GET FREE SC WITH STORE BUNDLES OR SWITCH TO GOLD COINS!');
+          setAutoPlayCount(0);
+          return;
+        }
+        setSweepsCoins((prev) => Math.max(0, Number((prev - spinBetSC).toFixed(2))));
+      } else {
+        if (goldCoins < spinBetGC) {
+          setStatusMessage(THEME_COPY.insufficientCoinsTicker);
+          setAutoPlayCount(0);
+          return;
+        }
+        setGoldCoins((prev) => prev - spinBetGC);
       }
 
-      setCoins((prev) => prev - spinBet);
       setLastWinCoins(0);
       setWinningLines([]);
       setWinningCells(new Set());
@@ -513,7 +632,7 @@ export default function App() {
         nextGrid,
         nextExpanded,
         activeLevel,
-        spinBet,
+        spinBet: activeSpinBet,
         forcedMode,
       };
 
@@ -523,7 +642,7 @@ export default function App() {
         targetExpanded: nextExpanded,
       });
     },
-    [isSpinning, bonusSession, level, coins]
+    [isSpinning, bonusSession, level, goldCoins, sweepsCoins, currencyMode]
   );
 
   // Autoplay handler
@@ -624,6 +743,114 @@ export default function App() {
           </div>
         </div>
 
+        {/* Sweepstakes Dual-Currency Switcher & Store / Redeem CTAs */}
+        <div className="dc-sweepstakes-control-center">
+          <div
+            className="sweepstakes-mode-switch-box"
+            title="Toggle between Social Gold Coins (GC) and Promotional Sweeps Coins (SC)"
+          >
+            <button
+              className={`mode-switch-btn gc-mode ${currencyMode === 'GC' ? 'active' : ''}`}
+              onClick={() => {
+                soundEngine.playButtonClick(660);
+                setCurrencyMode('GC');
+                setStatusMessage('SWITCHED TO GOLD COINS (GC) • PURE CASINO SOCIAL FUN!');
+              }}
+            >
+              <div className="mode-btn-content">
+                <div className="mode-label-row">
+                  <span className="mode-badge-dot gold" />
+                  <span className="mode-name">GOLD COINS</span>
+                </div>
+                <div className="mode-bal-val">
+                  {goldCoins.toLocaleString()} <span className="curr-unit">GC</span>
+                </div>
+              </div>
+            </button>
+
+            <button
+              className={`mode-switch-btn sc-mode ${currencyMode === 'SC' ? 'active' : ''}`}
+              onClick={() => {
+                soundEngine.playButtonClick(880);
+                setCurrencyMode('SC');
+                setStatusMessage(
+                  'SWITCHED TO SWEEPS COINS (SC) • REDEEMABLE FOR REAL CASH PRIZES ($1.00 USD / 1 SC)!'
+                );
+              }}
+            >
+              <div className="mode-btn-content">
+                <div className="mode-label-row">
+                  <span className="mode-badge-dot green" />
+                  <span className="mode-name">SWEEPS COINS</span>
+                  <span className="mode-prize-tag">REAL PRIZES</span>
+                </div>
+                <div className="mode-bal-val">
+                  ${sweepsCoins.toFixed(2)} <span className="curr-unit">SC</span>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div className="sweepstakes-action-btns">
+            <button
+              className="dc-pay-btn buy-gc-btn"
+              onClick={() => {
+                soundEngine.playButtonClick(700);
+                setPaymentModalTab('store');
+                setPaymentModalOpen(true);
+              }}
+              title="Buy Gold Coins bundles & receive FREE Bonus Sweeps Coins (Stripe / Chime)"
+            >
+              <ShoppingCart size={15} className="pay-btn-icon" />
+              <div className="pay-btn-labels">
+                <span className="pay-btn-primary">GET COINS</span>
+                <span className="pay-btn-secondary">+FREE SC</span>
+              </div>
+            </button>
+
+            <button
+              className="dc-pay-btn redeem-sc-btn"
+              onClick={() => {
+                soundEngine.playButtonClick(800);
+                setPaymentModalTab('redeem');
+                setPaymentModalOpen(true);
+              }}
+              title="Redeem Sweeps Coins for Real Cash Prizes sent to Chime or Bank (1 SC = $1 USD)"
+            >
+              <DollarSign size={15} className="pay-btn-icon" />
+              <div className="pay-btn-labels">
+                <span className="pay-btn-primary">REDEEM</span>
+                <span className="pay-btn-secondary">PRIZES</span>
+              </div>
+            </button>
+
+            <button
+              className="dc-action-btn config-keys-btn"
+              onClick={() => {
+                soundEngine.playButtonClick(540);
+                setPaymentModalTab('keys');
+                setPaymentModalOpen(true);
+              }}
+              title="Manage Stripe & Chime API Keys / Handles"
+            >
+              <KeyRound size={15} />
+              <span>Keys</span>
+            </button>
+
+            <button
+              className="dc-action-btn tx-history-btn"
+              onClick={() => {
+                soundEngine.playButtonClick(540);
+                setPaymentModalTab('history');
+                setPaymentModalOpen(true);
+              }}
+              title="View Payment & Redemption History"
+            >
+              <History size={15} />
+            </button>
+          </div>
+        </div>
+
         {/* Interactive Demo Feature Buttons & Color Spectrum Switcher */}
         <div className="dc-topbar-actions">
           <button
@@ -693,10 +920,15 @@ export default function App() {
             className="dc-action-btn"
             onClick={() => {
               soundEngine.playButtonClick();
-              setCoins(CASINO_BRAND.defaultCoins);
-              setStatusMessage(THEME_COPY.resetBankrollTicker);
+              if (currencyMode === 'SC') {
+                setSweepsCoins(SWEEPSTAKES_CONFIG.defaultSweepsCoins);
+                setStatusMessage('RESET SWEEPS COINS TO 10.00 SC ($10.00 USD)!');
+              } else {
+                setGoldCoins(SWEEPSTAKES_CONFIG.defaultGoldCoins);
+                setStatusMessage(THEME_COPY.resetBankrollTicker);
+              }
             }}
-            title="Reset Coins to 250,000"
+            title={currencyMode === 'SC' ? 'Reset Sweeps Coins to 10.00 SC' : 'Reset Gold Coins to 250,000 GC'}
           >
             <RotateCcw size={15} />
           </button>
@@ -788,15 +1020,9 @@ export default function App() {
               draggable={false}
             />
 
-            {/* Top Arch Logo */}
+            {/* Top Arch 3D Gold & Jewel-Toned Plaque Logo */}
             <div className="cabinet-dc-neon-logo">
-              <NeonKeyedImage
-                src={CASINO_BRAND.logoImage}
-                alt={CASINO_BRAND.casinoName}
-                className="cabinet-dc-logo-img"
-                threshold={26}
-                feather={48}
-              />
+              <DcLogoPlaque className="cabinet-dc-logo-img" />
             </div>
 
             {/* Reel Cabinet Frame */}
@@ -846,7 +1072,9 @@ export default function App() {
                     className="psd-label-img neon-label-glow"
                     draggable={false}
                   />
-                  <div className="psd-stat-value">{currentBet}</div>
+                  <div className="psd-stat-value">
+                    {currencyMode === 'SC' ? `${currentBetSC.toFixed(2)}` : currentBetGC}
+                  </div>
                 </div>
 
                 <div className="psd-stat-block level-block">
@@ -1010,7 +1238,9 @@ export default function App() {
                     draggable={false}
                   />
                   <div className="psd-stat-value coins-number">
-                    {coins.toLocaleString()}
+                    {currencyMode === 'SC'
+                      ? `${sweepsCoins.toFixed(2)} SC`
+                      : goldCoins.toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -1100,12 +1330,13 @@ export default function App() {
             </div>
 
             <div className="pediment-cash-box">
-              <span className="pediment-label">CASH BALANCE</span>
+              <span className="pediment-label">
+                {currencyMode === 'SC' ? 'REAL CASH PRIZES' : 'SOCIAL PLAY (GC)'}
+              </span>
               <span className="pediment-cash-val">
-                ${(coins * coinValue).toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {currencyMode === 'SC'
+                  ? `$${sweepsCoins.toFixed(2)} USD`
+                  : `${goldCoins.toLocaleString()} GC`}
               </span>
             </div>
           </div>
@@ -1179,6 +1410,7 @@ export default function App() {
         bonusSession={bonusSession}
         currentBet={currentBet}
         coinValue={coinValue}
+        currencyMode={currencyMode}
         onCompleteBonus={handleCompleteBonus}
       />
 
@@ -1186,6 +1418,7 @@ export default function App() {
       <BigWinPopup
         winCoins={bigWinAmount}
         coinValue={coinValue}
+        currencyMode={currencyMode}
         onClose={() => setBigWinAmount(0)}
       />
 
@@ -1194,6 +1427,17 @@ export default function App() {
         isOpen={paytableOpen}
         onClose={() => setPaytableOpen(false)}
         level={level}
+      />
+
+      {/* Sweepstakes Payment & Coin Store Modal */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        initialTab={paymentModalTab}
+        goldCoins={goldCoins}
+        sweepsCoins={sweepsCoins}
+        onPurchaseSuccess={handlePurchaseSuccess}
+        onRedeemSuccess={handleRedeemSuccess}
       />
     </div>
   );

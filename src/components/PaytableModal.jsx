@@ -3,6 +3,7 @@ import { X, Trophy, Grid, Layers } from 'lucide-react';
 import { SYMBOLS, PAYLINES, CASINO_BRAND, THEME_COPY } from '../config/slotConfig';
 import PsdGoldNumber from './PsdGoldNumber';
 import NeonKeyedImage from './NeonKeyedImage';
+import DcLogoPlaque from './DcLogoPlaque';
 
 export default function PaytableModal({ isOpen, onClose, level = 1 }) {
   const [tab, setTab] = useState('symbols');
@@ -167,11 +168,7 @@ export default function PaytableModal({ isOpen, onClose, level = 1 }) {
               <div className="psd-sample-row">
                 <div className="psd-sample-box">
                   <h4>{CASINO_BRAND.casinoName} Crest Logo</h4>
-                  <NeonKeyedImage
-                    src={CASINO_BRAND.logoImage}
-                    alt={CASINO_BRAND.casinoName}
-                    style={{ height: 110, width: 'auto' }}
-                  />
+                  <DcLogoPlaque className="paytable-dc-logo-preview" />
                 </div>
                 <div className="psd-sample-box">
                   <h4>3D Engraved Gold Numbers</h4>

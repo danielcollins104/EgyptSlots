@@ -34,6 +34,7 @@ export default function BonusGameModal({
   bonusSession,
   currentBet,
   coinValue,
+  currencyMode = 'GC',
   onCompleteBonus,
 }) {
   const [activeTab, setActiveTab] = useState('vault'); // 'vault' | 'wheel'
@@ -561,12 +562,17 @@ export default function BonusGameModal({
         {/* Footer: Total Bonus Payout & Collect Button */}
         <div className="bonus-modal-footer">
           <div className="bonus-total-summary">
-            <span className="bonus-total-label">TOTAL BONUS FEATURE WINNINGS:</span>
+            <span className="bonus-total-label">
+              TOTAL BONUS FEATURE WINNINGS ({currencyMode === 'SC' ? 'SWEEPS COINS' : 'GOLD COINS'}):
+            </span>
             <div className="bonus-total-digits">
               <PsdGoldNumber value={totalCombinedBonusWin} height={32} gap={-2} />
             </div>
             <span className="bonus-total-usd">
-              (${(totalCombinedBonusWin * coinValue).toFixed(2)})
+              ({currencyMode === 'SC'
+                ? `$${Number(totalCombinedBonusWin).toFixed(2)} USD PRIZE VALUE`
+                : `$${(totalCombinedBonusWin * coinValue).toFixed(2)}`}
+              )
             </span>
           </div>
 
@@ -599,7 +605,9 @@ export default function BonusGameModal({
               disabled={wheelSpinning}
             >
               <CheckCircle2 size={18} />
-              <span>COLLECT {totalCombinedBonusWin.toLocaleString()} COINS</span>
+              <span>
+                COLLECT {totalCombinedBonusWin.toLocaleString()} {currencyMode === 'SC' ? 'SC' : 'COINS'}
+              </span>
             </button>
           </div>
         </div>

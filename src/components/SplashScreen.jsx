@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { CASINO_BRAND, THEME_ASSETS, SPLASH_CONFIG } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
-import NeonKeyedImage from './NeonKeyedImage';
+import DcLogoPlaque from './DcLogoPlaque';
 
 export default function SplashScreen({ onEnterCasino }) {
   const [exiting, setExiting] = useState(false);
@@ -74,13 +74,7 @@ export default function SplashScreen({ onEnterCasino }) {
 
           {/* Center Brand Logo */}
           <div className="ad-header-logo-center">
-            <NeonKeyedImage
-              src={CASINO_BRAND.logoImage}
-              alt={CASINO_BRAND.casinoName}
-              className="ad-header-dc-logo"
-              threshold={26}
-              feather={48}
-            />
+            <DcLogoPlaque className="ad-header-dc-logo" />
           </div>
 
           {/* Live Progressive Grand Jackpot Ticker */}
