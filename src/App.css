@@ -1329,6 +1329,18 @@ body {
   text-shadow: 0 0 10px #39ff14, 0 0 20px #00ffff, 0 2px 5px #000;
 }
 
+.psd-stat-value.coinval-display {
+  font-size: clamp(0.78rem, 1.3vw, 1.15rem);
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+  min-width: 58px;
+}
+
+.psd-stat-value.bet-display {
+  font-size: clamp(0.85rem, 1.45vw, 1.3rem);
+  white-space: nowrap;
+}
+
 .psd-ui-center-buttons {
   position: relative;
   z-index: 4;

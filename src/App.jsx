@@ -79,6 +79,14 @@ function generateInitialGrid() {
   ];
 }
 
+function formatCoinValue(val) {
+  if (val === undefined || val === null || isNaN(val)) return '1.00';
+  if (val >= 1000) {
+    return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  return Number(val).toFixed(2);
+}
+
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [muted, setMuted] = useState(false);
@@ -143,10 +151,10 @@ export default function App() {
   const [guardianBlinking, setGuardianBlinking] = useState(false);
 
   // Bet calculations for GC and SC
-  const currentBetGC = CASINO_BRAND.baseLines * level;
-  const currentBetSC = Number((CASINO_BRAND.baseLines * level * 0.01).toFixed(2));
+  const coinValue = CASINO_BRAND.coinValues[coinValueIdx] ?? 1.0;
+  const currentBetGC = Math.max(1, Math.round(CASINO_BRAND.baseLines * level * (coinValue >= 1 ? coinValue : 1)));
+  const currentBetSC = Number((coinValue * level).toFixed(2));
   const currentBet = currencyMode === 'GC' ? currentBetGC : currentBetSC;
-  const coinValue = CASINO_BRAND.coinValues[coinValueIdx];
   const currentTheme = COLOR_PALETTES[neonThemeIdx % COLOR_PALETTES.length];
 
   // Sync balances and currencyMode to localStorage
@@ -410,14 +418,18 @@ export default function App() {
     });
 
     const isSC = currencyMode === 'SC';
-    const finalWin = isSC ? Number((totalCoinsWon * 0.01).toFixed(2)) : totalCoinsWon;
-    const finalScatterWin = isSC ? Number((scatterWinCoins * 0.01).toFixed(2)) : scatterWinCoins;
+    const finalWin = isSC
+      ? Number(((totalCoinsWon / 15) * spinBet).toFixed(2))
+      : Math.round(totalCoinsWon * (coinValue >= 1 ? coinValue : 1));
+    const finalScatterWin = isSC
+      ? Number(((scatterWinCoins / 15) * spinBet).toFixed(2))
+      : Math.round(scatterWinCoins * (coinValue >= 1 ? coinValue : 1));
 
     if (totalCoinsWon > 0) {
       if (isSC) {
         setSweepsCoins((prev) => Number((prev + finalWin).toFixed(2)));
       } else {
-        setGoldCoins((prev) => prev + totalCoinsWon);
+        setGoldCoins((prev) => prev + finalWin);
       }
       setLastWinCoins(finalWin);
       setWinningLines(wins);
@@ -431,14 +443,18 @@ export default function App() {
       if (bonusCount >= 3) {
         setStatusMessage(
           `3D BONUS UNLOCKED! ${bonusCount}× ${getBonusSymbol().name} PAID ${
-            isSC ? `${finalScatterWin.toFixed(2)} SC ($${finalScatterWin.toFixed(2)} USD)` : `${scatterWinCoins.toLocaleString()} GC`
+            isSC
+              ? `${formatCoinValue(finalScatterWin)} SC ($${formatCoinValue(finalScatterWin)} USD)`
+              : `${finalScatterWin.toLocaleString()} GC`
           } + BONUS FEATURE!`
         );
       } else if (isBig) {
         setBigWinAmount(finalWin);
         setStatusMessage(
           `${THEME_COPY.megaWinTickerPrefix} ${
-            isSC ? `${finalWin.toFixed(2)} SC ($${finalWin.toFixed(2)} USD PRIZE)` : `${totalCoinsWon.toLocaleString()} GC`
+            isSC
+              ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD PRIZE)`
+              : `${finalWin.toLocaleString()} GC`
           } AT ${CASINO_BRAND.casinoFullTitle}!`
         );
       } else {
@@ -447,7 +463,9 @@ export default function App() {
           `VERIFIED WIN! ${wins.length} PAYLINE${
             wins.length > 1 ? 'S' : ''
           } (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
-            isSC ? `${finalWin.toFixed(2)} SC ($${finalWin.toFixed(2)} USD)` : `${totalCoinsWon.toLocaleString()} GC`
+            isSC
+              ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)`
+              : `${finalWin.toLocaleString()} GC`
           }!`
         );
       }
@@ -558,8 +576,8 @@ export default function App() {
       if (isSpinning || bonusSession) return;
       const activeLevel = overrideLevel ?? level;
       const isSC = currencyMode === 'SC';
-      const spinBetGC = CASINO_BRAND.baseLines * activeLevel;
-      const spinBetSC = Number((CASINO_BRAND.baseLines * activeLevel * 0.01).toFixed(2));
+      const spinBetGC = Math.max(1, Math.round(CASINO_BRAND.baseLines * activeLevel * (coinValue >= 1 ? coinValue : 1)));
+      const spinBetSC = Number((coinValue * activeLevel).toFixed(2));
       const activeSpinBet = isSC ? spinBetSC : spinBetGC;
 
       if (isSC) {
@@ -642,7 +660,7 @@ export default function App() {
         targetExpanded: nextExpanded,
       });
     },
-    [isSpinning, bonusSession, level, goldCoins, sweepsCoins, currencyMode]
+    [isSpinning, bonusSession, level, goldCoins, sweepsCoins, currencyMode, coinValue]
   );
 
   // Autoplay handler
@@ -1072,8 +1090,10 @@ export default function App() {
                     className="psd-label-img neon-label-glow"
                     draggable={false}
                   />
-                  <div className="psd-stat-value">
-                    {currencyMode === 'SC' ? `${currentBetSC.toFixed(2)}` : currentBetGC}
+                  <div className="psd-stat-value bet-display">
+                    {currencyMode === 'SC'
+                      ? `${formatCoinValue(currentBetSC)}`
+                      : currentBetGC.toLocaleString()}
                   </div>
                 </div>
 
@@ -1211,8 +1231,8 @@ export default function App() {
                         draggable={false}
                       />
                     </button>
-                    <span className="psd-stat-value">
-                      {coinValue.toFixed(2).replace('.', ',')}
+                    <span className="psd-stat-value coinval-display">
+                      {formatCoinValue(coinValue)}
                     </span>
                     <button
                       className="psd-arrow-btn"

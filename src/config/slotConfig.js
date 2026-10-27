@@ -35,8 +35,24 @@ export const ACTIVE_THEME = {
     megaWinNeonImage: '/assets/neon/mega_win_neon.jpg',
     baseLines: 15,
     defaultCoins: 250000,
-    coinValues: [0.01, 0.02, 0.05, 0.10, 0.25, 0.50, 1.00],
-    defaultCoinValueIndex: 1, // 0.02
+    coinValues: [
+      0.01,
+      0.05,
+      0.10,
+      0.25,
+      0.50,
+      1.00,
+      3.00,
+      5.00,
+      10.00,
+      25.00,
+      50.00,
+      100.00,
+      500.00,
+      1000.00,
+      10000.00,
+    ],
+    defaultCoinValueIndex: 5, // Starts at 1.00
     maxLevel: 10,
   },
 
