@@ -5337,6 +5337,40 @@ body {
   transform: translateY(-1px);
 }
 
+.stripe-return-claim-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
+  border: 1.5px solid #a7f3d0;
+  color: #ffffff;
+  font-family: var(--font-royal);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.55);
+  animation: pulseClaimGlow 1.8s ease-in-out infinite alternate;
+  transition: all 0.2s ease;
+}
+
+.stripe-return-claim-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.8);
+}
+
+@keyframes pulseClaimGlow {
+  0% {
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  }
+  100% {
+    box-shadow: 0 4px 24px rgba(52, 211, 153, 0.8);
+  }
+}
+
 .chime-cta-cluster {
   display: flex;
   align-items: center;

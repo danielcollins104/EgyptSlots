@@ -43,6 +43,7 @@ export default function PaymentModal({
   // Selected store package (defaults to Silver / $19.99 popular)
   const [selectedPkg, setSelectedPkg] = useState(SWEEPSTAKES_CONFIG.storePackages[2]);
   const [provider, setProvider] = useState('stripe'); // 'stripe' | 'chime'
+  const [stripeTabOpened, setStripeTabOpened] = useState(false);
 
   // Checkout form fields
   const [cardNumber, setCardNumber] = useState('');
@@ -101,15 +102,22 @@ export default function PaymentModal({
       soundEngine.playWin(true);
       setCheckoutFeedback({
         type: 'success',
-        text: result.message,
+        text: `Payment confirmed! Added +${result.goldCoins.toLocaleString()} GC & +${result.sweepsCoins.toFixed(2)} Free SC. Returning to game...`,
       });
 
       if (onPurchaseSuccess) {
         onPurchaseSuccess({
+          goldCoins: result.goldCoins,
+          freeSweepsCoins: result.sweepsCoins,
           goldCoinsAdded: result.goldCoins,
           sweepsCoinsAdded: result.sweepsCoins,
         });
       }
+
+      // Automatically return to the game!
+      setTimeout(() => {
+        onClose();
+      }, 650);
     } catch (err) {
       setCheckoutFeedback({
         type: 'error',
@@ -118,6 +126,25 @@ export default function PaymentModal({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleClaimStripeAndReturn = () => {
+    soundEngine.playWin(true);
+    if (onPurchaseSuccess) {
+      onPurchaseSuccess({
+        goldCoins: selectedPkg.goldCoins,
+        freeSweepsCoins: selectedPkg.freeSweepsCoins,
+        goldCoinsAdded: selectedPkg.goldCoins,
+        sweepsCoinsAdded: selectedPkg.freeSweepsCoins,
+      });
+    }
+    setCheckoutFeedback({
+      type: 'success',
+      text: `Payment confirmed! Added +${selectedPkg.goldCoins.toLocaleString()} GC & +${selectedPkg.freeSweepsCoins.toFixed(2)} Free SC. Returning to game...`,
+    });
+    setTimeout(() => {
+      onClose();
+    }, 550);
   };
 
   const handleRedeem = async () => {
@@ -367,9 +394,10 @@ export default function PaymentModal({
                         className="stripe-master-pay-btn"
                         onClick={() => {
                           soundEngine.playButtonClick(640);
+                          setStripeTabOpened(true);
                           setCheckoutFeedback({
                             type: 'success',
-                            text: `Opened Stripe Checkout for ${selectedPkg.goldCoins.toLocaleString()} GC + FREE ${selectedPkg.freeSweepsCoins} SC!`,
+                            text: `Opened Stripe Checkout in a secure tab! Complete payment there, then click below to return to the game.`,
                           });
                         }}
                       >
@@ -383,22 +411,33 @@ export default function PaymentModal({
                           <span>•</span>
                           <span>Google Pay</span>
                           <span>•</span>
-                          <span>Visa / Mastercard</span>
+                          <span>Cards</span>
                           <span>•</span>
                           <span>256-Bit SSL</span>
                         </div>
                       </a>
                     )}
 
-                    <button
-                      type="button"
-                      className="instant-sandbox-btn"
-                      onClick={handleBuyPackage}
-                      disabled={isProcessing}
-                      title="Instant test mode credit without opening Stripe tab"
-                    >
-                      {isProcessing ? 'Crediting...' : '⚡ Instant Sandbox Credit'}
-                    </button>
+                    {stripeTabOpened ? (
+                      <button
+                        type="button"
+                        className="stripe-return-claim-btn"
+                        onClick={handleClaimStripeAndReturn}
+                      >
+                        <Check size={16} />
+                        <span>I COMPLETED PAYMENT • RETURN TO GAME</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="instant-sandbox-btn"
+                        onClick={handleBuyPackage}
+                        disabled={isProcessing}
+                        title="Instant test mode credit without opening Stripe tab"
+                      >
+                        {isProcessing ? 'Crediting...' : '⚡ Instant Sandbox Credit'}
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="chime-cta-cluster">

@@ -192,6 +192,26 @@ export default function App() {
     }
   }, []);
 
+  // Handle Stripe Checkout Redirect return (e.g. ?payment=success&pkg=pkg_silver)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const paymentStatus = params.get('payment');
+      const pkgId = params.get('pkg_id') || params.get('pkg');
+
+      if ((paymentStatus === 'success' || paymentStatus === 'completed') && pkgId) {
+        const pkg = SWEEPSTAKES_CONFIG.storePackages.find((p) => p.id === pkgId);
+        if (pkg) {
+          handlePurchaseSuccess(pkg);
+          setPaymentModalOpen(false);
+          // Clean URL so refresh does not re-credit
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    } catch (_) {}
+  }, []);
+
   // Periodic Guardian eye blink (if configured on the left or right guardian)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -595,12 +615,15 @@ export default function App() {
     }
   };
 
-  const handlePurchaseSuccess = (pkg) => {
-    setGoldCoins((prev) => prev + pkg.goldCoins);
-    setSweepsCoins((prev) => Number((prev + pkg.freeSweepsCoins).toFixed(2)));
+  const handlePurchaseSuccess = (data) => {
+    const addedGC = data.goldCoins ?? data.goldCoinsAdded ?? 0;
+    const addedSC = data.freeSweepsCoins ?? data.sweepsCoinsAdded ?? 0;
+    setGoldCoins((prev) => prev + addedGC);
+    setSweepsCoins((prev) => Number((prev + addedSC).toFixed(2)));
+    setPaymentModalOpen(false); // Automatically return to the game!
     soundEngine.playWin(true);
     setStatusMessage(
-      `PURCHASE COMPLETE! CREDITED +${pkg.goldCoins.toLocaleString()} GC & +${pkg.freeSweepsCoins.toFixed(2)} FREE SC!`
+      `🎉 PAYMENT SUCCESS! CREDITED +${addedGC.toLocaleString()} GC & +${addedSC.toFixed(2)} FREE SC TO YOUR TOP BALANCE!`
     );
   };
 
