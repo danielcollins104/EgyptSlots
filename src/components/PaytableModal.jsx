@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { X, Trophy, Grid, Layers } from 'lucide-react';
-import { SYMBOLS, PAYLINES, CASINO_BRAND, THEME_COPY } from '../config/slotConfig';
+import { SYMBOLS, PAYLINES, CASINO_BRAND, THEME_COPY, getSymbols } from '../config/slotConfig';
 import PsdGoldNumber from './PsdGoldNumber';
 import NeonKeyedImage from './NeonKeyedImage';
 import DcLogoPlaque from './DcLogoPlaque';
 
-export default function PaytableModal({ isOpen, onClose, level = 1 }) {
+export default function PaytableModal({ isOpen, onClose, level = 1, currencyMode = 'GC' }) {
   const [tab, setTab] = useState('symbols');
+  const activeSymbols = getSymbols(currencyMode);
 
   if (!isOpen) return null;
 
@@ -49,7 +50,7 @@ export default function PaytableModal({ isOpen, onClose, level = 1 }) {
         <div className="paytable-body">
           {tab === 'symbols' && (
             <div className="paytable-symbols-grid">
-              {SYMBOLS.map((sym) => (
+              {activeSymbols.map((sym) => (
                 <div key={sym.id} className={`paytable-card tier-${sym.tier}`}>
                   <div className="paytable-symbol-preview">
                     {sym.is3DRoyal ? (

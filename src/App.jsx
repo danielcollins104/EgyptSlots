@@ -31,6 +31,7 @@ import {
   PAYLINES,
   BET_TIERS_GC,
   BET_TIERS_SC,
+  getSymbols,
   getWildSymbol,
   getExpandingSymbol,
   getBonusSymbol,
@@ -674,15 +675,16 @@ export default function App() {
 
       soundEngine.playSpinStart();
 
-      const wildSym = getWildSymbol();
-      const expSym = getExpandingSymbol();
-      const bonusSym = getBonusSymbol();
-      const topHigh = getTopHighSymbol();
-      const regs = getRegularSymbols();
+      const activeSymbols = getSymbols(currencyMode);
+      const wildSym = getWildSymbol(currencyMode);
+      const expSym = getExpandingSymbol(currencyMode);
+      const bonusSym = getBonusSymbol(currencyMode);
+      const topHigh = getTopHighSymbol(currencyMode);
+      const regs = getRegularSymbols(currencyMode);
       const r = (idx) => regs[idx % regs.length] || topHigh;
 
       const nextGrid = Array.from({ length: COLS }, () =>
-        Array.from({ length: ROWS }, () => pickWeightedSymbol(SYMBOLS, true))
+        Array.from({ length: ROWS }, () => pickWeightedSymbol(activeSymbols, true))
       );
       const nextExpanded = [false, false, false, false, false];
 
@@ -1527,6 +1529,7 @@ export default function App() {
         isOpen={paytableOpen}
         onClose={() => setPaytableOpen(false)}
         level={level}
+        currencyMode={currencyMode}
       />
 
       {/* Sweepstakes Payment & Coin Store Modal */}
