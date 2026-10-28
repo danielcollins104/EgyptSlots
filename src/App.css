@@ -759,16 +759,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
   padding: 4px 12px 10px;
-  max-width: 1560px;
+  max-width: 1720px;
   width: 100%;
   margin: 0 auto;
 }
 
 .anubis-guardian-column {
   position: relative;
-  width: clamp(160px, 15.5vw, 235px);
+  width: clamp(135px, 12.5vw, 205px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -881,7 +881,8 @@ body {
 .slot-cabinet-wrapper {
   position: relative;
   flex: 1;
-  max-width: 1020px;
+  width: 100%;
+  max-width: min(1200px, calc((100vh - 160px) * (2000 / 1350)));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4346,7 +4347,7 @@ body {
   position: relative;
   z-index: 5;
   width: 100%;
-  max-width: 900px;
+  max-width: 1040px;
   display: flex;
   flex-direction: column;
   align-items: center;

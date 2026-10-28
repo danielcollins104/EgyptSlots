@@ -758,7 +758,7 @@ export default function PhaserReelEngine({
       await Promise.all(
         SYMBOLS.map(async (sym) => {
           if (sym.is3DBonus) {
-            const bonusSize = Math.round(ROW_H * 1.18);
+            const bonusSize = Math.round(ROW_H * 0.98);
             const customOverlay = sym.noFrameImage
               ? await loadImage(sym.noFrameImage)
               : bonusCrestOverlay;
@@ -774,7 +774,7 @@ export default function PhaserReelEngine({
           }
 
           if (sym.is3DRoyal) {
-            const royalSize = Math.round(ROW_H * 1.16);
+            const royalSize = Math.round(ROW_H * 0.96);
             const { normalCan, frameCan, artCan } = create3DPopOutRoyalSprites(sym, royalSize);
             sprites[`sym_${sym.id}`] = normalCan;
             sprites[`frame_${sym.id}`] = frameCan;
@@ -785,7 +785,7 @@ export default function PhaserReelEngine({
           const rawImg = await loadImage(sym.image);
           if (!rawImg || isDisposed) return;
 
-          const baseSize = Math.round(ROW_H * 1.22);
+          const baseSize = Math.round(ROW_H * 0.96);
 
           if (sym.isWild && !sym.isExpanding && wildGlowImg) {
             const comp = document.createElement('canvas');
@@ -828,8 +828,8 @@ export default function PhaserReelEngine({
               loadImage(sym.noFrameImage),
             ]);
             if (fImg && nfImg && !isDisposed) {
-              const frameSz = Math.round(ROW_H * 0.84);
-              const popSz = Math.round(ROW_H * 1.28);
+              const frameSz = Math.round(ROW_H * 0.82);
+              const popSz = Math.round(ROW_H * 1.10);
               sprites[`frame_${sym.id}`] = createBakedSprite(
                 fImg,
                 frameSz,
