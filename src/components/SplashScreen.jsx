@@ -118,26 +118,11 @@ export default function SplashScreen({ onEnterCasino }) {
 
   return (
     <div className={`ad-creative-splash-root ${exiting ? 'splash-exit' : ''}`}>
-      {/* PLANE 0: Ambient Blurred Backdrop & PSD Sparks */}
-      {artMode === 'video' && activeVideoUrl ? (
-        <video
-          src={activeVideoUrl}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="ad-splash-ambient-video"
-          onError={() => {
-            setVideoAvailable(false);
-            setArtMode('creative');
-          }}
-        />
-      ) : (
-        <div
-          className="ad-splash-ambient-bg"
-          style={{ backgroundImage: `url('${heroImageUrl}')` }}
-        />
-      )}
+      {/* PLANE 0: Ambient Blurred Backdrop & PSD Sparks (Static blurred poster to keep GPU 100% free for 60fps video) */}
+      <div
+        className="ad-splash-ambient-bg"
+        style={{ backgroundImage: `url('${heroImageUrl}')` }}
+      />
       <div className="ad-splash-laser-grid" />
       <img
         src={THEME_ASSETS.ambientSparksImage}
@@ -195,6 +180,9 @@ export default function SplashScreen({ onEnterCasino }) {
               loop
               muted={isVideoMuted}
               playsInline
+              preload="auto"
+              disablePictureInPicture
+              disableRemotePlayback
               className="ad-hero-main-video"
               onError={() => {
                 setVideoAvailable(false);

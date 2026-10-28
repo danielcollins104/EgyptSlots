@@ -286,6 +286,10 @@ body {
   object-fit: cover;
   object-position: center center;
   border-radius: 12px;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  contain: strict;
 }
 
 .ad-hero-visual-viewport.is-dragging {
