@@ -136,6 +136,8 @@ export default function App() {
   const [initialGrid] = useState(() => generateInitialGrid());
   const [initialExpandedCols] = useState([false, true, false, false, false]);
   const [isSpinning, setIsSpinning] = useState(false);
+  const isSpinningRef = useRef(false);
+  const phaserEngineRef = useRef(null);
   const [spinTrigger, setSpinTrigger] = useState(null);
   const [spinId, setSpinId] = useState(0);
   const pendingSpinRef = useRef(null);
@@ -423,9 +425,11 @@ export default function App() {
   }, []);
 
   const handleSpinComplete = useCallback(() => {
+    isSpinningRef.current = false;
+    setIsSpinning(false);
+
     const pending = pendingSpinRef.current;
     if (!pending) {
-      setIsSpinning(false);
       return;
     }
 
@@ -438,8 +442,6 @@ export default function App() {
       scatterWinCoins,
       meterChargesEarned,
     } = evaluateGridWins(nextGrid, activeLevel);
-
-    setIsSpinning(false);
 
     // Update the 3D Bonus Collector Meter
     let meterTriggeredBonus = false;
@@ -643,7 +645,12 @@ export default function App() {
 
   const triggerSpin = useCallback(
     (forcedMode = null, overrideBet = null) => {
-      if (isSpinning || bonusSession || freeSpinsOpen) return;
+      // QUICK STOP / SLAM STOP: If reels are already spinning, immediately complete the spin
+      if (isSpinningRef.current) {
+        phaserEngineRef.current?.instantStop();
+        return;
+      }
+      if (bonusSession || freeSpinsOpen) return;
       const isSC = currencyMode === 'SC';
       const activeSpinBet = overrideBet ?? (isSC ? currentBetSC : currentBetGC);
       const activeLevel = Math.max(1, Math.round(isSC ? activeSpinBet / 0.15 : activeSpinBet / 15));
@@ -670,6 +677,7 @@ export default function App() {
       setWinningLines([]);
       setWinningCells(new Set());
       setBigWinAmount(0);
+      isSpinningRef.current = true;
       setIsSpinning(true);
       setStatusMessage(THEME_COPY.spinningTicker);
 
@@ -1158,6 +1166,7 @@ export default function App() {
             {/* 5x3 Reel Window */}
             <div className="reel-window-viewport">
               <PhaserReelEngine
+                ref={phaserEngineRef}
                 initialGrid={initialGrid}
                 initialExpandedCols={initialExpandedCols}
                 spinTrigger={spinTrigger}
@@ -1271,8 +1280,8 @@ export default function App() {
                 <button
                   className={`psd-spin-button ${isSpinning ? 'spinning' : ''}`}
                   onClick={() => triggerSpin()}
-                  disabled={isSpinning}
-                  aria-label="Spin Reels"
+                  aria-label={isSpinning ? 'Instant Stop' : 'Spin Reels'}
+                  title={isSpinning ? 'Instant Stop (Spacebar)' : 'Spin Reels (Spacebar)'}
                 >
                   <img
                     src="/assets/psd/btn_spin_glow.png"

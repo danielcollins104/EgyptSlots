@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import gsap from 'gsap';
 import { SYMBOLS, THEME_ASSETS, GUARDIANS } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
@@ -571,7 +571,7 @@ function loadImage(src) {
   });
 }
 
-export default function PhaserReelEngine({
+const PhaserReelEngine = forwardRef(function PhaserReelEngine({
   initialGrid,
   initialExpandedCols,
   spinTrigger,
@@ -580,7 +580,7 @@ export default function PhaserReelEngine({
   winningLines,
   winningCells,
   activeWinLineIdx,
-}) {
+}, ref) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
   const callbacksRef = useRef({ onColumnStop, onSpinComplete });
@@ -589,6 +589,15 @@ export default function PhaserReelEngine({
     winningCells: new Set(),
     activeWinLineIdx: 0,
   });
+
+  useImperativeHandle(ref, () => ({
+    instantStop: () => {
+      engineRef.current?.instantStop?.();
+    },
+    startSpin: (targetGrid, targetExpanded) => {
+      engineRef.current?.startSpin?.(targetGrid, targetExpanded);
+    },
+  }), []);
 
   useEffect(() => {
     callbacksRef.current = { onColumnStop, onSpinComplete };
@@ -933,6 +942,46 @@ export default function PhaserReelEngine({
       });
     };
 
+    // Instant Slam Stop: immediately stops all spinning reels with zero delay
+    const instantStop = () => {
+      const isAnySpinning = reels.some((r) => r.state !== 'IDLE');
+      if (!isAnySpinning) return;
+
+      reels.forEach((reel) => {
+        reel.tweens.forEach((t) => t.kill());
+        reel.tweens = [];
+        reel.state = 'IDLE';
+        reel.velocity = 0;
+        reel.scrollPx = 0;
+        reel.offsetY = 0;
+        reel.landingQueue = null;
+
+        // Immediately place target symbols directly into the 3 visible positions (strip[4..6])
+        if (reel.targetSymbols && reel.targetSymbols.length >= 3) {
+          reel.strip[4] = reel.targetSymbols[0];
+          reel.strip[5] = reel.targetSymbols[1];
+          reel.strip[6] = reel.targetSymbols[2];
+        }
+
+        if (reel.willExpand) {
+          reel.expandedVisible = true;
+          reel.tallScaleX = 1;
+          reel.tallScaleY = 1;
+          reel.tallAlpha = 1;
+        }
+
+        if (callbacksRef.current.onColumnStop) {
+          callbacksRef.current.onColumnStop(reel.colIndex, reel.willExpand);
+        }
+      });
+
+      soundEngine.playReelStop(4, false);
+
+      if (callbacksRef.current.onSpinComplete) {
+        callbacksRef.current.onSpinComplete();
+      }
+    };
+
     const triggerReelLandingBounce = (reel) => {
       reel.state = 'LANDING';
       reel.velocity = 0;
@@ -1260,7 +1309,7 @@ export default function PhaserReelEngine({
     };
 
     gsap.ticker.add(tick);
-    engineRef.current = { startSpin };
+    engineRef.current = { startSpin, instantStop };
 
     return () => {
       isDisposed = true;
@@ -1284,4 +1333,6 @@ export default function PhaserReelEngine({
       />
     </div>
   );
-}
+});
+
+export default PhaserReelEngine;
