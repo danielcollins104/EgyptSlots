@@ -400,6 +400,19 @@ body {
   box-shadow: 0 0 22px rgba(232, 121, 249, 0.7);
 }
 
+.ad-video-replay-toggle {
+  border-color: #38bdf8;
+  color: #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+.ad-video-replay-toggle:hover {
+  background: rgba(12, 74, 110, 0.95);
+  border-color: #7dd3fc;
+  color: #ffffff;
+  box-shadow: 0 0 22px rgba(125, 211, 252, 0.7);
+}
+
 .ad-upload-feedback-toast {
   position: absolute;
   bottom: 80px;

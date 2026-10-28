@@ -14,6 +14,7 @@ import {
   Eye,
   Film,
   Upload,
+  RotateCw,
 } from 'lucide-react';
 import { CASINO_BRAND, THEME_ASSETS, SPLASH_CONFIG } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
@@ -24,6 +25,7 @@ export default function SplashScreen({ onEnterCasino }) {
   const [artMode, setArtMode] = useState(THEME_ASSETS.splashVideo ? 'video' : 'creative'); // 'video' | 'creative' | 'original'
   const [liveJackpot, setLiveJackpot] = useState(12584920);
   const [videoAvailable, setVideoAvailable] = useState(!!THEME_ASSETS.splashVideo);
+  const [videoEnded, setVideoEnded] = useState(false);
   const [customVideoUrl, setCustomVideoUrl] = useState(null);
   const [isVideoMuted, setIsVideoMuted] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
@@ -71,6 +73,7 @@ export default function SplashScreen({ onEnterCasino }) {
       }
       const url = URL.createObjectURL(file);
       setCustomVideoUrl(url);
+      setVideoEnded(false);
       setArtMode('video');
       setUploadFeedback(`Playing Video: ${file.name}`);
       setTimeout(() => setUploadFeedback(''), 4000);
@@ -89,6 +92,7 @@ export default function SplashScreen({ onEnterCasino }) {
       }
       const url = URL.createObjectURL(file);
       setCustomVideoUrl(url);
+      setVideoEnded(false);
       setArtMode('video');
       setUploadFeedback(`Playing Video: ${file.name}`);
       setTimeout(() => setUploadFeedback(''), 4000);
@@ -96,6 +100,20 @@ export default function SplashScreen({ onEnterCasino }) {
   };
 
   const activeVideoUrl = customVideoUrl || (videoAvailable ? THEME_ASSETS.splashVideo : null);
+
+  const handleVideoEnded = () => {
+    setVideoEnded(true);
+  };
+
+  const handleReplayVideo = () => {
+    setVideoEnded(false);
+    setTimeout(() => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(() => {});
+      }
+    }, 50);
+  };
 
   const handleToggleMode = () => {
     if (artMode === 'video') {
@@ -118,10 +136,16 @@ export default function SplashScreen({ onEnterCasino }) {
 
   return (
     <div className={`ad-creative-splash-root ${exiting ? 'splash-exit' : ''}`}>
-      {/* PLANE 0: Ambient Blurred Backdrop & PSD Sparks (Static blurred poster to keep GPU 100% free for 60fps video) */}
+      {/* PLANE 0: Ambient Blurred Backdrop & PSD Sparks */}
       <div
         className="ad-splash-ambient-bg"
-        style={{ backgroundImage: `url('${heroImageUrl}')` }}
+        style={{
+          backgroundImage: `url('${
+            artMode === 'video' && videoEnded
+              ? THEME_ASSETS.splashVideoEndFrame || heroImageUrl
+              : heroImageUrl
+          }')`,
+        }}
       />
       <div className="ad-splash-laser-grid" />
       <img
@@ -173,22 +197,32 @@ export default function SplashScreen({ onEnterCasino }) {
           onDrop={handleDrop}
         >
           {artMode === 'video' && activeVideoUrl ? (
-            <video
-              ref={videoRef}
-              src={activeVideoUrl}
-              autoPlay
-              loop
-              muted={isVideoMuted}
-              playsInline
-              preload="auto"
-              disablePictureInPicture
-              disableRemotePlayback
-              className="ad-hero-main-video"
-              onError={() => {
-                setVideoAvailable(false);
-                setArtMode('creative');
-              }}
-            />
+            videoEnded ? (
+              <img
+                src={THEME_ASSETS.splashVideoEndFrame || heroImageUrl}
+                alt={`${CASINO_BRAND.creatorName} — ${CASINO_BRAND.casinoFullTitle}`}
+                className="ad-hero-main-img mode-creative-cover"
+                draggable={false}
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                src={activeVideoUrl}
+                autoPlay
+                loop={false}
+                muted={isVideoMuted}
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                disableRemotePlayback
+                className="ad-hero-main-video"
+                onEnded={handleVideoEnded}
+                onError={() => {
+                  setVideoAvailable(false);
+                  setArtMode('creative');
+                }}
+              />
+            )
           ) : (
             <img
               src={heroImageUrl}
@@ -220,8 +254,21 @@ export default function SplashScreen({ onEnterCasino }) {
 
           {/* Top-Right Media Controls Group */}
           <div className="ad-art-controls-group">
+            {/* If in video mode and finished, show Replay Button */}
+            {artMode === 'video' && activeVideoUrl && videoEnded && (
+              <button
+                type="button"
+                className="ad-art-mode-toggle ad-video-replay-toggle"
+                onClick={handleReplayVideo}
+                title="Watch Video Again"
+              >
+                <RotateCw size={14} />
+                <span>Replay</span>
+              </button>
+            )}
+
             {/* If in video mode, toggle Mute/Unmute */}
-            {artMode === 'video' && activeVideoUrl && (
+            {artMode === 'video' && activeVideoUrl && !videoEnded && (
               <button
                 type="button"
                 className="ad-art-mode-toggle ad-video-mute-toggle"

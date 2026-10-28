@@ -70,6 +70,7 @@ export const ACTIVE_THEME = {
   assets: {
     mainBackground: '/assets/background/background.png',
     splashVideo: '/assets/neon/splash_video.mp4',
+    splashVideoEndFrame: '/assets/neon/splash_video_end_frame.jpg',
     splashCreativeImage: '/assets/neon/daniel_creative_ad_splash.jpg',
     splashOriginalImage: '/assets/neon/daniel_welcome_treasure.jpg',
     reelFrameImage: '/assets/reel/reel_frame_filled.png',
