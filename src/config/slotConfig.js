@@ -69,8 +69,11 @@ export const ACTIVE_THEME = {
   // 2. Stage, Cabinet & Environment Image Assets
   assets: {
     mainBackground: '/assets/background/background.png',
-    splashVideo: '/assets/neon/splash_video.mp4',
+    // Splash now shows the DC Enterprises key art. Set splashVideo back to
+    // '/assets/neon/splash_video.mp4' to restore the intro video.
+    splashVideo: null,
     splashVideoEndFrame: '/assets/neon/splash_video_end_frame.jpg',
+    splashHeroImage: '/assets/neon/dc_enterprises_splash_hd.jpg',
     splashCreativeImage: '/assets/neon/daniel_creative_ad_splash.jpg',
     splashOriginalImage: '/assets/neon/daniel_welcome_treasure.jpg',
     reelFrameImage: '/assets/reel/reel_frame_filled.png',

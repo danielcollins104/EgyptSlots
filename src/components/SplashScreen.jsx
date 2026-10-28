@@ -131,7 +131,7 @@ export default function SplashScreen({ onEnterCasino }) {
 
   const heroImageUrl =
     artMode === 'creative'
-      ? THEME_ASSETS.splashCreativeImage
+      ? THEME_ASSETS.splashHeroImage || THEME_ASSETS.splashCreativeImage
       : THEME_ASSETS.splashOriginalImage;
 
   return (
