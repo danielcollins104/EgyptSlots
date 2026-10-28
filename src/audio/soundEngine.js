@@ -31,10 +31,22 @@ class SoundEngine {
     }
   }
 
+  triggerHaptics(pattern = [40, 50, 60]) {
+    try {
+      if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+        navigator.vibrate(pattern);
+      }
+    } catch {
+      // Haptics unavailable on non-touch desktop browsers
+    }
+  }
+
   playButtonClick(pitch = 520) {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
+
+    this.triggerHaptics([14]);
 
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
@@ -52,13 +64,36 @@ class SoundEngine {
     osc.stop(now + 0.08);
   }
 
-  playSpinStart() {
+  playButtonHover() {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
 
     const now = this.ctx.currentTime;
-    // EgyptianHijaz scale ascending sweep: D4, Eb4, F#4, G4, A4, Bb4, C#5, D5
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1250, now);
+    osc.frequency.exponentialRampToValueAtTime(1550, now + 0.02);
+
+    gain.gain.setValueAtTime(0.025, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.026);
+  }
+
+  playSpinStart() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    this.triggerHaptics([22]);
+
+    const now = this.ctx.currentTime;
+    // Egyptian Hijaz scale ascending sweep: D4, Eb4, F#4, G4, A4, Bb4, C#5, D5
     const notes = [293.66, 311.13, 369.99, 392.0, 440.0, 466.16, 554.37, 587.33];
     notes.forEach((freq, i) => {
       const osc = this.ctx.createOscillator();
@@ -66,13 +101,88 @@ class SoundEngine {
       osc.type = 'sine';
       const t = now + i * 0.032;
       osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.11, t);
+      gain.gain.setValueAtTime(0.12, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(t);
       osc.stop(t + 0.19);
     });
+  }
+
+  playSlamStop() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    // Heavy mechanical slam stop haptic kick
+    this.triggerHaptics([35, 45, 60]);
+
+    const now = this.ctx.currentTime;
+
+    // 1. Deep Sub-Bass Mechanical Thud
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = 'triangle';
+    subOsc.frequency.setValueAtTime(120, now);
+    subOsc.frequency.exponentialRampToValueAtTime(32, now + 0.22);
+    subGain.gain.setValueAtTime(0.38, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+    subOsc.connect(subGain);
+    subGain.connect(this.ctx.destination);
+    subOsc.start(now);
+    subOsc.stop(now + 0.25);
+
+    // 2. Metallic Locking Latch Click
+    const clickOsc = this.ctx.createOscillator();
+    const clickGain = this.ctx.createGain();
+    clickOsc.type = 'sawtooth';
+    clickOsc.frequency.setValueAtTime(880, now);
+    clickOsc.frequency.exponentialRampToValueAtTime(220, now + 0.07);
+    clickGain.gain.setValueAtTime(0.22, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+    clickOsc.connect(clickGain);
+    clickGain.connect(this.ctx.destination);
+    clickOsc.start(now);
+    clickOsc.stop(now + 0.08);
+
+    // 3. Crisp Golden Chime Specular
+    const chimeOsc = this.ctx.createOscillator();
+    const chimeGain = this.ctx.createGain();
+    chimeOsc.type = 'sine';
+    chimeOsc.frequency.setValueAtTime(1174.66, now + 0.01);
+    chimeGain.gain.setValueAtTime(0.14, now + 0.01);
+    chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+    chimeOsc.connect(chimeGain);
+    chimeGain.connect(this.ctx.destination);
+    chimeOsc.start(now + 0.01);
+    chimeOsc.stop(now + 0.29);
+  }
+
+  playAnticipationRiser() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    this.triggerHaptics([20, 25, 20, 30, 45]);
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+
+    // Tension riser: sweeps from 240Hz up to 780Hz
+    osc.frequency.setValueAtTime(240, now);
+    osc.frequency.exponentialRampToValueAtTime(780, now + 0.45);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.09, now + 0.35);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.5);
   }
 
   playReelTick(colIndex = 0) {
@@ -104,6 +214,9 @@ class SoundEngine {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
+
+    // Escalating haptic bump per column
+    this.triggerHaptics(hasSpecial ? [25, 35, 60] : [14 + colIndex * 5]);
 
     const now = this.ctx.currentTime;
     // Deep stone thud
@@ -165,16 +278,6 @@ class SoundEngine {
       osc.start(now);
       osc.stop(now + 0.88);
     });
-  }
-
-  triggerHaptics(pattern = [40, 50, 60]) {
-    try {
-      if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
-        navigator.vibrate(pattern);
-      }
-    } catch {
-      // Haptics unavailable on non-touch desktop browsers
-    }
   }
 
   playWinCelebration(tier = 'standard') {
@@ -264,26 +367,32 @@ class SoundEngine {
     });
   }
 
-  playCoinTick() {
+  playCoinTick(progress = 0) {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
+
+    if (Math.random() < 0.25) {
+      this.triggerHaptics([8]);
+    }
 
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sine';
-    const freq = 1200 + Math.random() * 400;
+    // Pitch gently climbs from 1100Hz to 1800Hz based on rollup progress
+    const baseFreq = 1100 + Math.min(1, Math.max(0, progress)) * 700;
+    const freq = baseFreq + (Math.random() * 120 - 60);
     osc.frequency.setValueAtTime(freq, now);
-    osc.frequency.setValueAtTime(freq * 1.25, now + 0.025);
+    osc.frequency.setValueAtTime(freq * 1.22, now + 0.02);
 
-    gain.gain.setValueAtTime(0.06, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.065);
+    osc.stop(now + 0.06);
   }
 
   playBonusTrigger() {

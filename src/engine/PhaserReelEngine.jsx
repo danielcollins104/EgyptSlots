@@ -577,13 +577,14 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
   spinTrigger,
   onColumnStop,
   onSpinComplete,
+  onSlamStop,
   winningLines,
   winningCells,
   activeWinLineIdx,
 }, ref) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
-  const callbacksRef = useRef({ onColumnStop, onSpinComplete });
+  const callbacksRef = useRef({ onColumnStop, onSpinComplete, onSlamStop });
   const winStateRef = useRef({
     winningLines: [],
     winningCells: new Set(),
@@ -600,8 +601,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
   }), []);
 
   useEffect(() => {
-    callbacksRef.current = { onColumnStop, onSpinComplete };
-  }, [onColumnStop, onSpinComplete]);
+    callbacksRef.current = { onColumnStop, onSpinComplete, onSlamStop };
+  }, [onColumnStop, onSpinComplete, onSlamStop]);
 
   useEffect(() => {
     winStateRef.current = {
@@ -917,6 +918,9 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             reel.state = 'SPINNING';
             reel.offsetY = 0;
             reel.velocity = 380;
+            if (reel.anticipation) {
+              soundEngine.playAnticipationRiser();
+            }
           })
           .to(reel, {
             velocity: peakVelocity,
@@ -975,7 +979,11 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         }
       });
 
-      soundEngine.playReelStop(4, false);
+      soundEngine.playSlamStop();
+
+      if (callbacksRef.current.onSlamStop) {
+        callbacksRef.current.onSlamStop();
+      }
 
       if (callbacksRef.current.onSpinComplete) {
         callbacksRef.current.onSpinComplete();
@@ -1179,6 +1187,29 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 ctx.drawImage(sprite, reel.centerX - dw / 2, centerY - dh / 2, dw, dh);
               } else {
                 ctx.drawImage(sprite, reel.centerX - sw / 2, centerY - sh / 2);
+              }
+            }
+
+            if (isWinningCell) {
+              // Sparkling 4-point star glint that rotates and twinkles on winning symbols
+              const glintTime = now * 0.006 + c * 1.6 + visibleRow * 2.3;
+              const glintAlpha = 0.4 + 0.6 * Math.sin(glintTime);
+              if (glintAlpha > 0.1) {
+                const glintX = reel.centerX + 36;
+                const glintY = centerY - 36 + popLiftY;
+                const starSize = 7 + 5 * Math.sin(glintTime);
+                ctx.save();
+                ctx.translate(glintX, glintY);
+                ctx.rotate(glintTime * 0.4);
+                ctx.fillStyle = `rgba(255, 240, 160, ${glintAlpha.toFixed(2)})`;
+                ctx.beginPath();
+                ctx.moveTo(0, -starSize);
+                ctx.quadraticCurveTo(0, 0, starSize, 0);
+                ctx.quadraticCurveTo(0, 0, 0, starSize);
+                ctx.quadraticCurveTo(0, 0, -starSize, 0);
+                ctx.quadraticCurveTo(0, 0, 0, -starSize);
+                ctx.fill();
+                ctx.restore();
               }
             }
           }

@@ -154,6 +154,21 @@ export default function App() {
   const [bigWinAmount, setBigWinAmount] = useState(0);
   const [statusMessage, setStatusMessage] = useState(THEME_COPY.welcomeTicker);
 
+  // Casino Game Juice & Physical Cabinet Feedback
+  const [cabinetImpact, setCabinetImpact] = useState('');
+  const cabinetImpactTimerRef = useRef(null);
+  const [spinShockwave, setSpinShockwave] = useState(false);
+  const [floatingWinText, setFloatingWinText] = useState(null);
+  const [floatingWinKey, setFloatingWinKey] = useState(0);
+
+  const triggerCabinetImpact = useCallback((type) => {
+    setCabinetImpact(type);
+    if (cabinetImpactTimerRef.current) clearTimeout(cabinetImpactTimerRef.current);
+    cabinetImpactTimerRef.current = setTimeout(() => {
+      setCabinetImpact('');
+    }, type === 'mega' ? 700 : 380);
+  }, []);
+
   // Autoplay, Bonus Mechanisms & Modals
   const [autoPlayCount, setAutoPlayCount] = useState(0);
   const [paytableOpen, setPaytableOpen] = useState(false);
@@ -476,6 +491,11 @@ export default function App() {
       setGuardianAction(true);
       setTimeout(() => setGuardianAction(false), 1800);
 
+      // Trigger tactile cabinet recoil and floating win text
+      triggerCabinetImpact(isBig ? 'mega' : 'win');
+      setFloatingWinText(isSC ? `+${formatCoinValue(finalWin)} SC` : `+${finalWin.toLocaleString()} GC`);
+      setFloatingWinKey((k) => k + 1);
+
       if (isBig) {
         setBigWinAmount(finalWin);
         setWinSplashAmount(0); // Mega Win modal handles display and sound
@@ -647,6 +667,7 @@ export default function App() {
     (forcedMode = null, overrideBet = null) => {
       // QUICK STOP / SLAM STOP: If reels are already spinning, immediately complete the spin
       if (isSpinningRef.current) {
+        triggerCabinetImpact('slam');
         phaserEngineRef.current?.instantStop();
         return;
       }
@@ -673,6 +694,7 @@ export default function App() {
 
       setLastWinCoins(0);
       setWinSplashAmount(0);
+      setFloatingWinText(null);
       setSpinId((s) => s + 1);
       setWinningLines([]);
       setWinningCells(new Set());
@@ -681,6 +703,9 @@ export default function App() {
       setIsSpinning(true);
       setStatusMessage(THEME_COPY.spinningTicker);
 
+      // Trigger Golden Shockwave and start sound
+      setSpinShockwave(false);
+      requestAnimationFrame(() => setSpinShockwave(true));
       soundEngine.playSpinStart();
 
       const activeSymbols = getSymbols(currencyMode);
@@ -989,6 +1014,7 @@ export default function App() {
           <button
             className="dc-action-btn special-freespins"
             onClick={() => triggerFreeSpinsManually(10)}
+            onMouseEnter={() => soundEngine.playButtonHover()}
             disabled={isSpinning || freeSpinsOpen}
             title="Launch 10 Automated Celestial Free Spins with 3× Multiplier & Retriggers!"
           >
@@ -999,6 +1025,7 @@ export default function App() {
           <button
             className="dc-action-btn special-anubis"
             onClick={() => triggerSpin('anubis')}
+            onMouseEnter={() => soundEngine.playButtonHover()}
             disabled={isSpinning}
             title={THEME_COPY.expandDemoButtonTooltip}
           >
@@ -1009,6 +1036,7 @@ export default function App() {
           <button
             className="dc-action-btn special-bigwin"
             onClick={() => triggerSpin('bigwin')}
+            onMouseEnter={() => soundEngine.playButtonHover()}
             disabled={isSpinning}
             title={THEME_COPY.megaWinDemoButtonTooltip}
           >
@@ -1022,6 +1050,7 @@ export default function App() {
               soundEngine.playButtonClick();
               setNeonThemeIdx((p) => (p + 1) % COLOR_PALETTES.length);
             }}
+            onMouseEnter={() => soundEngine.playButtonHover()}
             title="Cycle Color Spectrum"
           >
             <Palette size={15} />
@@ -1034,6 +1063,7 @@ export default function App() {
               soundEngine.playButtonClick();
               setPaytableOpen(true);
             }}
+            onMouseEnter={() => soundEngine.playButtonHover()}
           >
             <BookOpen size={15} />
             <span>Paytable &amp; Rules</span>
@@ -1051,12 +1081,18 @@ export default function App() {
                 setStatusMessage(THEME_COPY.resetBankrollTicker);
               }
             }}
+            onMouseEnter={() => soundEngine.playButtonHover()}
             title={currencyMode === 'SC' ? 'Reset Sweeps Coins to 10.00 SC' : 'Reset Gold Coins to 250,000 GC'}
           >
             <RotateCcw size={15} />
           </button>
 
-          <button className="dc-action-btn" onClick={toggleMute} title="Toggle Sound">
+          <button
+            className="dc-action-btn"
+            onClick={toggleMute}
+            onMouseEnter={() => soundEngine.playButtonHover()}
+            title="Toggle Sound"
+          >
             {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
         </div>
@@ -1128,7 +1164,7 @@ export default function App() {
 
         {/* Center Slot Machine Cabinet */}
         <section className="slot-cabinet-wrapper">
-          <div className="reel-cabinet-box">
+          <div className={`reel-cabinet-box ${cabinetImpact ? `cabinet-impact-${cabinetImpact}` : ''}`}>
             <img
               src={THEME_ASSETS.reelGlowImage}
               alt=""
@@ -1172,10 +1208,20 @@ export default function App() {
                 spinTrigger={spinTrigger}
                 onColumnStop={handleColumnStop}
                 onSpinComplete={handleSpinComplete}
+                onSlamStop={() => triggerCabinetImpact('slam')}
                 winningLines={winningLines}
                 winningCells={winningCells}
                 activeWinLineIdx={activeWinLineIdx}
               />
+
+              {/* Floating Coin Win Badge with Golden Orbit */}
+              {floatingWinText && (
+                <div key={floatingWinKey} className="floating-win-flyup">
+                  <span className="flyup-star">★</span>
+                  <span>{floatingWinText}</span>
+                  <span className="flyup-star">★</span>
+                </div>
+              )}
 
               {/* Real-Time Win Celebration Image & Animation Plaque */}
               <WinCelebrationSplash
@@ -1219,6 +1265,7 @@ export default function App() {
                     <button
                       className="psd-arrow-btn"
                       onClick={() => handleBetChange(-1)}
+                      onMouseEnter={() => soundEngine.playButtonHover()}
                       disabled={isSpinning || currentBetIdx <= 0}
                       aria-label="Decrease Bet"
                     >
@@ -1237,6 +1284,7 @@ export default function App() {
                     <button
                       className="psd-arrow-btn"
                       onClick={() => handleBetChange(1)}
+                      onMouseEnter={() => soundEngine.playButtonHover()}
                       disabled={isSpinning || currentBetIdx >= activeBetTiers.length - 1}
                       aria-label="Increase Bet"
                     >
@@ -1258,6 +1306,7 @@ export default function App() {
                     autoPlayCount > 0 ? 'active-auto' : ''
                   }`}
                   onClick={handleAutoPlayToggle}
+                  onMouseEnter={() => soundEngine.playButtonHover()}
                 >
                   <img
                     src="/assets/psd/btn_autoplay.png"
@@ -1280,9 +1329,11 @@ export default function App() {
                 <button
                   className={`psd-spin-button ${isSpinning ? 'spinning' : ''}`}
                   onClick={() => triggerSpin()}
+                  onMouseEnter={() => soundEngine.playButtonHover()}
                   aria-label={isSpinning ? 'Instant Stop' : 'Spin Reels'}
                   title={isSpinning ? 'Instant Stop (Spacebar)' : 'Spin Reels (Spacebar)'}
                 >
+                  <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
                   <img
                     src="/assets/psd/btn_spin_glow.png"
                     alt=""
@@ -1306,6 +1357,7 @@ export default function App() {
                 <button
                   className="psd-wing-btn maxbet-wing"
                   onClick={handleMaxBet}
+                  onMouseEnter={() => soundEngine.playButtonHover()}
                   disabled={isSpinning}
                 >
                   <img

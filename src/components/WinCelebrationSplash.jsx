@@ -73,6 +73,7 @@ export default function WinCelebrationSplash({
       if (current !== lastRendered) {
         lastRendered = current;
         setDisplayAmount(current);
+        soundEngine.playCoinTick(progress);
       }
 
       if (progress < 1) {

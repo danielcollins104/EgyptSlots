@@ -38,6 +38,10 @@ export default function BigWinPopup({
       if (current !== lastRenderedVal) {
         lastRenderedVal = current;
         setDisplayCoins(current);
+        if (now - lastTickTime > 45) {
+          lastTickTime = now;
+          soundEngine.playCoinTick(progress);
+        }
       }
 
       if (progress < 1) {
