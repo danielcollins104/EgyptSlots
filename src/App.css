@@ -5740,5 +5740,464 @@ body {
   }
 }
 
+/* ============================================================================
+   9. MOBILE & DESKTOP RESPONSIVE GUI OPTIMIZATIONS
+   ============================================================================ */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+.casino-app-root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+/* Desktop vs Mobile Header Actions Display */
+@media (min-width: 1024px) {
+  .desktop-actions {
+    display: flex !important;
+  }
+  .mobile-quick-actions {
+    display: none !important;
+  }
+  .mobile-features-drawer {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .desktop-actions {
+    display: none !important;
+  }
+  .mobile-quick-actions {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+  }
+  .dc-casino-topbar {
+    padding: 8px 12px;
+  }
+}
+
+/* Mobile Slide-down Egyptian VIP Features Drawer */
+.mobile-features-drawer {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: linear-gradient(180deg, rgba(14, 8, 28, 0.98) 0%, rgba(8, 3, 18, 0.99) 100%);
+  border-bottom: 2px solid #ffd700;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 215, 0, 0.25);
+  backdrop-filter: blur(14px);
+  padding: 14px 16px 20px;
+  animation: drawerSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes drawerSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.25);
+  font-family: var(--font-royal, 'Cinzel Decorative', serif);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffd700;
+}
+
+.mobile-drawer-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-drawer-close:hover {
+  color: #ffffff;
+}
+
+.mobile-drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.mobile-drawer-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  color: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+  min-height: 48px;
+}
+
+.mobile-drawer-card:hover,
+.mobile-drawer-card:active {
+  background: rgba(255, 215, 0, 0.14);
+  border-color: #ffd700;
+  transform: translateY(-1px);
+}
+
+.mobile-drawer-card .card-icon {
+  flex-shrink: 0;
+  color: #ffd700;
+}
+
+.mobile-drawer-card .card-txt {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-drawer-card .card-txt strong {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mobile-drawer-card .card-txt small {
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.mobile-menu-toggle {
+  background: linear-gradient(135deg, #b45309 0%, #d97706 100%) !important;
+  border-color: #ffd700 !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+}
+
+/* Mobile Floating Control Dock */
+.mobile-floating-control-dock {
+  display: none;
+}
+
+@media (max-width: 680px) and (orientation: portrait) {
+  /* Activate Mobile Bottom Dock on Phones */
+  .mobile-floating-control-dock {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, rgba(16, 8, 30, 0.95) 0%, rgba(6, 2, 14, 0.99) 100%);
+    border-top: 2px solid #ffd700;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.9), 0 0 16px rgba(255, 215, 0, 0.3);
+    backdrop-filter: blur(14px);
+    gap: 8px;
+  }
+
+  /* Offset container so dock doesn't obscure content */
+  .casino-app-root {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Smooth in-cabinet bottom bar scaling on small screens */
+  .psd-bottom-control-bar {
+    left: 2%;
+    right: 2%;
+    bottom: 1.5%;
+    height: 15%;
+  }
+
+  .psd-wing-btn {
+    width: clamp(52px, 12vw, 86px);
+  }
+
+  .psd-spin-button {
+    width: clamp(62px, 15vw, 98px);
+  }
+
+  .psd-stat-value {
+    font-size: clamp(0.7rem, 2.4vw, 1.1rem);
+  }
+
+  .psd-arrow-btn {
+    padding: 2px;
+  }
+
+  .psd-label-img {
+    height: clamp(8px, 1.8vw, 13px);
+  }
+}
+
+.mobile-dock-bet-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 24px;
+  padding: 3px 6px;
+}
+
+.mobile-dock-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #ffd700;
+  background: linear-gradient(135deg, rgba(30, 20, 50, 0.9) 0%, rgba(15, 8, 30, 0.9) 100%);
+  color: #ffd700;
+  font-size: 1.25rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mobile-dock-btn:active:not(:disabled) {
+  transform: scale(0.92);
+  background: #ffd700;
+  color: #0c0414;
+}
+
+.mobile-dock-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.mobile-dock-bet-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 54px;
+}
+
+.mobile-dock-label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.mobile-dock-val {
+  font-family: var(--font-royal, 'Cinzel Decorative', serif);
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+/* Central Mobile Dock Spin Button */
+.mobile-dock-spin-btn {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid #ffd700;
+  background: radial-gradient(circle at 35% 30%, #39ff14 0%, #15803d 50%, #052e16 100%);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.7), 0 4px 12px rgba(0, 0, 0, 0.8);
+  transition: transform 0.15s ease, filter 0.15s ease;
+  margin-top: -16px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mobile-dock-spin-btn:active {
+  transform: scale(0.92) translateY(2px);
+  filter: brightness(1.25);
+}
+
+.mobile-dock-spin-btn.spinning {
+  background: radial-gradient(circle at 35% 30%, #ef4444 0%, #b91c1c 50%, #450a0a 100%);
+  border-color: #f87171;
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.8), 0 4px 12px rgba(0, 0, 0, 0.8);
+}
+
+.dock-spin-icon {
+  margin-bottom: 1px;
+}
+
+.dock-spin-animated {
+  animation: rotateFast 0.5s linear infinite;
+}
+
+.dock-spin-text {
+  font-family: var(--font-royal, 'Cinzel Decorative', serif);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 2px #000;
+}
+
+.mobile-dock-right-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobile-dock-win-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 14px;
+  padding: 4px 8px;
+  min-width: 58px;
+}
+
+.mobile-dock-win-val {
+  font-family: var(--font-royal, 'Cinzel Decorative', serif);
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #34d399;
+  white-space: nowrap;
+}
+
+.mobile-dock-auto-btn {
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(0, 229, 255, 0.6);
+  background: linear-gradient(135deg, rgba(8, 30, 50, 0.9) 0%, rgba(4, 15, 30, 0.9) 100%);
+  color: #00e5ff;
+  font-family: var(--font-royal, 'Cinzel Decorative', serif);
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+  min-height: 38px;
+  min-width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-dock-auto-btn.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #34d399;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.7);
+}
+
+/* Mobile Landscape Mode Optimizations */
+@media (orientation: landscape) and (max-height: 540px) {
+  .ad-marquee-header {
+    display: none !important;
+  }
+  .dc-casino-topbar {
+    padding: 3px 12px;
+    gap: 6px;
+  }
+  .dc-crest-badge {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+  .dc-casino-name {
+    font-size: 0.85rem;
+  }
+  .dc-creator-tag {
+    display: none;
+  }
+  .slot-cabinet-wrapper {
+    max-width: calc((100dvh - 84px) * (2000 / 1350));
+  }
+  .cabinet-bonus-and-win-bar {
+    display: none !important;
+  }
+  .cabinet-status-pediment {
+    display: none !important;
+  }
+  .mobile-floating-control-dock {
+    display: none !important;
+  }
+  .psd-bottom-control-bar {
+    left: 8%;
+    right: 8%;
+    bottom: 2%;
+    height: 16%;
+  }
+}
+
+/* Universal Mobile Modal Optimization */
+@media (max-width: 768px) {
+  .paytable-modal,
+  .store-modal-card,
+  .bonus-modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 88dvh !important;
+    border-radius: 14px !important;
+  }
+  .paytable-header,
+  .store-header-bar {
+    padding: 10px 14px !important;
+  }
+  .paytable-tabs {
+    padding: 8px 12px 0 !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+  }
+  .paytable-symbols-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .store-packages-shelf {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .store-packages-shelf {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Desktop & 4K Ultra-Wide Optimizations */
+@media (min-width: 1440px) {
+  .slot-cabinet-wrapper {
+    max-width: min(1360px, calc((100vh - 180px) * (2000 / 1350)));
+  }
+  .anubis-guardian-column {
+    display: flex;
+    width: clamp(220px, 15vw, 300px);
+  }
+}
+
 
 

@@ -7,6 +7,7 @@ import {
   Flame,
   Trophy,
   RotateCcw,
+  RotateCw,
   Crown,
   Palette,
   Gem,
@@ -19,6 +20,8 @@ import {
   History,
   ShoppingCart,
   ShieldCheck,
+  Menu,
+  X,
 } from 'lucide-react';
 import {
   CASINO_BRAND,
@@ -178,6 +181,7 @@ export default function App() {
   const [freeSpinsCount, setFreeSpinsCount] = useState(10);
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Direct Bet calculations for GC and SC
   const activeBetTiers = currencyMode === 'SC' ? BET_TIERS_SC : BET_TIERS_GC;
@@ -989,8 +993,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Interactive Demo Feature Buttons & Color Spectrum Switcher */}
-        <div className="dc-topbar-actions">
+        {/* Desktop Interactive Demo Feature Buttons & Color Spectrum Switcher */}
+        <div className="dc-topbar-actions desktop-actions">
           <button
             className="dc-action-btn special-bonus"
             onClick={() => triggerSpin('bonus')}
@@ -1096,7 +1100,169 @@ export default function App() {
             {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
         </div>
+
+        {/* Mobile Quick Action Buttons (Compact Viewport) */}
+        <div className="dc-topbar-actions mobile-quick-actions">
+          <button
+            className="dc-action-btn"
+            onClick={toggleMute}
+            onMouseEnter={() => soundEngine.playButtonHover()}
+            title="Toggle Sound"
+          >
+            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+
+          <button
+            className={`dc-action-btn mobile-menu-toggle ${mobileMenuOpen ? 'active' : ''}`}
+            onClick={() => {
+              soundEngine.playButtonClick(620);
+              setMobileMenuOpen(!mobileMenuOpen);
+            }}
+            aria-label="Toggle VIP Feature Menu"
+            title="Open VIP Feature Drawer"
+          >
+            {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+            <span>VIP Menu ⚡</span>
+          </button>
+        </div>
       </header>
+
+      {/* Mobile Slide-down Egyptian VIP Features Drawer */}
+      {mobileMenuOpen && (
+        <div className="mobile-features-drawer">
+          <div className="mobile-drawer-header">
+            <span>VIP CASINO FEATURES &amp; DEMOS</span>
+            <button className="mobile-drawer-close" onClick={() => setMobileMenuOpen(false)}>
+              <X size={18} />
+            </button>
+          </div>
+          <div className="mobile-drawer-grid">
+            <button
+              className="mobile-drawer-card bonus-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('bonus');
+              }}
+              disabled={isSpinning}
+            >
+              <Gift size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Bonus Scatters Spin</strong>
+                <small>Spin 3+ Vault Keys</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card direct-vault-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                openBonusGamesManually('vault');
+              }}
+              disabled={isSpinning}
+            >
+              <Gem size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>3D Bonus Vault Game</strong>
+                <small>Open 3-Tier Multiplier Pick</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card freespins-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerFreeSpinsManually(10);
+              }}
+              disabled={isSpinning || freeSpinsOpen}
+            >
+              <Sparkles size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>10 Free Spins</strong>
+                <small>3× Celestial Multipliers</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card anubis-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('anubis');
+              }}
+              disabled={isSpinning}
+            >
+              <Flame size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Expanding Wilds</strong>
+                <small>1x3 Full Column Guardians</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card bigwin-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('bigwin');
+              }}
+              disabled={isSpinning}
+            >
+              <Trophy size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Mega Win Hit</strong>
+                <small>Full Line Screen Jackpot</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card theme-card"
+              onClick={() => {
+                soundEngine.playButtonClick();
+                setNeonThemeIdx((p) => (p + 1) % COLOR_PALETTES.length);
+              }}
+            >
+              <Palette size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Theme: {currentTheme.label}</strong>
+                <small>Cycle Neon Palette</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card paytable-card-btn"
+              onClick={() => {
+                soundEngine.playButtonClick();
+                setMobileMenuOpen(false);
+                setPaytableOpen(true);
+              }}
+            >
+              <BookOpen size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Paytable &amp; Rules</strong>
+                <small>15 Paylines &amp; Symbol Values</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card reset-card"
+              onClick={() => {
+                soundEngine.playButtonClick();
+                if (currencyMode === 'SC') {
+                  setSweepsCoins(SWEEPSTAKES_CONFIG.defaultSweepsCoins);
+                  setStatusMessage('RESET SWEEPS COINS TO 10.00 SC ($10.00 USD)!');
+                } else {
+                  setGoldCoins(SWEEPSTAKES_CONFIG.defaultGoldCoins);
+                  setStatusMessage(THEME_COPY.resetBankrollTicker);
+                }
+              }}
+            >
+              <RotateCcw size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Reset Balance</strong>
+                <small>{currencyMode === 'SC' ? 'Reset to 10.00 SC' : 'Reset to 250,000 GC'}</small>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Slot Machine Stage: Left Guardian + Center Cabinet + Right Guardian */}
       <main className="slot-stage-container">
@@ -1613,6 +1779,65 @@ export default function App() {
         currencyMode={currencyMode}
         onComplete={handleCompleteFreeSpins}
       />
+
+      {/* Mobile-First Ergonomic Thumb Control Dock (Active on Mobile Phones < 680px) */}
+      <nav className="mobile-floating-control-dock">
+        <div className="mobile-dock-bet-group">
+          <button
+            className="mobile-dock-btn"
+            onClick={() => handleBetChange(-1)}
+            disabled={isSpinning || currentBetIdx <= 0}
+            aria-label="Decrease Bet"
+          >
+            -
+          </button>
+          <div className="mobile-dock-bet-info">
+            <span className="mobile-dock-label">BET</span>
+            <span className="mobile-dock-val">
+              {currencyMode === 'SC' ? `$${formatCoinValue(currentBetSC)}` : currentBetGC.toLocaleString()}
+            </span>
+          </div>
+          <button
+            className="mobile-dock-btn"
+            onClick={() => handleBetChange(1)}
+            disabled={isSpinning || currentBetIdx >= activeBetTiers.length - 1}
+            aria-label="Increase Bet"
+          >
+            +
+          </button>
+        </div>
+
+        <button
+          className={`mobile-dock-spin-btn ${isSpinning ? 'spinning' : ''}`}
+          onClick={() => triggerSpin()}
+          aria-label={isSpinning ? 'Instant Stop' : 'Spin Reels'}
+          title={isSpinning ? 'Instant Stop' : 'Spin Reels'}
+        >
+          <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
+          <RotateCw size={26} className={`dock-spin-icon ${isSpinning ? 'dock-spin-animated' : ''}`} />
+          <span className="dock-spin-text">{isSpinning ? 'STOP' : 'SPIN'}</span>
+        </button>
+
+        <div className="mobile-dock-right-group">
+          <div className="mobile-dock-win-info">
+            <span className="mobile-dock-label">WIN</span>
+            <span className="mobile-dock-win-val">
+              {lastWinCoins > 0
+                ? currencyMode === 'SC'
+                  ? `$${formatCoinValue(lastWinCoins)}`
+                  : lastWinCoins.toLocaleString()
+                : '0'}
+            </span>
+          </div>
+          <button
+            className={`mobile-dock-auto-btn ${autoPlayCount > 0 ? 'active' : ''}`}
+            onClick={handleAutoPlayToggle}
+            aria-label="Toggle Autoplay"
+          >
+            {autoPlayCount > 0 ? `STOP (${autoPlayCount})` : 'AUTO'}
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
