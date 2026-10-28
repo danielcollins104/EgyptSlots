@@ -121,6 +121,17 @@ body {
   z-index: 0;
 }
 
+.ad-splash-ambient-video {
+  position: absolute;
+  inset: -40px;
+  width: calc(100% + 80px);
+  height: calc(100% + 80px);
+  object-fit: cover;
+  filter: brightness(0.28) saturate(1.6) blur(20px);
+  z-index: 0;
+  pointer-events: none;
+}
+
 .ad-splash-laser-grid {
   position: absolute;
   inset: 0;
@@ -268,6 +279,21 @@ body {
   transition: transform 0.45s ease;
 }
 
+.ad-hero-main-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center center;
+  border-radius: 12px;
+}
+
+.ad-hero-visual-viewport.is-dragging {
+  outline: 3px dashed #fbbf24;
+  outline-offset: -8px;
+  background: rgba(251, 191, 36, 0.18) !important;
+}
+
 .ad-hero-main-img.mode-creative-cover {
   object-fit: cover;
   object-position: center center;
@@ -278,7 +304,7 @@ body {
   object-position: center center;
 }
 
-/* Floating Corner Tag & Mode Switcher */
+/* Floating Corner Tag & Media Controls */
 .ad-floating-corner-tag.top-left {
   position: absolute;
   top: 14px;
@@ -315,15 +341,21 @@ body {
   color: #ffffff;
 }
 
-.ad-art-mode-toggle {
+.ad-art-controls-group {
   position: absolute;
   top: 14px;
   right: 18px;
-  z-index: 6;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ad-art-mode-toggle {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 15px;
+  padding: 8px 14px;
   border-radius: 999px;
   background: rgba(14, 3, 34, 0.88);
   backdrop-filter: blur(8px);
@@ -336,6 +368,53 @@ body {
   cursor: pointer;
   box-shadow: 0 0 16px rgba(0, 255, 255, 0.45);
   transition: all 0.2s ease;
+}
+
+.ad-upload-video-toggle {
+  border-color: #fbbf24;
+  color: #fbbf24;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+}
+
+.ad-upload-video-toggle:hover {
+  background: rgba(68, 40, 10, 0.95);
+  border-color: #fde047;
+  color: #ffffff;
+  box-shadow: 0 0 22px rgba(253, 224, 71, 0.7);
+}
+
+.ad-video-mute-toggle {
+  border-color: #a855f7;
+  color: #c084fc;
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
+}
+
+.ad-video-mute-toggle:hover {
+  background: rgba(88, 28, 135, 0.95);
+  border-color: #e879f9;
+  color: #ffffff;
+  box-shadow: 0 0 22px rgba(232, 121, 249, 0.7);
+}
+
+.ad-upload-feedback-toast {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  background: rgba(10, 2, 26, 0.92);
+  border: 1.5px solid #fbbf24;
+  color: #fef08a;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.6);
+  animation: fadeInOut 4s ease forwards;
 }
 
 .ad-art-mode-toggle:hover {
