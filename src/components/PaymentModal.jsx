@@ -26,7 +26,7 @@ import { soundEngine } from '../audio/soundEngine';
 export default function PaymentModal({
   isOpen,
   onClose,
-  initialTab = 'store', // 'store' | 'redeem' | 'keys' | 'history'
+  initialTab = 'store', // 'store' | 'redeem' | 'history'
   goldCoins,
   sweepsCoins,
   onPurchaseSuccess,
@@ -42,166 +42,11 @@ export default function PaymentModal({
 
   // Selected store package (defaults to Silver / $19.99 popular)
   const [selectedPkg, setSelectedPkg] = useState(SWEEPSTAKES_CONFIG.storePackages[2]);
-  const [provider, setProvider] = useState('stripe'); // 'stripe' | 'chime'
-  const [stripeTabOpened, setStripeTabOpened] = useState(false);
-
-  // Checkout form fields
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvc, setCardCvc] = useState('');
-  const [chimeHandle, setChimeHandle] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [checkoutFeedback, setCheckoutFeedback] = useState(null);
-
-  // Redemption state
-  const [redeemSC, setRedeemSC] = useState(50);
-  const [redeemDestination, setRedeemDestination] = useState('');
-  const [isRedeeming, setIsRedeeming] = useState(false);
-  const [redeemFeedback, setRedeemFeedback] = useState(null);
-
-  // API Key management state
-  const currentKeys = paymentService.getKeys();
-  const [stripeKeyInput, setStripeKeyInput] = useState(currentKeys.stripePublishableKey);
-  const [chimeKeyInput, setChimeKeyInput] = useState(currentKeys.chimeApiKey);
-  const [chimeHandleInput, setChimeHandleInput] = useState(currentKeys.chimeHandle);
-  const [keysSavedMsg, setKeysSavedMsg] = useState(false);
 
   // Transactions list
   const txHistory = paymentService.getTransactionHistory();
 
   if (!isOpen) return null;
-
-  const handleSaveKeys = (e) => {
-    e.preventDefault();
-    paymentService.saveKeys({
-      stripePublishableKey: stripeKeyInput,
-      chimeApiKey: chimeKeyInput,
-      chimeHandle: chimeHandleInput,
-    });
-    setKeysSavedMsg(true);
-    soundEngine.playWin(false);
-    setTimeout(() => setKeysSavedMsg(false), 2600);
-  };
-
-  const handleBuyPackage = async () => {
-    if (!selectedPkg || isProcessing) return;
-    setIsProcessing(true);
-    setCheckoutFeedback(null);
-    soundEngine.playButtonClick(600);
-
-    try {
-      const result = await paymentService.processPurchase({
-        pkg: selectedPkg,
-        provider,
-        customerDetails: {
-          cardNumber: cardNumber || '4242',
-          chimeHandle: chimeHandle || currentKeys.chimeHandle,
-        },
-      });
-
-      soundEngine.playWin(true);
-      setCheckoutFeedback({
-        type: 'success',
-        text: `Payment confirmed! Added +${result.goldCoins.toLocaleString()} GC & +${result.sweepsCoins.toFixed(2)} Free SC. Returning to game...`,
-      });
-
-      if (onPurchaseSuccess) {
-        onPurchaseSuccess({
-          goldCoins: result.goldCoins,
-          freeSweepsCoins: result.sweepsCoins,
-          goldCoinsAdded: result.goldCoins,
-          sweepsCoinsAdded: result.sweepsCoins,
-        });
-      }
-
-      // Automatically return to the game!
-      setTimeout(() => {
-        onClose();
-      }, 650);
-    } catch (err) {
-      setCheckoutFeedback({
-        type: 'error',
-        text: err.message || 'Payment processing failed. Please try again.',
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleClaimStripeAndReturn = () => {
-    soundEngine.playWin(true);
-    if (onPurchaseSuccess) {
-      onPurchaseSuccess({
-        goldCoins: selectedPkg.goldCoins,
-        freeSweepsCoins: selectedPkg.freeSweepsCoins,
-        goldCoinsAdded: selectedPkg.goldCoins,
-        sweepsCoinsAdded: selectedPkg.freeSweepsCoins,
-      });
-    }
-    setCheckoutFeedback({
-      type: 'success',
-      text: `Payment confirmed! Added +${selectedPkg.goldCoins.toLocaleString()} GC & +${selectedPkg.freeSweepsCoins.toFixed(2)} Free SC. Returning to game...`,
-    });
-    setTimeout(() => {
-      onClose();
-    }, 550);
-  };
-
-  const handleRedeem = async () => {
-    const amount = parseFloat(redeemSC);
-    if (isNaN(amount) || amount < SWEEPSTAKES_CONFIG.minRedemptionSC) {
-      setRedeemFeedback({
-        type: 'error',
-        text: `Minimum redemption threshold is ${SWEEPSTAKES_CONFIG.minRedemptionSC} SC.`,
-      });
-      return;
-    }
-
-    if (amount > sweepsCoins) {
-      setRedeemFeedback({
-        type: 'error',
-        text: `Insufficient Sweeps Coins balance. You have ${sweepsCoins.toFixed(2)} SC.`,
-      });
-      return;
-    }
-
-    if (!redeemDestination.trim()) {
-      setRedeemFeedback({
-        type: 'error',
-        text: `Please enter your ${provider === 'chime' ? 'Chime $Sign / email' : 'bank account / routing details'}.`,
-      });
-      return;
-    }
-
-    setIsRedeeming(true);
-    setRedeemFeedback(null);
-    soundEngine.playButtonClick(640);
-
-    try {
-      const result = await paymentService.processRedemption({
-        scAmount: amount,
-        provider,
-        payoutDestination: redeemDestination,
-      });
-
-      soundEngine.playWin(true);
-      setRedeemFeedback({
-        type: 'success',
-        text: result.message,
-      });
-
-      if (onRedeemSuccess) {
-        onRedeemSuccess(amount);
-      }
-    } catch (err) {
-      setRedeemFeedback({
-        type: 'error',
-        text: err.message || 'Redemption request failed.',
-      });
-    } finally {
-      setIsRedeeming(false);
-    }
-  };
 
   return (
     <div className="payment-modal-backdrop" onClick={onClose}>
@@ -269,14 +114,6 @@ export default function PaymentModal({
           >
             <Gift size={14} />
             <span>Redeem Real Cash Prizes</span>
-          </button>
-
-          <button
-            className={`pay-tab-btn ${activeTab === 'keys' ? 'active' : ''}`}
-            onClick={() => setActiveTab('keys')}
-          >
-            <KeyRound size={14} />
-            <span>Stripe / Chime API Keys</span>
           </button>
 
           <button
@@ -349,122 +186,27 @@ export default function PaymentModal({
                     <span className="price-tag">(${selectedPkg.priceUsd.toFixed(2)} USD)</span>
                   </div>
                 </div>
-
-                <div className="provider-quick-toggle">
-                  <button
-                    type="button"
-                    className={`quick-prov-btn ${provider === 'stripe' ? 'active' : ''}`}
-                    onClick={() => setProvider('stripe')}
-                  >
-                    <CreditCard size={15} />
-                    <span>Card / Stripe</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`quick-prov-btn ${provider === 'chime' ? 'active' : ''}`}
-                    onClick={() => setProvider('chime')}
-                  >
-                    <Building2 size={15} />
-                    <span>Chime Pay</span>
-                  </button>
-                </div>
               </div>
 
-              {/* Right Side: Primary Purchase CTA & Feedback */}
+              {/* Right Side: Purchases paused until server-verified Stripe Checkout is live */}
               <div className="checkout-bar-right">
-                {checkoutFeedback && (
-                  <div className={`compact-feedback ${checkoutFeedback.type}`}>
-                    {checkoutFeedback.type === 'success' ? (
-                      <CheckCircle2 size={15} />
-                    ) : (
-                      <AlertCircle size={15} />
-                    )}
-                    <span>{checkoutFeedback.text}</span>
+                <div className="payments-paused-notice" role="status">
+                  <AlertCircle size={16} />
+                  <div>
+                    <strong>Coin purchases are temporarily paused</strong>
+                    <span>
+                      We're upgrading to secure, server-verified checkout. Your balances are safe and
+                      purchasing will return shortly.
+                    </span>
                   </div>
-                )}
-
-                {provider === 'stripe' ? (
-                  <div className="stripe-cta-cluster">
-                    {selectedPkg.stripePaymentLink && (
-                      <a
-                        href={selectedPkg.stripePaymentLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="stripe-master-pay-btn"
-                        onClick={() => {
-                          soundEngine.playButtonClick(640);
-                          setStripeTabOpened(true);
-                          setCheckoutFeedback({
-                            type: 'success',
-                            text: `Opened Stripe Checkout in a secure tab! Complete payment there, then click below to return to the game.`,
-                          });
-                        }}
-                      >
-                        <div className="stripe-btn-main">
-                          <CreditCard size={18} />
-                          <span>PAY ${selectedPkg.priceUsd.toFixed(2)} VIA STRIPE CHECKOUT</span>
-                          <ExternalLink size={16} />
-                        </div>
-                        <div className="stripe-mini-badges">
-                          <span>Apple Pay</span>
-                          <span>•</span>
-                          <span>Google Pay</span>
-                          <span>•</span>
-                          <span>Cards</span>
-                          <span>•</span>
-                          <span>256-Bit SSL</span>
-                        </div>
-                      </a>
-                    )}
-
-                    {stripeTabOpened ? (
-                      <button
-                        type="button"
-                        className="stripe-return-claim-btn"
-                        onClick={handleClaimStripeAndReturn}
-                      >
-                        <Check size={16} />
-                        <span>I COMPLETED PAYMENT • RETURN TO GAME</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="instant-sandbox-btn"
-                        onClick={handleBuyPackage}
-                        disabled={isProcessing}
-                        title="Instant test mode credit without opening Stripe tab"
-                      >
-                        {isProcessing ? 'Crediting...' : '⚡ Instant Sandbox Credit'}
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="chime-cta-cluster">
-                    <input
-                      type="text"
-                      placeholder="Your $ChimeSign or email"
-                      value={chimeHandle}
-                      onChange={(e) => setChimeHandle(e.target.value)}
-                      className="compact-chime-input"
-                    />
-                    <button
-                      type="button"
-                      className="chime-confirm-pay-btn"
-                      onClick={handleBuyPackage}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? 'Processing...' : `Confirm $${selectedPkg.priceUsd.toFixed(2)} via Chime`}
-                    </button>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
 
             {/* Guarantee Strip */}
             <div className="compact-security-strip">
               <ShieldCheck size={14} className="shield-icon" />
-              <span>US Sweepstakes Rule Compliant (1 SC = $1 USD Prize Value) • No Purchase Necessary • Instant Coin Credit</span>
+              <span>1 SC = $1 USD Prize Value • No Purchase Necessary</span>
             </div>
           </div>
         )}
@@ -485,148 +227,24 @@ export default function PaymentModal({
 
                 <div className="redeem-rules-pill">
                   <Clock size={13} />
-                  <span>Minimum: 50.00 SC ($50 USD) • 1 SC = $1.00 USD • Payout in 24-48 hrs</span>
+                  <span>Minimum: {SWEEPSTAKES_CONFIG.minRedemptionSC}.00 SC • 1 SC = $1.00 USD</span>
                 </div>
               </div>
 
               <div className="redeem-form-card">
-                <div className="section-label">PAYOUT DESTINATION:</div>
-                <div className="provider-selector-row">
-                  <button
-                    type="button"
-                    className={`provider-btn ${provider === 'chime' ? 'active' : ''}`}
-                    onClick={() => setProvider('chime')}
-                  >
-                    <Building2 size={16} />
-                    <div className="provider-texts">
-                      <strong>Chime Account</strong>
-                      <span>Direct to $ChimeSign</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`provider-btn ${provider === 'stripe' ? 'active' : ''}`}
-                    onClick={() => setProvider('stripe')}
-                  >
-                    <CreditCard size={16} />
-                    <div className="provider-texts">
-                      <strong>Bank / Debit Card</strong>
-                      <span>Direct via Stripe Payouts</span>
-                    </div>
-                  </button>
-                </div>
-
-                <div className="field-group">
-                  <label>AMOUNT OF SWEEPS COINS TO REDEEM (MIN 50 SC)</label>
-                  <div className="amount-input-wrap">
-                    <input
-                      type="number"
-                      min={SWEEPSTAKES_CONFIG.minRedemptionSC}
-                      max={sweepsCoins}
-                      step="1"
-                      value={redeemSC}
-                      onChange={(e) => setRedeemSC(e.target.value)}
-                      className="payment-input"
-                    />
-                    <span className="sc-suffix">SC</span>
+                <div className="payments-paused-notice" role="status">
+                  <AlertCircle size={16} />
+                  <div>
+                    <strong>Prize redemptions are temporarily paused</strong>
+                    <span>
+                      We're moving redemptions to a secure, verified system. No redemption requests are
+                      being accepted right now, and nothing has been deducted from your Sweeps Coins.
+                      Your balance is kept and you'll be able to redeem once the upgrade is complete.
+                    </span>
                   </div>
                 </div>
-
-                <div className="field-group">
-                  <label>
-                    {provider === 'chime'
-                      ? 'YOUR CHIME $CHIMESIGN OR LINKED CHIME EMAIL'
-                      : 'BANK ROUTING & ACCOUNT OR DEBIT CARD NUMBER'}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={provider === 'chime' ? '$JohnDoe or john@gmail.com' : 'Bank Acct # or Debit Card'}
-                    value={redeemDestination}
-                    onChange={(e) => setRedeemDestination(e.target.value)}
-                    className="payment-input"
-                  />
-                </div>
-
-                {redeemFeedback && (
-                  <div className={`checkout-feedback-banner ${redeemFeedback.type}`}>
-                    {redeemFeedback.type === 'success' ? (
-                      <CheckCircle2 size={16} />
-                    ) : (
-                      <AlertCircle size={16} />
-                    )}
-                    <span>{redeemFeedback.text}</span>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="pay-now-cta-btn redeem-cta"
-                  onClick={handleRedeem}
-                  disabled={isRedeeming || sweepsCoins < SWEEPSTAKES_CONFIG.minRedemptionSC}
-                >
-                  {isRedeeming ? (
-                    <span>PROCESSING REDEMPTION...</span>
-                  ) : (
-                    <>
-                      <span>SUBMIT REDEMPTION FOR ${(parseFloat(redeemSC) || 0).toFixed(2)} USD</span>
-                      <ArrowRight size={18} />
-                    </>
-                  )}
-                </button>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* TAB 3: STRIPE & CHIME API KEYS CONFIGURATION */}
-        {activeTab === 'keys' && (
-          <div className="payment-tab-content keys-tab">
-            <form onSubmit={handleSaveKeys} className="keys-config-form">
-              <div className="keys-intro-box">
-                <KeyRound size={20} className="key-icon" />
-                <div>
-                  <h4>STRIPE &amp; CHIME API CONFIGURATION</h4>
-                  <p>
-                    Keys are stored securely in your browser environment and used for payment verification.
-                  </p>
-                </div>
-              </div>
-
-              <div className="field-group">
-                <label>STRIPE PUBLISHABLE KEY</label>
-                <input
-                  type="text"
-                  placeholder="pk_test_... or pk_live_..."
-                  value={stripeKeyInput}
-                  onChange={(e) => setStripeKeyInput(e.target.value)}
-                  className="payment-input code-font"
-                />
-              </div>
-
-              <div className="field-group">
-                <label>CHIME USER HANDLE / $CHIMESIGN</label>
-                <input
-                  type="text"
-                  placeholder="$Daniel-Collins-168"
-                  value={chimeHandleInput}
-                  onChange={(e) => setChimeHandleInput(e.target.value)}
-                  className="payment-input code-font"
-                />
-              </div>
-
-              {keysSavedMsg && (
-                <div className="checkout-feedback-banner success">
-                  <CheckCircle2 size={16} />
-                  <span>Configuration saved successfully!</span>
-                </div>
-              )}
-
-              <button type="submit" className="keys-save-btn">
-                <span>SAVE CONFIGURATION</span>
-                <ArrowRight size={16} />
-              </button>
-            </form>
           </div>
         )}
 

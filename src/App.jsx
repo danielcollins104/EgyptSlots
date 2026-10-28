@@ -227,22 +227,15 @@ export default function App() {
     }
   }, []);
 
-  // Handle Stripe Checkout Redirect return (e.g. ?payment=success&pkg=pkg_silver)
+  // NOTE: Purchases must only be credited after server-side Stripe confirmation (webhook).
+  // The old "?payment=success&pkg=..." URL handler credited coins with no verification and
+  // has been removed. Strip those params if present so old links don't linger in the URL.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
       const params = new URLSearchParams(window.location.search);
-      const paymentStatus = params.get('payment');
-      const pkgId = params.get('pkg_id') || params.get('pkg');
-
-      if ((paymentStatus === 'success' || paymentStatus === 'completed') && pkgId) {
-        const pkg = SWEEPSTAKES_CONFIG.storePackages.find((p) => p.id === pkgId);
-        if (pkg) {
-          handlePurchaseSuccess(pkg);
-          setPaymentModalOpen(false);
-          // Clean URL so refresh does not re-credit
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
+      if (params.has('payment') || params.has('pkg') || params.has('pkg_id')) {
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch (_) {}
   }, []);
@@ -1026,19 +1019,6 @@ export default function App() {
                 <span className="pay-btn-primary">REDEEM</span>
                 <span className="pay-btn-secondary">PRIZES</span>
               </div>
-            </button>
-
-            <button
-              className="dc-action-btn config-keys-btn"
-              onClick={() => {
-                soundEngine.playButtonClick(540);
-                setPaymentModalTab('keys');
-                setPaymentModalOpen(true);
-              }}
-              title="Manage Stripe & Chime API Keys / Handles"
-            >
-              <KeyRound size={15} />
-              <span>Keys</span>
             </button>
 
             <button
