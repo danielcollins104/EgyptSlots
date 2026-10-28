@@ -85,7 +85,7 @@ function page({ message = '', isError = false, done = false } = {}) {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="referrer" content="no-referrer" />
+<meta name="referrer" content="same-origin" />
 <title>Stripe Key Setup (local)</title>
 <style>
   body{font-family:system-ui,Segoe UI,sans-serif;background:#0c0414;color:#f1f5f9;margin:0;padding:32px;display:flex;justify-content:center}
@@ -127,7 +127,7 @@ function send(res, status, html) {
     'Cache-Control': 'no-store',
     'X-Frame-Options': 'DENY',
     'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
-    'Referrer-Policy': 'no-referrer',
+    'Referrer-Policy': 'same-origin',
   });
   res.end(html);
 }
@@ -136,7 +136,9 @@ function sameOrigin(req) {
   const allowedHosts = [`${HOST}:${PORT}`, `localhost:${PORT}`];
   if (!allowedHosts.includes(req.headers.host)) return false;
   const origin = req.headers.origin;
-  if (origin && !allowedHosts.some((h) => origin === `http://${h}`)) return false;
+  // Some browsers send "Origin: null" for same-page form posts under strict referrer
+  // policies; the one-time token still protects the endpoint in that case.
+  if (origin && origin !== 'null' && !allowedHosts.some((h) => origin === `http://${h}`)) return false;
   return true;
 }
 
