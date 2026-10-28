@@ -136,12 +136,12 @@ export default function FreeSpinsScreen({
       let retriggeredSpins = 0;
       if (scatterCells.length >= 3) {
         retriggeredSpins = scatterCells.length >= 4 ? 5 : 3;
-        scatterWinCoins = (scatterCells.length >= 4 ? 300 : 100) * multiplier;
+        scatterWinCoins = (scatterCells.length >= 4 ? 180 : 60) * multiplier;
         totalCoinsWon += scatterWinCoins;
         scatterCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
       } else if (scatterCells.length === 2) {
         // 2 Scatters awards a nice coin payout, but no extra spins
-        scatterWinCoins = 30 * multiplier;
+        scatterWinCoins = 15 * multiplier;
         totalCoinsWon += scatterWinCoins;
         scatterCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
       }

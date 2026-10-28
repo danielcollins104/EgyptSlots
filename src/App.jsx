@@ -52,7 +52,7 @@ import './App.css';
 
 const COLS = 5;
 const ROWS = 3;
-const BONUS_METER_GOAL = 12;
+const BONUS_METER_GOAL = 36;
 
 function pickWeightedSymbol(pool, excludeExpanding = false) {
   const filtered = excludeExpanding ? pool.filter((s) => !s.isExpanding) : pool;
@@ -360,7 +360,7 @@ export default function App() {
         if (sym.isBonus) {
           bonusCells.push([c, r]);
           bonusSymRef = sym;
-          meterChargesEarned += 2;
+          meterChargesEarned += 1;
         } else if (sym.isWild && !sym.isExpanding) {
           meterChargesEarned += 1;
         }
@@ -705,7 +705,7 @@ export default function App() {
         nextGrid[4] = [r(7), bonusSym, r(2)];
       } else {
         for (let c = 1; c <= 3; c++) {
-          if (Math.random() < 0.11) {
+          if (Math.random() < 0.035) {
             nextExpanded[c] = true;
             nextGrid[c] = [expSym, expSym, expSym];
           }
@@ -1369,7 +1369,7 @@ export default function App() {
                 <div className="meter-header-row">
                   <span className="meter-title">{THEME_COPY.collectorMeterTitle}</span>
                   <span className="meter-count">
-                    {bonusMeter} / {BONUS_METER_GOAL} {THEME_COPY.collectorMeterUnit} (2× MULT AT 12)
+                    {bonusMeter} / {BONUS_METER_GOAL} {THEME_COPY.collectorMeterUnit} (2× MULT AT {BONUS_METER_GOAL})
                   </span>
                 </div>
                 <div className="meter-gem-pips">
