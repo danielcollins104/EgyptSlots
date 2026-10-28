@@ -277,6 +277,8 @@ body {
   height: 100%;
   display: block;
   transition: transform 0.45s ease;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .ad-hero-main-video {
