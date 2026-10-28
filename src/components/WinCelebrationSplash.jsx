@@ -27,13 +27,13 @@ export default function WinCelebrationSplash({
   if (ratio >= 8) {
     tier = 'mega';
     tierTitle = 'MEGA WIN!';
-    tierSub = 'COLOSSAL PAYOUT!';
-    tierColor = '#fde047';
+    tierSub = 'COLOSSAL EGYPTIAN TREASURE!';
+    tierColor = '#ffd700';
   } else if (ratio >= 3) {
     tier = 'nice';
     tierTitle = 'SUPER WIN!';
     tierSub = 'SPECTACULAR HIT!';
-    tierColor = '#60a5fa';
+    tierColor = '#fbbf24';
   }
 
   useEffect(() => {

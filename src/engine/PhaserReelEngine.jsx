@@ -213,7 +213,9 @@ function create3DPopOutRoyalSprites(sym, size) {
   aCtx.translate(cx, cy);
   aCtx.rotate(tiltRad);
 
-  const fontStr = "900 132px 'Cinzel Decorative', 'Amarante', 'Cinzel', serif";
+  const isTen = sym.letter === '10';
+  const fSize = isTen ? 100 : 132;
+  const fontStr = `900 ${fSize}px 'Cinzel Decorative', 'Amarante', 'Cinzel', serif`;
   aCtx.font = fontStr;
   aCtx.textAlign = 'center';
   aCtx.textBaseline = 'middle';

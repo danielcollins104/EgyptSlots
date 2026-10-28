@@ -4,8 +4,8 @@ import { CASINO_BRAND } from '../config/slotConfig';
 /**
  * Renders the 3D Brushed-24k-Gold, Crimson-Ruby Cabochon, Turquoise-Enamel, and
  * Royal-Lapis-Sapphire Winged Arch Plaque (`logo_long_frame.png` — 5:1 wide aspect ratio)
- * with 3D extruded 24k Gold lettering (`CASINO_BRAND.casinoName`, e.g. "DC ENTERPRISES")
- * sculpted directly inside the recessed velvet nameplate.
+ * with razor-sharp 3D extruded 24k Gold lettering ("DC ENTERPRISES")
+ * sculpted directly inside the recessed velvet nameplate with ZERO blurry white halos.
  */
 export default function DcLogoPlaque({ className = '', textOverride = null }) {
   const canvasRef = useRef(null);
@@ -17,15 +17,18 @@ export default function DcLogoPlaque({ className = '', textOverride = null }) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
-    img.onload = () => {
+    const renderPlaque = () => {
       if (isCancelled || !canvasRef.current) return;
       const canvas = canvasRef.current;
-      const w = 960;
-      const h = Math.round((img.naturalHeight / img.naturalWidth) * w); // ~191px (5:1 wide banner)
+      // High-DPI 2x resolution backing for pin-sharp vector clarity on all displays
+      const w = 1920;
+      const h = Math.round((img.naturalHeight / img.naturalWidth) * w); // ~382px
       canvas.width = w;
       canvas.height = h;
 
       const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.clearRect(0, 0, w, h);
 
       // 1. Draw the 3D Gold, Ruby Cabochon & Lapis Velvet Winged Frame
@@ -38,61 +41,72 @@ export default function DcLogoPlaque({ className = '', textOverride = null }) {
       ctx.save();
       ctx.translate(cx, cy);
 
-      const fontSize = titleText.length > 16 ? 44 : 52;
+      const fontSize = titleText.length > 16 ? 84 : 98;
       ctx.font = `900 ${fontSize}px 'Cinzel Decorative', 'Cinzel', 'Amarante', serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Deep ambient drop shadow onto the Lapis Sapphire velvet plaque
+      // Crisp dark sapphire-black ambient drop shadow directly onto the velvet
       ctx.save();
-      ctx.fillStyle = 'rgba(2, 4, 18, 0.88)';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.92)';
-      ctx.shadowBlur = 10;
-      ctx.shadowOffsetX = 3;
-      ctx.shadowOffsetY = 6;
-      ctx.fillText(titleText, 2, 5);
+      ctx.fillStyle = 'rgba(2, 4, 16, 0.96)';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 8;
+      ctx.fillText(titleText, 0, 6);
       ctx.restore();
 
-      // 3D Bronze-to-Gold Extrusion Stack
-      for (let d = 7; d >= 1; d--) {
-        ctx.fillStyle = d > 4 ? '#451a03' : '#78350f';
-        ctx.strokeStyle = '#3b1103';
-        ctx.lineWidth = 4;
+      // Deep 3D Bronze Chisel Extrusion Stack (bottom-up for crisp depth)
+      for (let d = 12; d >= 1; d--) {
+        ctx.fillStyle = d > 6 ? '#220802' : '#5c2206';
+        ctx.strokeStyle = '#180401';
+        ctx.lineWidth = 6;
         ctx.lineJoin = 'round';
-        ctx.strokeText(titleText, d * 0.45, d * 0.85);
-        ctx.fillText(titleText, d * 0.45, d * 0.85);
+        ctx.strokeText(titleText, 0, d * 0.9);
+        ctx.fillText(titleText, 0, d * 0.9);
       }
 
-      // Outer 24k Gold Bevel Rim
+      // Outer 24k Solid Gold Bevel Stroke (no blurry white halo)
       const rimGrad = ctx.createLinearGradient(0, -fontSize * 0.55, 0, fontSize * 0.55);
-      rimGrad.addColorStop(0, '#fffbeb');
-      rimGrad.addColorStop(0.25, '#fde047');
-      rimGrad.addColorStop(0.55, '#d97706');
-      rimGrad.addColorStop(0.85, '#78350f');
-      rimGrad.addColorStop(1, '#fef08a');
+      rimGrad.addColorStop(0, '#fef08a');
+      rimGrad.addColorStop(0.3, '#f59e0b');
+      rimGrad.addColorStop(0.7, '#b45309');
+      rimGrad.addColorStop(1, '#fde047');
 
       ctx.lineJoin = 'round';
-      ctx.lineWidth = 6.5;
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = '#1a0500';
+      ctx.strokeText(titleText, 0, 0);
+
+      ctx.lineWidth = 5.5;
       ctx.strokeStyle = rimGrad;
       ctx.strokeText(titleText, 0, 0);
 
-      // Rich Metallic 24k Gold & Warm Amber Face Fill (matching `logo_long.png`)
+      // Rich Metallic 24k Gold & Sunburst Face Fill (clean, high-contrast, razor-sharp)
       const faceGrad = ctx.createLinearGradient(0, -fontSize * 0.5, 0, fontSize * 0.5);
-      faceGrad.addColorStop(0, '#ffffff');
-      faceGrad.addColorStop(0.18, '#fef08a');
-      faceGrad.addColorStop(0.48, '#f59e0b');
-      faceGrad.addColorStop(0.78, '#b45309');
-      faceGrad.addColorStop(1, '#fde047');
+      faceGrad.addColorStop(0, '#fffbeb');
+      faceGrad.addColorStop(0.2, '#fde047');
+      faceGrad.addColorStop(0.55, '#f59e0b');
+      faceGrad.addColorStop(0.85, '#b45309');
+      faceGrad.addColorStop(1, '#d97706');
 
       ctx.fillStyle = faceGrad;
       ctx.fillText(titleText, 0, 0);
 
-      // Top Specular Highlight Pin-Stripe
-      ctx.lineWidth = 1.4;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.82)';
-      ctx.strokeText(titleText, -0.6, -1);
+      // Delicate crisp golden top edge highlight
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = '#fffbeb';
+      ctx.strokeText(titleText, 0, -1.2);
 
       ctx.restore();
+    };
+
+    img.onload = () => {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(renderPlaque);
+      } else {
+        renderPlaque();
+      }
     };
 
     img.src = frameSrc;
@@ -104,8 +118,12 @@ export default function DcLogoPlaque({ className = '', textOverride = null }) {
   return (
     <canvas
       ref={canvasRef}
-      className={className}
-      aria-label={titleText}
+      className={`dc-logo-plaque-canvas ${className}`}
+      style={{
+        display: 'block',
+        width: '100%',
+        height: 'auto',
+      }}
     />
   );
 }

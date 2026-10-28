@@ -46,6 +46,8 @@ export default function FreeSpinsScreen({
   const [totalAccumulatedWin, setTotalAccumulatedWin] = useState(0);
   const [lastSpinWin, setLastSpinWin] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
+  const [spinningCols, setSpinningCols] = useState([false, false, false, false, false]);
+  const [landedCols, setLandedCols] = useState([false, false, false, false, false]);
   const [currentGrid, setCurrentGrid] = useState(() => generateFreeSpinsGrid());
   const [winningLines, setWinningLines] = useState([]);
   const [winningCells, setWinningCells] = useState(new Set());
@@ -55,6 +57,11 @@ export default function FreeSpinsScreen({
 
   const isSC = currencyMode === 'SC';
   const autoLoopTimerRef = useRef(null);
+
+  const rollTape = useMemo(() => {
+    const list = FREE_SPINS_CONFIG.symbols;
+    return [...list, ...list];
+  }, []);
 
   // Evaluate Free Spins 15-Payline wins with 3× Multiplier
   const evaluateFreeSpinsWins = useCallback(
@@ -165,13 +172,15 @@ export default function FreeSpinsScreen({
   const hasStartedRef = useRef(false);
   const MAX_SESSION_SPINS = 30; // Safety cap to prevent runaway loops
 
-  // Automated Spin Step
+  // Automated Spin Step with Authentic Staggered Casino Cascade
   const executeAutoSpin = useCallback(() => {
     if (isCompletedRef.current || isSpinningRef.current || spinsLeftRef.current <= 0) {
       return;
     }
     isSpinningRef.current = true;
     setIsSpinning(true);
+    setSpinningCols([true, true, true, true, true]);
+    setLandedCols([false, false, false, false, false]);
     setRetriggerBanner(null);
     setWinningLines([]);
     setWinningCells(new Set());
@@ -184,9 +193,45 @@ export default function FreeSpinsScreen({
     // Generate outcome
     const nextGrid = generateFreeSpinsGrid();
 
-    // Animate spin duration (approx 950ms)
+    // Authentic Sequential Staggered Stops (Reels 1 through 5 land sequentially)
+    const stopDelays = [400, 580, 760, 940, 1120];
+    stopDelays.forEach((delay, colIdx) => {
+      setTimeout(() => {
+        setCurrentGrid((prev) => {
+          const updated = [...prev];
+          updated[colIdx] = nextGrid[colIdx];
+          return updated;
+        });
+
+        setSpinningCols((prev) => {
+          const n = [...prev];
+          n[colIdx] = false;
+          return n;
+        });
+
+        setLandedCols((prev) => {
+          const n = [...prev];
+          n[colIdx] = true;
+          return n;
+        });
+
+        const hasSpecial = nextGrid[colIdx].some((s) => s.isWild || s.isScatter);
+        try {
+          soundEngine.playReelStop(colIdx, hasSpecial);
+        } catch (_) {}
+
+        setTimeout(() => {
+          setLandedCols((prev) => {
+            const n = [...prev];
+            n[colIdx] = false;
+            return n;
+          });
+        }, 320);
+      }, delay);
+    });
+
+    // Evaluate wins after all 5 reels have finished landing with bounce
     setTimeout(() => {
-      setCurrentGrid(nextGrid);
       const {
         wins,
         winCoordSet,
@@ -249,9 +294,9 @@ export default function FreeSpinsScreen({
           if (executeAutoSpinRef.current) {
             executeAutoSpinRef.current();
           }
-        }, wonAmount > 0 ? 1800 : 1100);
+        }, wonAmount > 0 ? 1900 : 1200);
       }
-    }, 1050);
+    }, 1220);
   }, [isSC, betAmount, coinValue, evaluateFreeSpinsWins]);
 
   executeAutoSpinRef.current = executeAutoSpin;
@@ -411,63 +456,120 @@ export default function FreeSpinsScreen({
 
           {/* 5×3 Free Spins Grid Window */}
           <div className="fs-reel-window">
-            <div className={`fs-grid-layout ${isSpinning ? 'spinning' : ''}`}>
-              {currentGrid.map((col, colIdx) => (
-                <div key={colIdx} className="fs-reel-column">
-                  {col.map((sym, rowIdx) => {
-                    const isWinning = winningCells.has(`${colIdx}-${rowIdx}`);
-                    return (
-                      <div
-                        key={rowIdx}
-                        className={`fs-symbol-tile ${
-                          sym.isWild ? 'wild-tile' : sym.isScatter ? 'scatter-tile' : ''
-                        } ${isWinning ? 'winning-tile' : ''}`}
-                        style={{
-                          background: `radial-gradient(circle at 45% 40%, ${sym.tileBgStart} 0%, ${sym.tileBgEnd} 100%)`,
-                          borderColor: sym.accentColor || '#fbbf24',
-                        }}
-                      >
-                        {/* 3D Gold Extruded Bezel Frame */}
-                        <div className="fs-tile-gold-bezel" />
+            <div className="fs-grid-layout">
+              {currentGrid.map((col, colIdx) => {
+                const isColSpinning = spinningCols[colIdx];
+                const isColLanded = landedCols[colIdx];
 
-                        {/* Symbol Center Art / Letter */}
-                        <div className="fs-symbol-art">
-                          <span
-                            className="fs-symbol-icon"
-                            style={{
-                              filter: `drop-shadow(0 0 12px ${sym.gemColor})`,
-                            }}
-                          >
-                            {sym.icon}
-                          </span>
-                          <span
-                            className="fs-symbol-name"
-                            style={{ color: sym.gemHighlight || '#ffffff' }}
-                          >
-                            {sym.letter}
-                          </span>
-                        </div>
-
-                        {/* Special Badges (3× WILD or +3 SPINS) */}
-                        {sym.badge && (
+                if (isColSpinning) {
+                  return (
+                    <div
+                      key={colIdx}
+                      className="fs-reel-column is-column-spinning"
+                    >
+                      <div className="fs-reel-strip-scroller">
+                        {rollTape.map((sym, rIdx) => (
                           <div
-                            className="fs-tile-badge"
+                            key={rIdx}
+                            className="fs-symbol-tile strip-tile"
                             style={{
-                              background: sym.gemColor,
-                              color: '#1a0e05',
+                              background: `radial-gradient(circle at 45% 40%, ${sym.tileBgStart} 0%, ${sym.tileBgEnd} 100%)`,
+                              borderColor: sym.accentColor || '#fbbf24',
                             }}
                           >
-                            {sym.badge}
+                            <div className="fs-tile-gold-bezel" />
+                            {sym.image ? (
+                              <img
+                                src={sym.image}
+                                alt={sym.name}
+                                className="fs-tile-3d-art"
+                                draggable={false}
+                              />
+                            ) : (
+                              <div className="fs-royal-letter-wrap">
+                                <span className="fs-royal-letter-3d">{sym.letter}</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-
-                        {/* Winning Highlight Border Glow */}
-                        {isWinning && <div className="fs-winning-border-glow" />}
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
-              ))}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={colIdx}
+                    className={`fs-reel-column ${isColLanded ? 'col-landed-bounce' : ''}`}
+                  >
+                    {col.map((sym, rowIdx) => {
+                      const isWinning = winningCells.has(`${colIdx}-${rowIdx}`);
+                      return (
+                        <div
+                          key={rowIdx}
+                          className={`fs-symbol-tile ${
+                            sym.isWild ? 'wild-tile' : sym.isScatter ? 'scatter-tile' : ''
+                          } ${isWinning ? 'winning-tile' : ''}`}
+                          style={{
+                            background: `radial-gradient(circle at 45% 40%, ${sym.tileBgStart} 0%, ${sym.tileBgEnd} 100%)`,
+                            borderColor: sym.accentColor || '#fbbf24',
+                          }}
+                        >
+                          {/* 3D Gold Extruded Bezel Frame */}
+                          <div className="fs-tile-gold-bezel" />
+
+                          {/* 3D Graphic Asset or 3D Sculpted Royal Letter */}
+                          {sym.image ? (
+                            <img
+                              src={sym.image}
+                              alt={sym.name}
+                              className="fs-tile-3d-art"
+                              draggable={false}
+                            />
+                          ) : (
+                            <div className="fs-royal-letter-wrap">
+                              <span
+                                className="fs-royal-letter-3d"
+                                style={{
+                                  filter: `drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 10px ${sym.gemColor || 'rgba(245, 158, 11, 0.6)'})`,
+                                }}
+                              >
+                                {sym.letter}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Symbol Name Label */}
+                          <div className="fs-tile-label-bar">
+                            <span
+                              className="fs-tile-name-txt"
+                              style={{ color: sym.gemHighlight || '#fef08a' }}
+                            >
+                              {sym.name}
+                            </span>
+                          </div>
+
+                          {/* Special Badges (3× WILD or +3 SPINS) */}
+                          {sym.badge && (
+                            <div
+                              className="fs-tile-badge"
+                              style={{
+                                background: sym.gemColor || '#fbbf24',
+                                color: '#1a0e05',
+                              }}
+                            >
+                              {sym.badge}
+                            </div>
+                          )}
+
+                          {/* Winning Highlight Border Glow */}
+                          {isWinning && <div className="fs-winning-border-glow" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
 
             {/* In-Game Win Celebration Animation Banner */}
