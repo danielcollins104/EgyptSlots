@@ -9,6 +9,7 @@ class SoundEngine {
     this.muted = false;
     this.ambientGain = null;
     this.ambientOscs = [];
+    this.ambientStarted = false;
     this.lastTickMs = 0;
   }
 
@@ -22,12 +23,42 @@ class SoundEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+    if (!this.ambientStarted) {
+      this.startAmbientDrone();
+    }
+  }
+
+  startAmbientDrone() {
+    if (this.ambientStarted || !this.ctx) return;
+    try {
+      this.ambientStarted = true;
+      this.ambientGain = this.ctx.createGain();
+      this.ambientGain.gain.setValueAtTime(this.muted ? 0 : 0.035, this.ctx.currentTime);
+      this.ambientGain.connect(this.ctx.destination);
+
+      // Lowpass filter for smooth, warm Egyptian temple meditative drone
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(360, this.ctx.currentTime);
+      filter.connect(this.ambientGain);
+
+      // 432Hz Solfeggio meditative harmonic series: 108Hz, 216Hz, 324Hz, 432Hz
+      const droneFreqs = [108.0, 216.0, 324.0, 432.0];
+      droneFreqs.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        osc.type = i === 0 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        osc.connect(filter);
+        osc.start();
+        this.ambientOscs.push(osc);
+      });
+    } catch (_) {}
   }
 
   setMuted(muted) {
     this.muted = muted;
     if (this.ambientGain && this.ctx) {
-      this.ambientGain.gain.setTargetAtTime(muted ? 0 : 0.04, this.ctx.currentTime, 0.2);
+      this.ambientGain.gain.setTargetAtTime(muted ? 0 : 0.035, this.ctx.currentTime, 0.2);
     }
   }
 
@@ -107,6 +138,35 @@ class SoundEngine {
       gain.connect(this.ctx.destination);
       osc.start(t);
       osc.stop(t + 0.19);
+    });
+  }
+
+  playFlowStreak(streak = 1) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    this.triggerHaptics([18, 30]);
+
+    const now = this.ctx.currentTime;
+    // Harmonic Solfeggio ascensions scaling with streak: 432Hz, 528Hz, 639Hz
+    const root = 432.0 * Math.pow(1.06, Math.min(8, streak));
+    const freqs = [root, root * 1.25, root * 1.5];
+
+    freqs.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      const t = now + idx * 0.04;
+      osc.frequency.setValueAtTime(freq, t);
+
+      gain.gain.setValueAtTime(0.09, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.34);
     });
   }
 

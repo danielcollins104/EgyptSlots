@@ -595,8 +595,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     instantStop: () => {
       engineRef.current?.instantStop?.();
     },
-    startSpin: (targetGrid, targetExpanded) => {
-      engineRef.current?.startSpin?.(targetGrid, targetExpanded);
+    startSpin: (targetGrid, targetExpanded, isTurbo = false) => {
+      engineRef.current?.startSpin?.(targetGrid, targetExpanded, isTurbo);
     },
   }), []);
 
@@ -874,8 +874,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       );
     })();
 
-    // Spin Controller
-    const startSpin = (targetGrid, targetExpanded) => {
+    // Spin Controller with Turbo Flow Mode support
+    const startSpin = (targetGrid, targetExpanded, isTurbo = false) => {
       reels.forEach((reel) => {
         reel.tweens.forEach((t) => t.kill());
         reel.tweens = [];
@@ -892,7 +892,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         reel.offsetY = 0;
         reel.velocity = 0;
         reel.landingQueue = null;
-        reel.anticipation = specialCountSoFar >= 1 && c >= 2;
+        reel.isTurbo = isTurbo;
+        reel.anticipation = specialCountSoFar >= 1 && c >= 2 && !isTurbo;
 
         if (
           reel.willExpand ||
@@ -901,30 +902,32 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           specialCountSoFar++;
         }
 
-        const spinDurationSec = 0.28 + c * 0.21 + (reel.anticipation ? 0.34 : 0);
-        const peakVelocity = reel.anticipation ? 2750 : 2350;
+        const spinDurationSec = isTurbo
+          ? 0.12 + c * 0.07
+          : 0.28 + c * 0.21 + (reel.anticipation ? 0.34 : 0);
+        const peakVelocity = reel.anticipation ? 2750 : (isTurbo ? 2950 : 2350);
 
         reel.state = 'WINDUP';
 
-        const tl = gsap.timeline({ delay: c * 0.04 });
+        const tl = gsap.timeline({ delay: isTurbo ? c * 0.02 : c * 0.04 });
         reel.tweens.push(tl);
 
         tl.to(reel, {
-          offsetY: -20,
-          duration: 0.11,
+          offsetY: isTurbo ? -10 : -20,
+          duration: isTurbo ? 0.05 : 0.11,
           ease: 'power2.out',
         })
           .call(() => {
             reel.state = 'SPINNING';
             reel.offsetY = 0;
-            reel.velocity = 380;
-            if (reel.anticipation) {
+            reel.velocity = isTurbo ? 550 : 380;
+            if (reel.anticipation && !isTurbo) {
               soundEngine.playAnticipationRiser();
             }
           })
           .to(reel, {
             velocity: peakVelocity,
-            duration: 0.19,
+            duration: isTurbo ? 0.08 : 0.19,
             ease: 'power2.in',
           })
           .to(reel, {
@@ -1008,10 +1011,12 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       const bounceTl = gsap.timeline();
       reel.tweens.push(bounceTl);
 
+      const isTurbo = Boolean(reel.isTurbo);
+
       bounceTl
         .to(reel, {
-          offsetY: 20,
-          duration: 0.095,
+          offsetY: isTurbo ? 10 : 20,
+          duration: isTurbo ? 0.05 : 0.095,
           ease: 'power2.in',
           onComplete: () => {
             soundEngine.playReelStop(reel.colIndex, hasSpecial);
@@ -1030,8 +1035,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         })
         .to(reel, {
           offsetY: 0,
-          duration: 0.22,
-          ease: 'back.out(2.3)',
+          duration: isTurbo ? 0.12 : 0.22,
+          ease: isTurbo ? 'back.out(1.8)' : 'back.out(2.3)',
           onComplete: () => {
             reel.state = 'IDLE';
 
@@ -1351,7 +1356,11 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
 
   useEffect(() => {
     if (!spinTrigger || !engineRef.current) return;
-    engineRef.current.startSpin(spinTrigger.targetGrid, spinTrigger.targetExpanded);
+    engineRef.current.startSpin(
+      spinTrigger.targetGrid,
+      spinTrigger.targetExpanded,
+      Boolean(spinTrigger.isTurbo)
+    );
   }, [spinTrigger]);
 
   return (

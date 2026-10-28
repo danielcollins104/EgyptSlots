@@ -6199,5 +6199,111 @@ body {
   }
 }
 
+/* ============================================================================
+   10. PSYCHOLOGICAL FLOW STATE & CADENCE STYLING
+   ============================================================================ */
+
+/* Turbo Flow Button */
+.turbo-flow-btn {
+  background: linear-gradient(135deg, rgba(30, 20, 50, 0.9) 0%, rgba(15, 10, 30, 0.9) 100%) !important;
+  border-color: rgba(255, 215, 0, 0.4) !important;
+  color: #fbbf24 !important;
+  transition: all 0.2s ease;
+}
+
+.turbo-flow-btn.active-turbo {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 50%, #78350f 100%) !important;
+  border-color: #ffd700 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  font-weight: 900 !important;
+}
+
+.zap-turbo-active {
+  color: #ffd700;
+  animation: pulseFloat 1s ease-in-out infinite alternate;
+}
+
+.mobile-dock-turbo-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 9px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(251, 191, 36, 0.5);
+  background: linear-gradient(135deg, rgba(30, 20, 45, 0.9) 0%, rgba(15, 8, 25, 0.9) 100%);
+  color: #fbbf24;
+  font-family: var(--font-royal, 'Cinzel Decorative', serif);
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+  min-height: 38px;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: all 0.15s ease;
+}
+
+.mobile-dock-turbo-btn.active {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  border-color: #ffd700;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.7);
+}
+
+.mobile-drawer-card.active-card {
+  background: rgba(251, 191, 36, 0.2) !important;
+  border-color: #ffd700 !important;
+}
+
+/* Cabinet Flow Momentum Aura (Radiates when rhythmic cadence >= 3 spins) */
+.reel-cabinet-box.flow-momentum-active {
+  animation: cabinetFlowAuraPulse 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes cabinetFlowAuraPulse {
+  0% {
+    filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.35)) drop-shadow(0 0 35px rgba(255, 215, 0, 0.25));
+  }
+  100% {
+    filter: drop-shadow(0 0 28px rgba(0, 229, 255, 0.6)) drop-shadow(0 0 50px rgba(255, 215, 0, 0.45));
+  }
+}
+
+/* Flow Streak Badge on the Cabinet Arch */
+.flow-streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.3) 0%, rgba(255, 215, 0, 0.3) 100%);
+  border: 1px solid #00e5ff;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px #00e5ff;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+  animation: flowBadgePop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+
+@keyframes flowBadgePop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.flow-badge-zap {
+  color: #ffd700;
+  animation: rotateFast 2.5s linear infinite;
+}
+
+
 
 

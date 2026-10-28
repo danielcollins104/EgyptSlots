@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Zap,
 } from 'lucide-react';
 import {
   CASINO_BRAND,
@@ -144,6 +145,7 @@ export default function App() {
   const [spinTrigger, setSpinTrigger] = useState(null);
   const [spinId, setSpinId] = useState(0);
   const pendingSpinRef = useRef(null);
+  const triggerSpinRef = useRef(null);
 
   // Win state
   const [lastWinCoins, setLastWinCoins] = useState(0);
@@ -182,6 +184,12 @@ export default function App() {
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Psychological Flow State & Rhythm Cadence Engine
+  const [turboFlow, setTurboFlow] = useState(false);
+  const [flowStreak, setFlowStreak] = useState(0);
+  const isHoldingSpinRef = useRef(false);
+  const lastSpinEndTimeRef = useRef(0);
 
   // Direct Bet calculations for GC and SC
   const activeBetTiers = currencyMode === 'SC' ? BET_TIERS_SC : BET_TIERS_GC;
@@ -543,6 +551,40 @@ export default function App() {
       setStatusMessage(`${CASINO_BRAND.casinoFullTitle} • ${CASINO_BRAND.edition}`);
     }
 
+    // Psychological Flow State Momentum Tracking
+    const nowMs = performance.now();
+    const intervalSinceLastSpin = nowMs - lastSpinEndTimeRef.current;
+    lastSpinEndTimeRef.current = nowMs;
+
+    let nextStreak = 1;
+    if (intervalSinceLastSpin < (turboFlow ? 3500 : 5500)) {
+      nextStreak = flowStreak + 1;
+      setFlowStreak(nextStreak);
+      if (nextStreak >= 3) {
+        soundEngine.playFlowStreak(nextStreak);
+        if (totalCoinsWon === 0) {
+          setStatusMessage(`⚡ FLOW MOMENTUM ACTIVE (${nextStreak}X RHYTHM CHAIN) • IN THE ZONE!`);
+        }
+      }
+    } else {
+      setFlowStreak(1);
+    }
+
+    // Continuous Hold-to-Spin Flow Loop
+    if (
+      isHoldingSpinRef.current &&
+      bonusCount < 3 &&
+      !meterTriggeredBonus &&
+      !freeSpinsOpen &&
+      !bonusSession
+    ) {
+      setTimeout(() => {
+        if (isHoldingSpinRef.current && !isSpinningRef.current) {
+          triggerSpinRef.current?.();
+        }
+      }, turboFlow ? 140 : 280);
+    }
+
     // Launch the Celestial Free Spins Feature if 3+ Scatters landed!
     if (bonusCount >= 3) {
       setAutoPlayCount(0);
@@ -566,7 +608,7 @@ export default function App() {
         });
       }, 750);
     }
-  }, [evaluateGridWins, currencyMode]);
+  }, [evaluateGridWins, currencyMode, turboFlow, flowStreak]);
 
   const openBonusGamesManually = (defaultGame = 'vault') => {
     if (isSpinning) return;
@@ -766,6 +808,7 @@ export default function App() {
         id: Date.now() + Math.random(),
         targetGrid: nextGrid,
         targetExpanded: nextExpanded,
+        isTurbo: turboFlow,
       });
     },
     [
@@ -777,8 +820,11 @@ export default function App() {
       currencyMode,
       currentBetGC,
       currentBetSC,
+      turboFlow,
     ]
   );
+
+  triggerSpinRef.current = triggerSpin;
 
   // Autoplay handler
   useEffect(() => {
@@ -786,26 +832,42 @@ export default function App() {
       const timer = setTimeout(() => {
         setAutoPlayCount((prev) => Math.max(0, prev - 1));
         triggerSpin();
-      }, 950);
+      }, turboFlow ? 450 : 900);
       return () => clearTimeout(timer);
     }
-  }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, freeSpinsOpen, triggerSpin]);
+  }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, freeSpinsOpen, triggerSpin, turboFlow]);
 
-  // Spacebar shortcut to Spin
+  // Spacebar continuous hold-to-spin and instant tap-to-spin
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.code === 'Space' && !showSplash && !paytableOpen && !bonusSession && !freeSpinsOpen) {
         e.preventDefault();
+        if (e.repeat) return; // Prevent browser repeat events
+        isHoldingSpinRef.current = true;
         if (bigWinAmount > 0) {
           setBigWinAmount(0);
+        } else if (winSplashAmount > 0) {
+          setWinSplashAmount(0);
+          triggerSpin();
         } else {
           triggerSpin();
         }
       }
     };
+
+    const onKeyUp = (e) => {
+      if (e.code === 'Space') {
+        isHoldingSpinRef.current = false;
+      }
+    };
+
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showSplash, paytableOpen, bonusSession, bigWinAmount, triggerSpin]);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [showSplash, paytableOpen, bonusSession, freeSpinsOpen, bigWinAmount, winSplashAmount, triggerSpin]);
 
   const handleBetChange = (delta) => {
     if (isSpinning) return;
@@ -996,6 +1058,19 @@ export default function App() {
         {/* Desktop Interactive Demo Feature Buttons & Color Spectrum Switcher */}
         <div className="dc-topbar-actions desktop-actions">
           <button
+            className={`dc-action-btn turbo-flow-btn ${turboFlow ? 'active-turbo' : ''}`}
+            onClick={() => {
+              soundEngine.playButtonClick(turboFlow ? 440 : 880);
+              setTurboFlow(!turboFlow);
+            }}
+            onMouseEnter={() => soundEngine.playButtonHover()}
+            title={turboFlow ? "Turbo Flow Active: Rapid Spins (Click to switch to Standard)" : "Enable Turbo Flow: Hypnotic Rapid Spins"}
+          >
+            <Zap size={15} className={turboFlow ? 'zap-turbo-active' : ''} />
+            <span>{turboFlow ? 'TURBO ON' : 'TURBO'}</span>
+          </button>
+
+          <button
             className="dc-action-btn special-bonus"
             onClick={() => triggerSpin('bonus')}
             disabled={isSpinning}
@@ -1137,6 +1212,20 @@ export default function App() {
             </button>
           </div>
           <div className="mobile-drawer-grid">
+            <button
+              className={`mobile-drawer-card turbo-card ${turboFlow ? 'active-card' : ''}`}
+              onClick={() => {
+                soundEngine.playButtonClick(turboFlow ? 440 : 880);
+                setTurboFlow(!turboFlow);
+              }}
+            >
+              <Zap size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>{turboFlow ? '⚡ Turbo Flow: ON' : '⚡ Turbo Flow: OFF'}</strong>
+                <small>Hypnotic rapid cadence</small>
+              </div>
+            </button>
+
             <button
               className="mobile-drawer-card bonus-card"
               onClick={() => {
@@ -1330,7 +1419,7 @@ export default function App() {
 
         {/* Center Slot Machine Cabinet */}
         <section className="slot-cabinet-wrapper">
-          <div className={`reel-cabinet-box ${cabinetImpact ? `cabinet-impact-${cabinetImpact}` : ''}`}>
+          <div className={`reel-cabinet-box ${cabinetImpact ? `cabinet-impact-${cabinetImpact}` : ''} ${flowStreak >= 3 ? 'flow-momentum-active' : ''}`}>
             <img
               src={THEME_ASSETS.reelGlowImage}
               alt=""
@@ -1363,6 +1452,12 @@ export default function App() {
               <span>{CASINO_BRAND.casinoFullTitle}</span>
               <span className="arch-dot">⚡</span>
               <span>CREATED BY {CASINO_BRAND.creatorName.toUpperCase()}</span>
+              {flowStreak >= 3 && (
+                <div className="flow-streak-badge">
+                  <Zap size={11} className="flow-badge-zap" />
+                  <span>FLOW ×{flowStreak}</span>
+                </div>
+              )}
             </div>
 
             {/* 5x3 Reel Window */}
@@ -1495,9 +1590,12 @@ export default function App() {
                 <button
                   className={`psd-spin-button ${isSpinning ? 'spinning' : ''}`}
                   onClick={() => triggerSpin()}
+                  onPointerDown={() => { isHoldingSpinRef.current = true; }}
+                  onPointerUp={() => { isHoldingSpinRef.current = false; }}
+                  onPointerLeave={() => { isHoldingSpinRef.current = false; }}
                   onMouseEnter={() => soundEngine.playButtonHover()}
                   aria-label={isSpinning ? 'Instant Stop' : 'Spin Reels'}
-                  title={isSpinning ? 'Instant Stop (Spacebar)' : 'Spin Reels (Spacebar)'}
+                  title={isSpinning ? 'Instant Stop (Spacebar)' : 'Spin Reels (Hold Spacebar or Click for Continuous Flow)'}
                 >
                   <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
                   <img
@@ -1810,8 +1908,11 @@ export default function App() {
         <button
           className={`mobile-dock-spin-btn ${isSpinning ? 'spinning' : ''}`}
           onClick={() => triggerSpin()}
+          onPointerDown={() => { isHoldingSpinRef.current = true; }}
+          onPointerUp={() => { isHoldingSpinRef.current = false; }}
+          onPointerLeave={() => { isHoldingSpinRef.current = false; }}
           aria-label={isSpinning ? 'Instant Stop' : 'Spin Reels'}
-          title={isSpinning ? 'Instant Stop' : 'Spin Reels'}
+          title={isSpinning ? 'Instant Stop' : 'Spin Reels (Hold for Continuous Flow)'}
         >
           <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
           <RotateCw size={26} className={`dock-spin-icon ${isSpinning ? 'dock-spin-animated' : ''}`} />
@@ -1829,6 +1930,20 @@ export default function App() {
                 : '0'}
             </span>
           </div>
+
+          <button
+            className={`mobile-dock-turbo-btn ${turboFlow ? 'active' : ''}`}
+            onClick={() => {
+              soundEngine.playButtonClick(turboFlow ? 440 : 880);
+              setTurboFlow(!turboFlow);
+            }}
+            aria-label="Toggle Turbo Flow Mode"
+            title="Toggle Turbo Flow Mode"
+          >
+            <Zap size={13} />
+            <span>{turboFlow ? 'TURBO' : 'NORM'}</span>
+          </button>
+
           <button
             className={`mobile-dock-auto-btn ${autoPlayCount > 0 ? 'active' : ''}`}
             onClick={handleAutoPlayToggle}

@@ -56,9 +56,9 @@ export default function WinCelebrationSplash({
       soundEngine.playWinCelebration(tier);
     } catch (_) {}
 
-    // Roll up counter animation
+    // Roll up counter animation (tuned for flow state: snappier on standard hits, majestic on mega hits)
     const startTime = performance.now();
-    const duration = Math.min(1600, Math.max(600, ratio * 180));
+    const duration = Math.min(1200, Math.max(360, ratio * 130));
     let lastRendered = -1;
     let animId;
 
@@ -85,13 +85,14 @@ export default function WinCelebrationSplash({
 
     animId = requestAnimationFrame(animateRoll);
 
-    // Auto dismiss after 2.4s and notify parent - strictly one-shot!
+    // Auto dismiss after duration + hold: brief on minor wins to maintain flow rhythm
+    const autoDismissMs = ratio >= 8 ? 2200 : ratio >= 3 ? 1600 : 1200;
     const timer = setTimeout(() => {
       setVisible(false);
       if (onCloseRef.current) {
         onCloseRef.current();
       }
-    }, 2400);
+    }, autoDismissMs);
 
     return () => {
       cancelAnimationFrame(animId);
