@@ -21,9 +21,9 @@ import DcLogoPlaque from './DcLogoPlaque';
 
 export default function SplashScreen({ onEnterCasino }) {
   const [exiting, setExiting] = useState(false);
-  const [artMode, setArtMode] = useState('creative'); // 'video' | 'creative' | 'original'
+  const [artMode, setArtMode] = useState(THEME_ASSETS.splashVideo ? 'video' : 'creative'); // 'video' | 'creative' | 'original'
   const [liveJackpot, setLiveJackpot] = useState(12584920);
-  const [videoAvailable, setVideoAvailable] = useState(false);
+  const [videoAvailable, setVideoAvailable] = useState(!!THEME_ASSETS.splashVideo);
   const [customVideoUrl, setCustomVideoUrl] = useState(null);
   const [isVideoMuted, setIsVideoMuted] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
@@ -127,6 +127,10 @@ export default function SplashScreen({ onEnterCasino }) {
           muted
           playsInline
           className="ad-splash-ambient-video"
+          onError={() => {
+            setVideoAvailable(false);
+            setArtMode('creative');
+          }}
         />
       ) : (
         <div
@@ -192,6 +196,10 @@ export default function SplashScreen({ onEnterCasino }) {
               muted={isVideoMuted}
               playsInline
               className="ad-hero-main-video"
+              onError={() => {
+                setVideoAvailable(false);
+                setArtMode('creative');
+              }}
             />
           ) : (
             <img
