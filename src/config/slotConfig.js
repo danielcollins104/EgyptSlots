@@ -734,7 +734,7 @@ export const FREE_SPINS_CONFIG = {
       name: 'Sun God Ra Aureole',
       letter: '+3 SPINS',
       isScatter: true,
-      weight: 8,
+      weight: 4,
       payouts: { 2: 30, 3: 100, 4: 300, 5: 1000 },
       gemColor: '#ffd700',
       gemHighlight: '#ffffff',
@@ -743,7 +743,7 @@ export const FREE_SPINS_CONFIG = {
       badge: '+3 SPINS',
       accentColor: '#ffd700',
       icon: '☀️',
-      description: 'Land 2 or more anywhere to retrigger +3 FREE SPINS!',
+      description: 'Land 3 or more anywhere to retrigger +3 FREE SPINS!',
     },
     {
       id: 'fs_mask',

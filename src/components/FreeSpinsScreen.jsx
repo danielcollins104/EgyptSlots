@@ -55,7 +55,6 @@ export default function FreeSpinsScreen({
 
   const isSC = currencyMode === 'SC';
   const autoLoopTimerRef = useRef(null);
-  const isRunningRef = useRef(false);
 
   // Evaluate Free Spins 15-Payline wins with 3× Multiplier
   const evaluateFreeSpinsWins = useCallback(
@@ -123,7 +122,7 @@ export default function FreeSpinsScreen({
         }
       }
 
-      // 2. Evaluate Sun God Ra Retrigger Scatters (2+ Scatters)
+      // 2. Evaluate Sun God Ra Retrigger Scatters (3+ Scatters required for extra free spins)
       const scatterCells = [];
       for (let c = 0; c < COLS; c++) {
         for (let r = 0; r < ROWS; r++) {
@@ -135,9 +134,14 @@ export default function FreeSpinsScreen({
 
       let scatterWinCoins = 0;
       let retriggeredSpins = 0;
-      if (scatterCells.length >= 2) {
-        retriggeredSpins = scatterCells.length >= 3 ? 5 : 3;
-        scatterWinCoins = (scatterCells.length >= 3 ? 100 : 30) * multiplier;
+      if (scatterCells.length >= 3) {
+        retriggeredSpins = scatterCells.length >= 4 ? 5 : 3;
+        scatterWinCoins = (scatterCells.length >= 4 ? 300 : 100) * multiplier;
+        totalCoinsWon += scatterWinCoins;
+        scatterCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
+      } else if (scatterCells.length === 2) {
+        // 2 Scatters awards a nice coin payout, but no extra spins
+        scatterWinCoins = 30 * multiplier;
         totalCoinsWon += scatterWinCoins;
         scatterCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
       }
@@ -153,15 +157,29 @@ export default function FreeSpinsScreen({
     []
   );
 
+  const spinsLeftRef = useRef(initialSpins);
+  const totalAwardedRef = useRef(initialSpins);
+  const isSpinningRef = useRef(false);
+  const isCompletedRef = useRef(false);
+  const executeAutoSpinRef = useRef();
+  const hasStartedRef = useRef(false);
+  const MAX_SESSION_SPINS = 30; // Safety cap to prevent runaway loops
+
   // Automated Spin Step
   const executeAutoSpin = useCallback(() => {
-    if (isCompleted || isRunningRef.current) return;
-    isRunningRef.current = true;
+    if (isCompletedRef.current || isSpinningRef.current || spinsLeftRef.current <= 0) {
+      return;
+    }
+    isSpinningRef.current = true;
     setIsSpinning(true);
     setRetriggerBanner(null);
     setWinningLines([]);
     setWinningCells(new Set());
     soundEngine.playSpinStart();
+
+    // Deduct exactly 1 spin for this spin execution
+    spinsLeftRef.current -= 1;
+    setSpinsRemaining(spinsLeftRef.current);
 
     // Generate outcome
     const nextGrid = generateFreeSpinsGrid();
@@ -176,8 +194,6 @@ export default function FreeSpinsScreen({
         retriggeredSpins,
         scatterCount,
       } = evaluateFreeSpinsWins(nextGrid);
-
-      setIsSpinning(false);
 
       // Calculate won amount in active currency
       let wonAmount = 0;
@@ -199,51 +215,69 @@ export default function FreeSpinsScreen({
         setLastSpinWin(0);
       }
 
-      // Retrigger Scatters handler
+      // Retrigger Scatters handler (3+ Scatters only, subject to session ceiling)
       if (retriggeredSpins > 0) {
-        soundEngine.playBonusTrigger();
-        setRetriggerBanner(
-          `☀️ ${scatterCount}× SUN GOD RA SCATTERS! +${retriggeredSpins} EXTRA FREE SPINS!`
+        const canAward = Math.min(
+          retriggeredSpins,
+          Math.max(0, MAX_SESSION_SPINS - totalAwardedRef.current)
         );
-        setSpinsRemaining((prev) => prev + retriggeredSpins);
-        setTotalSpinsAwarded((prev) => prev + retriggeredSpins);
-      } else {
-        setSpinsRemaining((prev) => Math.max(0, prev - 1));
+        if (canAward > 0) {
+          spinsLeftRef.current += canAward;
+          totalAwardedRef.current += canAward;
+          setSpinsRemaining(spinsLeftRef.current);
+          setTotalSpinsAwarded(totalAwardedRef.current);
+          soundEngine.playBonusTrigger();
+          setRetriggerBanner(
+            `☀️ ${scatterCount}× SUN GOD RA SCATTERS! +${canAward} EXTRA FREE SPINS!`
+          );
+        }
       }
 
-      // Decide next step in automatic loop
-      setSpinsRemaining((currSpins) => {
-        const nextSpins = retriggeredSpins > 0 ? currSpins : currSpins - 1;
-        if (nextSpins <= 0) {
-          // Finished all spins!
-          setTimeout(() => {
-            setIsCompleted(true);
-            soundEngine.playWin(true);
-            isRunningRef.current = false;
-          }, 1400);
-        } else {
-          // Schedule next automatic spin
-          autoLoopTimerRef.current = setTimeout(() => {
-            isRunningRef.current = false;
-            executeAutoSpin();
-          }, wonAmount > 0 ? 1900 : 1200);
-        }
-        return nextSpins;
-      });
-    }, 1100);
-  }, [isCompleted, isSC, betAmount, coinValue, evaluateFreeSpinsWins]);
+      // Check for completion or schedule next automatic spin
+      if (spinsLeftRef.current <= 0) {
+        isCompletedRef.current = true;
+        setIsSpinning(false);
+        isSpinningRef.current = false;
+        setTimeout(() => {
+          setIsCompleted(true);
+          soundEngine.playWin(true);
+        }, 1200);
+      } else {
+        setIsSpinning(false);
+        isSpinningRef.current = false;
+        autoLoopTimerRef.current = setTimeout(() => {
+          if (executeAutoSpinRef.current) {
+            executeAutoSpinRef.current();
+          }
+        }, wonAmount > 0 ? 1800 : 1100);
+      }
+    }, 1050);
+  }, [isSC, betAmount, coinValue, evaluateFreeSpinsWins]);
 
-  // Initial Countdown & Auto-Start Loop
+  executeAutoSpinRef.current = executeAutoSpin;
+
+  // Initial Countdown & Auto-Start Loop (Runs strictly once per modal opening)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      hasStartedRef.current = false;
+      if (autoLoopTimerRef.current) clearTimeout(autoLoopTimerRef.current);
+      return;
+    }
+
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
 
     // Reset session
+    spinsLeftRef.current = initialSpins;
+    totalAwardedRef.current = initialSpins;
+    isSpinningRef.current = false;
+    isCompletedRef.current = false;
+
     setSpinsRemaining(initialSpins);
     setTotalSpinsAwarded(initialSpins);
     setTotalAccumulatedWin(0);
     setLastSpinWin(0);
     setIsCompleted(false);
-    isRunningRef.current = false;
     setCountdown(2);
 
     const countInterval = setInterval(() => {
@@ -252,8 +286,10 @@ export default function FreeSpinsScreen({
           clearInterval(countInterval);
           // Launch automatic spin 1
           setTimeout(() => {
-            executeAutoSpin();
-          }, 600);
+            if (executeAutoSpinRef.current) {
+              executeAutoSpinRef.current();
+            }
+          }, 500);
           return 0;
         }
         return prev - 1;
@@ -264,7 +300,7 @@ export default function FreeSpinsScreen({
       clearInterval(countInterval);
       if (autoLoopTimerRef.current) clearTimeout(autoLoopTimerRef.current);
     };
-  }, [isOpen, initialSpins, executeAutoSpin]);
+  }, [isOpen, initialSpins]);
 
   if (!isOpen) return null;
 
