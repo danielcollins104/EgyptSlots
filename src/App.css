@@ -1326,8 +1326,20 @@ body {
 }
 
 .psd-stat-value.coins-number {
-  color: #39ff14;
-  text-shadow: 0 0 10px #39ff14, 0 0 20px #00ffff, 0 2px 5px #000;
+  color: #fde047;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.8), 0 0 18px rgba(245, 158, 11, 0.5), 0 2px 4px #000;
+}
+
+.psd-stat-value.lines-display {
+  color: #fef08a;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.75), 0 2px 4px #000;
+  min-width: 32px;
+}
+
+.psd-stat-value.win-display {
+  color: #34d399;
+  text-shadow: 0 0 12px rgba(52, 211, 153, 0.8), 0 2px 4px #000;
+  min-width: 48px;
 }
 
 .psd-stat-value.coinval-display {
@@ -1340,6 +1352,9 @@ body {
 .psd-stat-value.bet-display {
   font-size: clamp(0.85rem, 1.45vw, 1.3rem);
   white-space: nowrap;
+  color: #fbbf24;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 2px 4px #000;
+  min-width: 54px;
 }
 
 .psd-ui-center-buttons {
@@ -4517,8 +4532,8 @@ body {
   font-size: clamp(1.4rem, 2.6vw, 2.4rem);
   font-weight: 900;
   line-height: 1;
-  color: #fffbeb;
-  background: linear-gradient(180deg, #ffffff 0%, #fef08a 25%, #f59e0b 60%, #b45309 100%);
+  color: #fef08a;
+  background: linear-gradient(180deg, #fef08a 0%, #fbbf24 35%, #d97706 70%, #78350f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 10px rgba(245, 158, 11, 0.6));

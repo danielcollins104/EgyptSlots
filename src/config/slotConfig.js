@@ -18,6 +18,14 @@
 //   8. `paylines`   -> 15 payline names and laser colors
 // ============================================================================
 
+export const BET_TIERS_GC = [
+  15, 30, 45, 60, 75, 150, 300, 450, 750, 1500, 3000, 7500, 15000, 30000, 75000, 150000,
+];
+
+export const BET_TIERS_SC = [
+  0.15, 0.30, 0.45, 0.60, 0.75, 1.50, 3.00, 4.50, 7.50, 15.00, 30.00, 45.00, 75.00, 150.00,
+];
+
 export const ACTIVE_THEME = {
   id: 'crowns_of_kemet',
 
@@ -54,6 +62,8 @@ export const ACTIVE_THEME = {
     ],
     defaultCoinValueIndex: 5, // Starts at 1.00
     maxLevel: 10,
+    betTiersGC: BET_TIERS_GC,
+    betTiersSC: BET_TIERS_SC,
   },
 
   // 2. Stage, Cabinet & Environment Image Assets

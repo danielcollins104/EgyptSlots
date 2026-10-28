@@ -112,10 +112,10 @@ function drawCabochonGem(ctx, cx, cy, rx, ry, primaryColor, highlightColor) {
   ctx.fillStyle = gemGrad;
   ctx.fill();
 
-  // Specular glass highlight
+  // Specular glass highlight (warm golden luster, no harsh white)
   ctx.beginPath();
   ctx.ellipse(-rx * 0.28, -ry * 0.32, rx * 0.42, ry * 0.25, -0.35, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+  ctx.fillStyle = 'rgba(254, 240, 138, 0.55)';
   ctx.fill();
 
   ctx.restore();
@@ -241,16 +241,21 @@ function create3DPopOutRoyalSprites(sym, size) {
     aCtx.fillText(sym.letter, depth * 0.7, depth * 1.15);
   }
 
-  // Outer 24k Gold Beveled Rim of the Letter
+  // Outer Crisp Obsidian Shadow / Contrast Rim (replaces blurry white stroke with sharp dark outline)
+  aCtx.lineJoin = 'round';
+  aCtx.lineWidth = 14;
+  aCtx.strokeStyle = '#270c02';
+  aCtx.strokeText(sym.letter, 0, 0);
+
+  // Outer 24k Gold Beveled Rim of the Letter (pure gold palette: NO white)
   const outerGold = aCtx.createLinearGradient(-55, -65, 55, 65);
-  outerGold.addColorStop(0, '#fffbeb');
-  outerGold.addColorStop(0.25, '#fde047');
-  outerGold.addColorStop(0.55, '#f59e0b');
-  outerGold.addColorStop(0.85, '#b45309');
-  outerGold.addColorStop(1, '#fef08a');
+  outerGold.addColorStop(0, '#fef08a');
+  outerGold.addColorStop(0.3, '#fbbf24');
+  outerGold.addColorStop(0.65, '#d97706');
+  outerGold.addColorStop(1, '#92400e');
 
   aCtx.lineJoin = 'round';
-  aCtx.lineWidth = 13;
+  aCtx.lineWidth = 10;
   aCtx.strokeStyle = outerGold;
   aCtx.strokeText(sym.letter, 0, 0);
 
@@ -263,21 +268,21 @@ function create3DPopOutRoyalSprites(sym, size) {
   aCtx.fillStyle = innerJewel;
   aCtx.fillText(sym.letter, 0, 0);
 
-  // Specular Gold Inner Pin-Stripe Highlight
-  aCtx.lineWidth = 2.5;
-  aCtx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-  aCtx.strokeText(sym.letter, -1.2, -1.5);
+  // Warm 24k Gold Inner Bevel Accent (NO white stroke!)
+  aCtx.lineWidth = 1.6;
+  aCtx.strokeStyle = 'rgba(254, 240, 138, 0.75)';
+  aCtx.strokeText(sym.letter, 0, 0);
 
-  // Add 3D Cabochon Gemstones & Pharaonic Crown/Wings breaking out past the top/sides!
+  // Add 3D Cabochon Gemstones & Pharaonic Crown/Wings (warm gold highlights, NO harsh white)
   // Top Crown / Emblem
   drawCabochonGem(aCtx, 0, -54, 14, 10, sym.gemPrimary, sym.gemHighlight);
-  drawCabochonGem(aCtx, -22, -48, 7, 5, sym.gemSecondary, '#ffffff');
-  drawCabochonGem(aCtx, 22, -48, 7, 5, sym.gemSecondary, '#ffffff');
+  drawCabochonGem(aCtx, -22, -48, 7, 5, sym.gemSecondary, '#fde047');
+  drawCabochonGem(aCtx, 22, -48, 7, 5, sym.gemSecondary, '#fde047');
 
   // Center / Base Cabochon Gems
   drawCabochonGem(aCtx, -24, 18, 8, 8, sym.gemPrimary, sym.gemHighlight);
   drawCabochonGem(aCtx, 24, 18, 8, 8, sym.gemPrimary, sym.gemHighlight);
-  drawCabochonGem(aCtx, 0, 46, 11, 8, sym.gemSecondary, '#ffffff');
+  drawCabochonGem(aCtx, 0, 46, 11, 8, sym.gemSecondary, '#fde047');
 
   aCtx.restore();
 
@@ -432,7 +437,7 @@ function create3DPopOutBonusSprites(sym, size, scarabNoFrameImg) {
   pGrad.addColorStop(1, '#78350f');
 
   aCtx.fillStyle = pGrad;
-  aCtx.strokeStyle = '#fffbeb';
+  aCtx.strokeStyle = '#fde047';
   aCtx.lineWidth = 2.5;
   aCtx.beginPath();
   aCtx.roundRect(-pW / 2, -pH / 2, pW, pH, 9);
@@ -756,6 +761,13 @@ export default function PhaserReelEngine({
 
       // Render 3D Pop-Out Royal Symbols, 3D Bonus Symbol, & High-Tier Two-Layer Symbols
       const bonusCrestOverlay = await loadImage(THEME_ASSETS.bonusCrestOverlayImage);
+
+      // Ensure webfonts are 100% loaded before rasterizing typography to avoid any font fallback blur
+      try {
+        if (typeof document !== 'undefined' && document.fonts) {
+          await document.fonts.ready;
+        }
+      } catch (_) {}
 
       await Promise.all(
         SYMBOLS.map(async (sym) => {

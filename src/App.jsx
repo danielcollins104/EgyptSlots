@@ -29,6 +29,8 @@ import {
   BONUS_CONFIG,
   SYMBOLS,
   PAYLINES,
+  BET_TIERS_GC,
+  BET_TIERS_SC,
   getWildSymbol,
   getExpandingSymbol,
   getBonusSymbol,
@@ -125,9 +127,9 @@ export default function App() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentModalTab, setPaymentModalTab] = useState('store');
 
-  // Bottom UI State
-  const [level, setLevel] = useState(1);
-  const [coinValueIdx, setCoinValueIdx] = useState(CASINO_BRAND.defaultCoinValueIndex);
+  // Bottom UI State (Unified Bet Selector across 15 Fixed Paylines)
+  const [betIndexGC, setBetIndexGC] = useState(4); // Default 75 GC (5 per line)
+  const [betIndexSC, setBetIndexSC] = useState(4); // Default 0.75 SC (0.05 per line)
 
   // Initial Reel Grid & Spin Trigger
   const [initialGrid] = useState(() => generateInitialGrid());
@@ -159,11 +161,14 @@ export default function App() {
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
 
-  // Bet calculations for GC and SC
-  const coinValue = CASINO_BRAND.coinValues[coinValueIdx] ?? 1.0;
-  const currentBetGC = Math.max(1, Math.round(CASINO_BRAND.baseLines * level * (coinValue >= 1 ? coinValue : 1)));
-  const currentBetSC = Number((coinValue * level).toFixed(2));
-  const currentBet = currencyMode === 'GC' ? currentBetGC : currentBetSC;
+  // Direct Bet calculations for GC and SC
+  const activeBetTiers = currencyMode === 'SC' ? BET_TIERS_SC : BET_TIERS_GC;
+  const currentBetIdx = currencyMode === 'SC' ? betIndexSC : betIndexGC;
+  const currentBetGC = BET_TIERS_GC[betIndexGC] ?? 75;
+  const currentBetSC = BET_TIERS_SC[betIndexSC] ?? 0.75;
+  const currentBet = currencyMode === 'SC' ? currentBetSC : currentBetGC;
+  const level = Math.max(1, Math.round(currencyMode === 'SC' ? currentBetSC / 0.15 : currentBetGC / 15));
+  const coinValue = currencyMode === 'SC' ? Number((currentBetSC / 15).toFixed(3)) : 1.0;
   const currentTheme = COLOR_PALETTES[neonThemeIdx % COLOR_PALETTES.length];
 
   // Sync balances and currencyMode to localStorage
@@ -448,11 +453,11 @@ export default function App() {
 
     const isSC = currencyMode === 'SC';
     const finalWin = isSC
-      ? Number(((totalCoinsWon / 15) * spinBet).toFixed(2))
-      : Math.round(totalCoinsWon * (coinValue >= 1 ? coinValue : 1));
+      ? Number(((totalCoinsWon / (15 * activeLevel)) * spinBet).toFixed(2))
+      : totalCoinsWon;
     const finalScatterWin = isSC
-      ? Number(((scatterWinCoins / 15) * spinBet).toFixed(2))
-      : Math.round(scatterWinCoins * (coinValue >= 1 ? coinValue : 1));
+      ? Number(((scatterWinCoins / (15 * activeLevel)) * spinBet).toFixed(2))
+      : scatterWinCoins;
 
     if (totalCoinsWon > 0) {
       if (isSC) {
@@ -636,28 +641,26 @@ export default function App() {
   };
 
   const triggerSpin = useCallback(
-    (forcedMode = null, overrideLevel = null) => {
+    (forcedMode = null, overrideBet = null) => {
       if (isSpinning || bonusSession || freeSpinsOpen) return;
-      const activeLevel = overrideLevel ?? level;
       const isSC = currencyMode === 'SC';
-      const spinBetGC = Math.max(1, Math.round(CASINO_BRAND.baseLines * activeLevel * (coinValue >= 1 ? coinValue : 1)));
-      const spinBetSC = Number((coinValue * activeLevel).toFixed(2));
-      const activeSpinBet = isSC ? spinBetSC : spinBetGC;
+      const activeSpinBet = overrideBet ?? (isSC ? currentBetSC : currentBetGC);
+      const activeLevel = Math.max(1, Math.round(isSC ? activeSpinBet / 0.15 : activeSpinBet / 15));
 
       if (isSC) {
-        if (sweepsCoins < spinBetSC) {
+        if (sweepsCoins < activeSpinBet) {
           setStatusMessage('INSUFFICIENT SWEEPS COINS! GET FREE SC WITH STORE BUNDLES OR SWITCH TO GOLD COINS!');
           setAutoPlayCount(0);
           return;
         }
-        setSweepsCoins((prev) => Math.max(0, Number((prev - spinBetSC).toFixed(2))));
+        setSweepsCoins((prev) => Math.max(0, Number((prev - activeSpinBet).toFixed(2))));
       } else {
-        if (goldCoins < spinBetGC) {
+        if (goldCoins < activeSpinBet) {
           setStatusMessage(THEME_COPY.insufficientCoinsTicker);
           setAutoPlayCount(0);
           return;
         }
-        setGoldCoins((prev) => prev - spinBetGC);
+        setGoldCoins((prev) => prev - activeSpinBet);
       }
 
       setLastWinCoins(0);
@@ -726,7 +729,16 @@ export default function App() {
         targetExpanded: nextExpanded,
       });
     },
-    [isSpinning, bonusSession, level, goldCoins, sweepsCoins, currencyMode, coinValue]
+    [
+      isSpinning,
+      bonusSession,
+      freeSpinsOpen,
+      goldCoins,
+      sweepsCoins,
+      currencyMode,
+      currentBetGC,
+      currentBetSC,
+    ]
   );
 
   // Autoplay handler
@@ -756,25 +768,32 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [showSplash, paytableOpen, bonusSession, bigWinAmount, triggerSpin]);
 
-  const handleLevelChange = (delta) => {
-    if (isSpinning) return;
-    soundEngine.playButtonClick(580);
-    setLevel((prev) => Math.min(CASINO_BRAND.maxLevel, Math.max(1, prev + delta)));
-  };
-
-  const handleCoinValueChange = (delta) => {
+  const handleBetChange = (delta) => {
     if (isSpinning) return;
     soundEngine.playButtonClick(620);
-    setCoinValueIdx((prev) =>
-      Math.min(CASINO_BRAND.coinValues.length - 1, Math.max(0, prev + delta))
-    );
+    if (currencyMode === 'SC') {
+      setBetIndexSC((prev) =>
+        Math.min(BET_TIERS_SC.length - 1, Math.max(0, prev + delta))
+      );
+    } else {
+      setBetIndexGC((prev) =>
+        Math.min(BET_TIERS_GC.length - 1, Math.max(0, prev + delta))
+      );
+    }
   };
 
   const handleMaxBet = () => {
     if (isSpinning) return;
     soundEngine.playButtonClick(740);
-    setLevel(CASINO_BRAND.maxLevel);
-    triggerSpin(null, CASINO_BRAND.maxLevel);
+    if (currencyMode === 'SC') {
+      const maxIdx = BET_TIERS_SC.length - 1;
+      setBetIndexSC(maxIdx);
+      triggerSpin(null, BET_TIERS_SC[maxIdx]);
+    } else {
+      const maxIdx = BET_TIERS_GC.length - 1;
+      setBetIndexGC(maxIdx);
+      triggerSpin(null, BET_TIERS_GC[maxIdx]);
+    }
   };
 
   const handleAutoPlayToggle = () => {
@@ -1166,8 +1185,18 @@ export default function App() {
                 draggable={false}
               />
 
-              {/* Left Section: BET & LEVEL */}
+              {/* Left Section: LINES & BET */}
               <div className="psd-ui-left-controls">
+                <div className="psd-stat-block lines-block">
+                  <img
+                    src="/assets/psd/label_lines.png"
+                    alt="LINES"
+                    className="psd-label-img neon-label-glow"
+                    draggable={false}
+                  />
+                  <div className="psd-stat-value lines-display">15</div>
+                </div>
+
                 <div className="psd-stat-block bet-block">
                   <img
                     src="/assets/psd/label_bet.png"
@@ -1175,26 +1204,12 @@ export default function App() {
                     className="psd-label-img neon-label-glow"
                     draggable={false}
                   />
-                  <div className="psd-stat-value bet-display">
-                    {currencyMode === 'SC'
-                      ? `${formatCoinValue(currentBetSC)}`
-                      : currentBetGC.toLocaleString()}
-                  </div>
-                </div>
-
-                <div className="psd-stat-block level-block">
-                  <img
-                    src="/assets/psd/label_level.png"
-                    alt="LEVEL"
-                    className="psd-label-img neon-label-glow"
-                    draggable={false}
-                  />
                   <div className="psd-Selector-row">
                     <button
                       className="psd-arrow-btn"
-                      onClick={() => handleLevelChange(-1)}
-                      disabled={isSpinning || level <= 1}
-                      aria-label="Decrease Level"
+                      onClick={() => handleBetChange(-1)}
+                      disabled={isSpinning || currentBetIdx <= 0}
+                      aria-label="Decrease Bet"
                     >
                       <img
                         src="/assets/psd/arrow_left.png"
@@ -1203,12 +1218,16 @@ export default function App() {
                         draggable={false}
                       />
                     </button>
-                    <span className="psd-stat-value">{level}</span>
+                    <span className="psd-stat-value bet-display">
+                      {currencyMode === 'SC'
+                        ? `$${formatCoinValue(currentBetSC)}`
+                        : currentBetGC.toLocaleString()}
+                    </span>
                     <button
                       className="psd-arrow-btn"
-                      onClick={() => handleLevelChange(1)}
-                      disabled={isSpinning || level >= CASINO_BRAND.maxLevel}
-                      aria-label="Increase Level"
+                      onClick={() => handleBetChange(1)}
+                      disabled={isSpinning || currentBetIdx >= activeBetTiers.length - 1}
+                      aria-label="Increase Bet"
                     >
                       <img
                         src="/assets/psd/arrow_right.png"
@@ -1293,45 +1312,21 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Right Section: COIN VALUE & COINS */}
+              {/* Right Section: WIN & COINS */}
               <div className="psd-ui-right-controls">
-                <div className="psd-stat-block coinval-block">
+                <div className="psd-stat-block win-block">
                   <img
-                    src="/assets/psd/label_coin_value.png"
-                    alt="COIN VALUE"
+                    src="/assets/psd/label_win.png"
+                    alt="WIN"
                     className="psd-label-img neon-label-glow"
                     draggable={false}
                   />
-                  <div className="psd-Selector-row">
-                    <button
-                      className="psd-arrow-btn"
-                      onClick={() => handleCoinValueChange(-1)}
-                      disabled={isSpinning || coinValueIdx <= 0}
-                      aria-label="Decrease Coin Value"
-                    >
-                      <img
-                        src="/assets/psd/arrow_left.png"
-                        alt="<"
-                        className="neon-label-glow"
-                        draggable={false}
-                      />
-                    </button>
-                    <span className="psd-stat-value coinval-display">
-                      {formatCoinValue(coinValue)}
-                    </span>
-                    <button
-                      className="psd-arrow-btn"
-                      onClick={() => handleCoinValueChange(1)}
-                      disabled={isSpinning || coinValueIdx >= CASINO_BRAND.coinValues.length - 1}
-                      aria-label="Increase Coin Value"
-                    >
-                      <img
-                        src="/assets/psd/arrow_right.png"
-                        alt=">"
-                        className="neon-label-glow"
-                        draggable={false}
-                      />
-                    </button>
+                  <div className="psd-stat-value win-display">
+                    {lastWinCoins > 0
+                      ? currencyMode === 'SC'
+                        ? `$${formatCoinValue(lastWinCoins)}`
+                        : lastWinCoins.toLocaleString()
+                      : '0'}
                   </div>
                 </div>
 
@@ -1344,7 +1339,7 @@ export default function App() {
                   />
                   <div className="psd-stat-value coins-number">
                     {currencyMode === 'SC'
-                      ? `${sweepsCoins.toFixed(2)} SC`
+                      ? `$${formatCoinValue(sweepsCoins)}`
                       : goldCoins.toLocaleString()}
                   </div>
                 </div>
