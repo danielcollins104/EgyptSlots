@@ -1462,22 +1462,43 @@ body {
 /* 3D Brushed-24k-Gold, Ruby Cabochon & Lapis Sapphire Winged Arch Logo (never overlaps the 5x3 reel tiles!) */
 .cabinet-dc-neon-logo {
   position: absolute;
-  top: 3.4%;
+  top: 1.8%;
   left: 50%;
   transform: translateX(-50%);
-  width: 46%;
+  width: 44%;
+  max-width: 480px;
+  height: 15.6%;
   z-index: 17;
   pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.85));
+}
+
+.dc-cabinet-logo-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 22px rgba(0, 240, 255, 0.45)) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9));
+}
+
+.dc-cabinet-logo-emblem {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  filter: saturate(1.25) contrast(1.1);
+  transform: translateZ(0);
 }
 
 .cabinet-dc-logo-img {
   width: 100%;
-  height: auto;
-  display: block;
+  height: 100%;
 }
 
 .paytable-dc-logo-preview {

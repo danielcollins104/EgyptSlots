@@ -935,11 +935,15 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             duration: spinDurationSec,
             ease: 'none',
             onComplete: () => {
+              const buf0 = randomSymbol();
+              const buf1 = randomSymbol();
+              const buf2 = randomSymbol();
+              const buf3 = randomSymbol();
               reel.landingQueue = [
-                randomSymbol(),
-                randomSymbol(),
-                randomSymbol(),
-                randomSymbol(),
+                buf0,
+                buf1,
+                buf2,
+                buf3,
                 reel.targetSymbols[0],
                 reel.targetSymbols[1],
                 reel.targetSymbols[2],
@@ -997,7 +1001,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       reel.state = 'LANDING';
       reel.velocity = 0;
       reel.scrollPx = 0;
-      reel.offsetY = -44;
+      reel.offsetY = 0;
 
       // Guarantee 100% deterministic alignment between visible rows (strip[4..6]) and targetSymbols[0..2]
       reel.strip[4] = reel.targetSymbols[0];
@@ -1013,30 +1017,35 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
 
       const isTurbo = Boolean(reel.isTurbo);
 
+      // Smooth organic downward overshoot, then crisp spring-back to resting 0 position
       bounceTl
-        .to(reel, {
-          offsetY: isTurbo ? 10 : 20,
-          duration: isTurbo ? 0.05 : 0.095,
-          ease: 'power2.in',
-          onComplete: () => {
-            soundEngine.playReelStop(reel.colIndex, hasSpecial);
-            if (hasSpecial) {
-              spawnParticles(
-                reel.centerX,
-                GAME_H / 2,
-                16,
-                reel.colIndex >= 3 ? '#c084fc' : '#00e5ff'
-              );
-            }
-            if (callbacksRef.current.onColumnStop) {
-              callbacksRef.current.onColumnStop(reel.colIndex, reel.willExpand);
-            }
-          },
-        })
+        .fromTo(
+          reel,
+          { offsetY: 0 },
+          {
+            offsetY: isTurbo ? 8 : 16,
+            duration: isTurbo ? 0.055 : 0.09,
+            ease: 'power1.out',
+            onComplete: () => {
+              soundEngine.playReelStop(reel.colIndex, hasSpecial);
+              if (hasSpecial) {
+                spawnParticles(
+                  reel.centerX,
+                  GAME_H / 2,
+                  16,
+                  reel.colIndex >= 3 ? '#c084fc' : '#00e5ff'
+                );
+              }
+              if (callbacksRef.current.onColumnStop) {
+                callbacksRef.current.onColumnStop(reel.colIndex, reel.willExpand);
+              }
+            },
+          }
+        )
         .to(reel, {
           offsetY: 0,
           duration: isTurbo ? 0.12 : 0.22,
-          ease: isTurbo ? 'back.out(1.8)' : 'back.out(2.3)',
+          ease: isTurbo ? 'back.out(1.8)' : 'back.out(2.4)',
           onComplete: () => {
             reel.state = 'IDLE';
 
@@ -1108,10 +1117,16 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             if (reel.landingQueue && reel.landingQueue.length > 0) {
               const nextSym = reel.landingQueue.pop();
               reel.strip.unshift(nextSym);
-              if (reel.landingQueue.length === 0) {
+              const remaining = reel.landingQueue.length;
+              if (remaining === 0) {
                 reel.landingQueue = null;
                 triggerReelLandingBounce(reel);
                 break;
+              } else {
+                // Smooth progressive deceleration into the landing stop
+                const decelMultipliers = [0.22, 0.35, 0.48, 0.62, 0.76, 0.88];
+                const mult = decelMultipliers[Math.min(decelMultipliers.length - 1, remaining - 1)] || 0.5;
+                reel.velocity = Math.max(reel.isTurbo ? 450 : 260, (reel.anticipation ? 2750 : (reel.isTurbo ? 2950 : 2350)) * mult);
               }
             } else {
               reel.strip.unshift(randomSymbol());
@@ -1188,13 +1203,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 const dx = Math.round(reel.centerX - dw / 2);
                 const dy = Math.round(centerY - dh / 2);
                 ctx.drawImage(sprite, dx, dy, dw, dh);
-              } else if (speedRatio > 0.02) {
-                const dw = Math.round(sw * squashX);
-                const dh = Math.round(sh * stretchY);
-                const dx = Math.round(reel.centerX - dw / 2);
-                const dy = Math.round(centerY - dh / 2);
-                ctx.drawImage(sprite, dx, dy, dw, dh);
               } else {
+                // Direct hardware 1:1 bitblt for ultra-smooth 60/120 FPS spin without software resampling
                 const dx = Math.round(reel.centerX - sw / 2);
                 const dy = Math.round(centerY - sh / 2);
                 ctx.drawImage(sprite, dx, dy);
