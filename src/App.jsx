@@ -23,6 +23,8 @@ import {
   Menu,
   X,
   Zap,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import {
   CASINO_BRAND,
@@ -187,6 +189,45 @@ export default function App() {
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    soundEngine.playButtonClick(600);
+    try {
+      if (!document.fullscreenElement) {
+        const docEl = document.documentElement;
+        const requestFs =
+          docEl.requestFullscreen ||
+          docEl.webkitRequestFullscreen ||
+          docEl.mozRequestFullScreen ||
+          docEl.msRequestFullscreen;
+        if (requestFs) {
+          requestFs.call(docEl).catch(() => {});
+        }
+      } else {
+        const exitFs =
+          document.exitFullscreen ||
+          document.webkitExitFullscreen ||
+          document.mozCancelFullScreen ||
+          document.msExitFullscreen;
+        if (exitFs) {
+          exitFs.call(document).catch(() => {});
+        }
+      }
+    } catch {}
+  };
 
   // Psychological Flow State & Rhythm Cadence Engine
   const [turboFlow, setTurboFlow] = useState(false);
@@ -1093,12 +1134,22 @@ export default function App() {
         {/* Mobile Quick Action Buttons (Compact Viewport) */}
         <div className="dc-topbar-actions mobile-quick-actions">
           <button
+            className="dc-action-btn fullscreen-toggle-btn"
+            onClick={toggleFullscreen}
+            onMouseEnter={() => soundEngine.playButtonHover()}
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen (Hide Browser UI)'}
+            aria-label="Toggle Fullscreen"
+          >
+            {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
+          </button>
+
+          <button
             className="dc-action-btn"
             onClick={toggleMute}
             onMouseEnter={() => soundEngine.playButtonHover()}
             title="Toggle Sound"
           >
-            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
 
           <button
@@ -1110,8 +1161,8 @@ export default function App() {
             aria-label="Toggle VIP Feature Menu"
             title="Open VIP Feature Drawer"
           >
-            {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
-            <span>VIP Menu ⚡</span>
+            {mobileMenuOpen ? <X size={15} /> : <Menu size={15} />}
+            <span>VIP ⚡</span>
           </button>
         </div>
       </header>
@@ -1126,6 +1177,37 @@ export default function App() {
             </button>
           </div>
           <div className="mobile-drawer-grid">
+            <button
+              className="mobile-drawer-card store-card"
+              onClick={() => {
+                soundEngine.playButtonClick(700);
+                setMobileMenuOpen(false);
+                setPaymentModalTab('store');
+                setPaymentModalOpen(true);
+              }}
+            >
+              <ShoppingCart size={20} className="card-icon" color="#ffd700" />
+              <div className="card-txt">
+                <strong style={{ color: '#ffd700' }}>Get Coins (+Free SC)</strong>
+                <small>Buy Gold Coins Packages</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card redeem-card"
+              onClick={() => {
+                soundEngine.playButtonClick(800);
+                setMobileMenuOpen(false);
+                setPaymentModalTab('redeem');
+                setPaymentModalOpen(true);
+              }}
+            >
+              <DollarSign size={20} className="card-icon" color="#39ff14" />
+              <div className="card-txt">
+                <strong style={{ color: '#39ff14' }}>Redeem Cash Prizes</strong>
+                <small>Cash Out SC (1 SC = $1 USD)</small>
+              </div>
+            </button>
             <button
               className={`mobile-drawer-card turbo-card ${turboFlow ? 'active-card' : ''}`}
               onClick={() => {

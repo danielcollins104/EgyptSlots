@@ -7,6 +7,25 @@ export default function SplashScreen({ onEnterCasino }) {
   const [exiting, setExiting] = useState(false);
 
   const handleEnter = () => {
+    // 1. Request true browser fullscreen on the direct user gesture (hiding Chrome/Android address bar and tabs)
+    try {
+      const docEl = document.documentElement;
+      const requestFs =
+        docEl.requestFullscreen ||
+        docEl.webkitRequestFullscreen ||
+        docEl.mozRequestFullScreen ||
+        docEl.msRequestFullscreen;
+      if (requestFs && !document.fullscreenElement) {
+        requestFs.call(docEl).catch(() => {});
+      }
+    } catch {}
+
+    // 2. Trigger scroll to collapse mobile browser address bar (Safari iOS / mobile Chrome)
+    try {
+      window.scrollTo(0, 1);
+      setTimeout(() => window.scrollTo(0, 0), 50);
+    } catch {}
+
     soundEngine.init();
     soundEngine.playWin(true);
     setExiting(true);
