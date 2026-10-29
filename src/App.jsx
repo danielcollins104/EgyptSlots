@@ -25,6 +25,9 @@ import {
   Zap,
   Maximize,
   Minimize,
+  Lock,
+  LogOut,
+  User,
 } from 'lucide-react';
 import {
   CASINO_BRAND,
@@ -57,6 +60,8 @@ import FreeSpinsScreen from './components/FreeSpinsScreen';
 import PsdGoldNumber from './components/PsdGoldNumber';
 import NeonKeyedImage from './components/NeonKeyedImage';
 import DcLogoPlaque from './components/DcLogoPlaque';
+import AuthModal from './components/AuthModal';
+import { authService } from './services/authService';
 import PhaserReelEngine from './engine/PhaserReelEngine';
 import { slotMathEngine } from './engine/math/SlotMathEngine.js';
 import { spinPhysicalReels } from './engine/math/ReelStripModel.js';
@@ -107,10 +112,19 @@ export default function App() {
   const [muted, setMuted] = useState(false);
   const [neonThemeIdx, setNeonThemeIdx] = useState(0);
 
+  // Player Authentication & VIP Verification for Sweeps Coins (SC)
+  const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalReason, setAuthModalReason] = useState('sc_toggle'); // 'sc_toggle' | 'sc_spin' | 'header_click'
+
   // Sweepstakes Dual-Currency Economy Model (GC vs SC)
+  // Playing for SC requires VIP player login
   const [currencyMode, setCurrencyMode] = useState(() => {
     try {
-      return localStorage.getItem('dc_casino_currency_mode') || 'GC';
+      const saved = localStorage.getItem('dc_casino_currency_mode');
+      const user = authService.getCurrentUser();
+      if (saved === 'SC' && user) return 'SC';
+      return 'GC';
     } catch {
       return 'GC';
     }
@@ -289,6 +303,18 @@ export default function App() {
       }
     } catch (_) {}
   }, []);
+
+  // VIP Player Authentication Listener: auto-react to login/logout events
+  useEffect(() => {
+    const unsubscribe = authService.onAuthStateChanged((user) => {
+      setCurrentUser(user);
+      if (!user && currencyMode === 'SC') {
+        setCurrencyMode('GC');
+        setStatusMessage('GUEST SESSION • SWITCHED TO SOCIAL GOLD COINS (GC).');
+      }
+    });
+    return unsubscribe;
+  }, [currencyMode]);
 
   // Periodic Guardian eye blink (if configured on the left or right guardian)
   useEffect(() => {
@@ -706,6 +732,14 @@ export default function App() {
       const activeLevel = Math.max(1, Math.round(isSC ? activeSpinBet / 0.15 : activeSpinBet / 15));
 
       if (isSC) {
+        if (!currentUser) {
+          setCurrencyMode('GC');
+          setAuthModalReason('sc_spin');
+          setAuthModalOpen(true);
+          setAutoPlayCount(0);
+          setStatusMessage('VIP LOGIN REQUIRED TO PLAY FOR SWEEPS COINS (SC)!');
+          return;
+        }
         if (sweepsCoins < activeSpinBet) {
           setStatusMessage('INSUFFICIENT SWEEPS COINS! GET FREE SC WITH STORE BUNDLES OR SWITCH TO GOLD COINS!');
           setAutoPlayCount(0);
@@ -979,6 +1013,11 @@ export default function App() {
               className={`mode-switch-btn sc-mode ${currencyMode === 'SC' ? 'active' : ''}`}
               onClick={() => {
                 soundEngine.playButtonClick(880);
+                if (!currentUser) {
+                  setAuthModalReason('sc_toggle');
+                  setAuthModalOpen(true);
+                  return;
+                }
                 setCurrencyMode('SC');
                 setStatusMessage(
                   'SWITCHED TO SWEEPS COINS (SC) • REDEEMABLE FOR REAL CASH PRIZES ($1.00 USD / 1 SC)!'
@@ -1164,6 +1203,39 @@ export default function App() {
           >
             {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
+
+          {currentUser ? (
+            <div className="topbar-user-badge" title={`Logged in as ${currentUser.name} (${currentUser.method})`}>
+              <User size={14} className="user-icon" />
+              <div className="user-meta">
+                <span className="user-name">{currentUser.name}</span>
+                <span className="user-tier">{currentUser.tier || 'VIP PLAYER'}</span>
+              </div>
+              <button
+                className="user-logout-btn"
+                onClick={() => {
+                  soundEngine.playButtonClick(400);
+                  authService.logout();
+                }}
+                title="Log Out of VIP Account"
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              className="topbar-auth-btn"
+              onClick={() => {
+                soundEngine.playButtonClick(750);
+                setAuthModalReason('header_click');
+                setAuthModalOpen(true);
+              }}
+              title="Sign In with Google, Email or Phone to Unlock Sweeps Coins (SC)"
+            >
+              <Lock size={13} />
+              <span>VIP LOGIN / SIGN IN</span>
+            </button>
+          )}
         </div>
 
         {/* Mobile Quick Action Buttons (Compact Viewport) */}
@@ -1212,6 +1284,71 @@ export default function App() {
             </button>
           </div>
           <div className="mobile-drawer-grid">
+            {currentUser ? (
+              <div
+                className="mobile-drawer-card mobile-user-card"
+                style={{
+                  gridColumn: '1 / -1',
+                  borderColor: 'rgba(255, 215, 0, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(0, 0, 0, 0.6))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}
+              >
+                <User size={24} color="#ffd700" className="card-icon" />
+                <div className="card-txt" style={{ flex: 1 }}>
+                  <strong style={{ color: '#ffd700', fontSize: '0.9rem' }}>{currentUser.name} ({currentUser.tier || 'VIP'})</strong>
+                  <small style={{ color: '#00e5ff', display: 'block', marginTop: '2px' }}>Verified via {currentUser.method.toUpperCase()} • SC Active</small>
+                </div>
+                <button
+                  className="mobile-drawer-logout-btn"
+                  onClick={() => {
+                    soundEngine.playButtonClick(400);
+                    authService.logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  style={{
+                    background: 'rgba(255, 60, 60, 0.2)',
+                    border: '1px solid rgba(255, 60, 60, 0.4)',
+                    color: '#ff6666',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700
+                  }}
+                >
+                  <LogOut size={12} />
+                  <span>LOGOUT</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                className="mobile-drawer-card mobile-auth-card"
+                style={{
+                  gridColumn: '1 / -1',
+                  borderColor: 'rgba(255, 215, 0, 0.5)',
+                  background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(0, 229, 255, 0.1))'
+                }}
+                onClick={() => {
+                  soundEngine.playButtonClick(750);
+                  setMobileMenuOpen(false);
+                  setAuthModalReason('header_click');
+                  setAuthModalOpen(true);
+                }}
+              >
+                <Lock size={20} color="#ffd700" className="card-icon" />
+                <div className="card-txt">
+                  <strong style={{ color: '#ffd700' }}>👑 VIP PLAYER LOGIN / SIGN UP</strong>
+                  <small style={{ color: '#00e5ff' }}>Unlock Sweeps Coins &amp; Real Cash Redemptions</small>
+                </div>
+              </button>
+            )}
+
             <button
               className="mobile-drawer-card store-card"
               onClick={() => {
@@ -1930,6 +2067,18 @@ export default function App() {
         coinValue={coinValue}
         currencyMode={currencyMode}
         onComplete={handleCompleteFreeSpins}
+      />
+
+      {/* Player Authentication & VIP Verification Modal for Sweeps Coins (SC) */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        reason={authModalReason}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setCurrencyMode('SC');
+          setStatusMessage(`VIP VERIFIED! WELCOME ${user.name.toUpperCase()} — SC UNLOCKED!`);
+        }}
       />
 
       {/* Mobile-First Ergonomic Thumb Control Dock (Active on Mobile Phones < 680px) */}

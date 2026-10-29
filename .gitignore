@@ -12,6 +12,7 @@ RSG Slot Asset Pack - Crowns of Kemet - Free/
 *.mov
 
 # OS & Editor files
+.wrangler/
 .DS_Store
 Thumbs.db
 *.log
