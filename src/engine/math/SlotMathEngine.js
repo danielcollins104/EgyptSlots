@@ -230,8 +230,8 @@ export class SlotMathEngine {
       grid: rawGrid,
     });
 
-    // 5. 3D Bonus Collector Meter charges earned on this spin
-    const meterChargesEarned = wildCountOnGrid * 1 + scatterCount * 2;
+    // 5. 3D Bonus Collector Meter charges earned on this spin (calibrated 1 charge per special spin)
+    const meterChargesEarned = (wildCountOnGrid > 0 ? 1 : 0) + (scatterCount > 0 ? 1 : 0);
 
     const outcome = {
       grid,

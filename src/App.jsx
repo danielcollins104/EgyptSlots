@@ -879,9 +879,9 @@ export default function App() {
           col.map((id) => symbolMap.get(id) || symbolMap.get('neon_10') || activeSymbols[0])
         );
 
-        // Check expanding wild columns (Reels 2, 3, 4)
+        // Check expanding wild columns (Reels 2, 3, 4) — calibrated authentic casino feature rate (~1 in 96 spins)
         for (let c = 1; c <= 3; c++) {
-          if (nextGrid[c].some((s) => s.isExpanding) || Math.random() < 0.032) {
+          if (nextGrid[c].some((s) => s.isExpanding) || Math.random() < 0.0035) {
             nextExpanded[c] = true;
             nextGrid[c] = [expSym, expSym, expSym];
           }

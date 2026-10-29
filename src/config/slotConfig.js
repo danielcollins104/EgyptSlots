@@ -468,8 +468,8 @@ export const ACTIVE_THEME = {
       glowImage1: '/assets/psd/wild_glow_01.png',
       glowImage2: '/assets/psd/wild_glow_02.png',
       neonFilter: 'saturate(1.22) brightness(1.06) contrast(1.06)',
-      payouts: { 3: 55, 4: 185, 5: 615 },
-      payoutsSC: { 3: 57, 4: 191, 5: 635 },
+      payouts: { 3: 45, 4: 150, 5: 480 },
+      payoutsSC: { 3: 45, 4: 150, 5: 480 },
       accentColor: '#00e5ff',
       description:
         '3D Gold & Multi-Gem Pyramid with glowing crystal apex. Doubles (2×) any payline win!',
@@ -487,8 +487,8 @@ export const ACTIVE_THEME = {
       frameImage: '/assets/psd/anubis_tall_frame.png',
       bgImage: '/assets/psd/anubis_tall_bg.png',
       neonFilter: 'saturate(1.2) brightness(1.05) contrast(1.06)',
-      payouts: { 3: 62, 4: 221, 5: 738 },
-      payoutsSC: { 3: 64, 4: 229, 5: 762 },
+      payouts: { 3: 45, 4: 150, 5: 480 },
+      payoutsSC: { 3: 45, 4: 150, 5: 480 },
       accentColor: '#ffd700',
       description:
         'Expands to cover the entire 3-row reel column (1×3 Tall Guardian Wild) when landing!',
@@ -511,8 +511,8 @@ export const ACTIVE_THEME = {
       image: '/assets/symbols/high/high_scarab.png',
       noFrameImage: '/assets/symbols/high/high_scarab_no_frame.png',
       frameImage: '/assets/psd/symbol_frame_gold.png',
-      payouts: { 3: 55, 4: 148, 5: 554 },
-      payoutsSC: { 3: 57, 4: 152, 5: 572 },
+      payouts: { 3: 38, 4: 105, 5: 360 },
+      payoutsSC: { 3: 38, 4: 105, 5: 360 },
       accentColor: '#fbbf24',
       description:
         'SCATTER BONUS: Land 3, 4, or 5 anywhere on the reels to win an instant Scatter Payout + unlock the 3D Bonus Games!',
@@ -528,8 +528,8 @@ export const ACTIVE_THEME = {
       noFrameImage: '/assets/symbols/high/high_eye_no_frame.png',
       frameImage: '/assets/psd/symbol_frame_gold.png',
       neonFilter: 'saturate(1.22) brightness(1.05) contrast(1.06)',
-      payouts: { 3: 31, 4: 98, 5: 308 },
-      payoutsSC: { 3: 32, 4: 102, 5: 318 },
+      payouts: { 3: 26, 4: 80, 5: 260 },
+      payoutsSC: { 3: 26, 4: 80, 5: 260 },
       accentColor: '#ef4444',
       description:
         '3D Gold & Cabochon Ruby Wedjat Eye bursting out of a Crimson Ruby velvet tile.',
@@ -544,8 +544,8 @@ export const ACTIVE_THEME = {
       noFrameImage: '/assets/symbols/high/high_ankh_no_frame.png',
       frameImage: '/assets/psd/symbol_frame_ankh.png',
       neonFilter: 'saturate(1.22) brightness(1.05) contrast(1.06)',
-      payouts: { 3: 22, 4: 68, 5: 215 },
-      payoutsSC: { 3: 23, 4: 70, 5: 222 },
+      payouts: { 3: 19, 4: 56, 5: 180 },
+      payoutsSC: { 3: 19, 4: 56, 5: 180 },
       accentColor: '#c084fc',
       description:
         '3D Gold & Amethyst Gem Ankh Cuff bursting out of a Royal Purple velvet tile.',
@@ -560,8 +560,8 @@ export const ACTIVE_THEME = {
       noFrameImage: '/assets/symbols/high/high_scarab_no_frame.png',
       frameImage: '/assets/psd/symbol_frame_scarab.png',
       neonFilter: 'saturate(1.22) brightness(1.05) contrast(1.06)',
-      payouts: { 3: 18, 4: 55, 5: 172 },
-      payoutsSC: { 3: 19, 4: 57, 5: 178 },
+      payouts: { 3: 15, 4: 45, 5: 140 },
+      payoutsSC: { 3: 15, 4: 45, 5: 140 },
       accentColor: '#10b981',
       description:
         '3D Winged Gold & Translucent Emerald Scarab bursting at a 45° angle off a Jade tile.',
@@ -576,8 +576,8 @@ export const ACTIVE_THEME = {
       noFrameImage: '/assets/symbols/high/high_necklace_no_frame.png',
       frameImage: '/assets/psd/symbol_frame_necklace.png',
       neonFilter: 'saturate(1.22) brightness(1.05) contrast(1.06)',
-      payouts: { 3: 14, 4: 39, 5: 123 },
-      payoutsSC: { 3: 14, 4: 41, 5: 127 },
+      payouts: { 3: 11, 4: 32, 5: 100 },
+      payoutsSC: { 3: 11, 4: 32, 5: 100 },
       accentColor: '#3b82f6',
       description:
         '3D Gold & Amber-Sapphire Lotus Necklace bursting off a Royal Lapis Blue tile.',
@@ -597,8 +597,8 @@ export const ACTIVE_THEME = {
       gemSecondary: '#00e5ff',
       tiltDeg: -7,
       image: '/assets/psd/symbol_frame_gold.png',
-      payouts: { 3: 10, 4: 27, 5: 74 },
-      payoutsSC: { 3: 10, 4: 28, 5: 76 },
+      payouts: { 3: 8, 4: 22, 5: 62 },
+      payoutsSC: { 3: 8, 4: 22, 5: 62 },
       accentColor: '#f43f5e',
       description:
         '3D Beveled Gold & Cabochon Ruby Ace ("A") popping off a Crimson-Rose velvet tile.',
@@ -618,8 +618,8 @@ export const ACTIVE_THEME = {
       gemSecondary: '#f59e0b',
       tiltDeg: 6,
       image: '/assets/psd/symbol_frame_necklace.png',
-      payouts: { 3: 7, 4: 20, 5: 55 },
-      payoutsSC: { 3: 8, 4: 20, 5: 57 },
+      payouts: { 3: 6, 4: 16, 5: 46 },
+      payoutsSC: { 3: 6, 4: 16, 5: 46 },
       accentColor: '#00e5ff',
       description:
         '3D Beveled Gold & Turquoise-Sapphire King ("K") popping off a Deep Teal velvet tile.',
@@ -639,8 +639,8 @@ export const ACTIVE_THEME = {
       gemSecondary: '#38bdf8',
       tiltDeg: -6,
       image: '/assets/psd/symbol_frame_ankh.png',
-      payouts: { 3: 6, 4: 15, 5: 43 },
-      payoutsSC: { 3: 6, 4: 15, 5: 44 },
+      payouts: { 3: 5, 4: 13, 5: 36 },
+      payoutsSC: { 3: 5, 4: 13, 5: 36 },
       accentColor: '#d946ef',
       description:
         '3D Beveled Gold & Cabochon Amethyst Queen ("Q") popping off a Royal Orchid tile.',
@@ -660,8 +660,8 @@ export const ACTIVE_THEME = {
       gemSecondary: '#fbbf24',
       tiltDeg: 7,
       image: '/assets/psd/symbol_frame_scarab.png',
-      payouts: { 3: 5, 4: 11, 5: 31 },
-      payoutsSC: { 3: 5, 4: 11, 5: 32 },
+      payouts: { 3: 4, 4: 9, 5: 25 },
+      payoutsSC: { 3: 4, 4: 9, 5: 25 },
       accentColor: '#fbbf24',
       description:
         '3D Beveled Gold & Cabochon Emerald-Amber Jack ("J") popping off a Forest Jade tile.',
@@ -681,8 +681,8 @@ export const ACTIVE_THEME = {
       gemSecondary: '#f59e0b',
       tiltDeg: -5,
       image: '/assets/psd/symbol_frame_necklace.png',
-      payouts: { 3: 4, 4: 7, 5: 22 },
-      payoutsSC: { 3: 4, 4: 8, 5: 23 },
+      payouts: { 3: 3, 4: 6, 5: 18 },
+      payoutsSC: { 3: 3, 4: 6, 5: 18 },
       accentColor: '#38bdf8',
       description:
         '3D Beveled Gold & Cobalt-Sapphire Ten ("10") popping off a Deep Midnight velvet tile.',
@@ -789,9 +789,9 @@ export const PSD_DIGIT_SPRITES = {
 // ============================================================================
 export const FREE_SPINS_CONFIG = {
   title: 'CELESTIAL SOLAR FREE SPINS',
-  subTitle: 'ALL WINS MULTIPLIED BY 3× • SOLAR RETRIGGERS ACTIVE!',
+  subTitle: 'ALL WINS MULTIPLIED BY 2× • SOLAR RETRIGGERS ACTIVE!',
   defaultSpins: 10,
-  winMultiplier: 3,
+  winMultiplier: 2,
   retriggerSpins: 3,
   symbols: [
     {

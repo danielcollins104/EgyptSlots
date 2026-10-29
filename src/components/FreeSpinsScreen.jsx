@@ -63,13 +63,13 @@ export default function FreeSpinsScreen({
     return [...list, ...list];
   }, []);
 
-  // Evaluate Free Spins 15-Payline wins with 3× Multiplier
+  // Evaluate Free Spins 15-Payline wins with 2× Solar Multiplier
   const evaluateFreeSpinsWins = useCallback(
     (grid) => {
       const wins = [];
       const winCoordSet = new Set();
       let totalCoinsWon = 0;
-      const multiplier = FREE_SPINS_CONFIG.winMultiplier || 3;
+      const multiplier = FREE_SPINS_CONFIG.winMultiplier || 2;
 
       // 1. Evaluate 15 Paylines
       for (const line of PAYLINES) {
@@ -423,10 +423,10 @@ export default function FreeSpinsScreen({
             </div>
           </div>
 
-          {/* 3× Multiplier Pill */}
+          {/* 2× Solar Multiplier Pill */}
           <div className="fs-multiplier-badge">
             <Zap size={16} className="zap-icon" />
-            <span>3× MULTIPLIER</span>
+            <span>{multiplier}× MULTIPLIER</span>
           </div>
 
           {/* Running Total Won Counter */}
@@ -471,7 +471,7 @@ export default function FreeSpinsScreen({
           {/* Top Arch Solar Plaque */}
           <div className="fs-top-arch-badge">
             <Sparkles size={15} />
-            <span>DC ENTERPRISES • 3× SOLAR ARENA</span>
+            <span>DC ENTERPRISES • {multiplier}× SOLAR ARENA</span>
             <Sparkles size={15} />
           </div>
 
@@ -609,7 +609,7 @@ export default function FreeSpinsScreen({
                   <h3 className="intro-title">COMMENCING AUTOMATIC SPINS...</h3>
                   <div className="intro-countdown-num">{countdown}</div>
                   <p className="intro-sub">
-                    {initialSpins} FREE SPINS • 3× SOLAR MULTIPLIER ON ALL WINS
+                    {initialSpins} FREE SPINS • {multiplier}× SOLAR MULTIPLIER ON ALL WINS
                   </p>
                 </div>
               </div>
@@ -632,7 +632,7 @@ export default function FreeSpinsScreen({
               {lastSpinWin > 0 ? (
                 <span className="last-win-text">
                   LAST SPIN WON: +{isSC ? `$${lastSpinWin.toFixed(2)}` : lastSpinWin.toLocaleString()}{' '}
-                  (3× MULT)
+                  ({multiplier}× MULT)
                 </span>
               ) : (
                 <span className="auto-running-tag">AUTOMATIC PLAY ACTIVE</span>
