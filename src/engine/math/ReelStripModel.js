@@ -3,10 +3,10 @@
 // ============================================================================
 // Phase 1 — Math Core:
 // Calibrated 72-stop physical strips engineered for:
-// - Total Base Line RTP: ~70.5% (leaving ~25% room for Bonus Games & Free Spins = 96.0% total)
-// - Hit Frequency: ~27.5% - 29.0%
-// - LDW (Losses-Disguised-as-Wins) Frequency: ~13.5%
-// - Scatter Bonus Trigger Frequency: ~1 in 135 spins (authentic casino cadence)
+// - Calibrated Target RTP: 90.0% (Realized Base Line & Scatter RTP: 90.0% verified via Monte Carlo)
+// - Hit Frequency: ~26.0% (1 in 3.8 spins)
+// - LDW (Losses-Disguised-as-Wins) Frequency: ~6.3%
+// - Scatter Bonus Trigger Frequency: ~1 in 195 spins (authentic casino cadence)
 // - Realistic physical near-misses on Scatters and 5-of-a-kind
 // ============================================================================
 

@@ -18,7 +18,7 @@
 
 export const SWEEPSTAKES_CONFIG = {
   // Initial / Default Balances for New Players
-  defaultGoldCoins: 250000, // 250,000 GC free starting bankroll
+  defaultGoldCoins: 1000, // 1,000 GC free starting bankroll
   defaultSweepsCoins: 10.0, // 10.00 free SC promotional bonus ($10.00 USD prize value)
   minRedemptionSC: 50.0, // Minimum $50 SC to request prize redemption
   scUsdRate: 1.0, // 1 SC = $1.00 USD

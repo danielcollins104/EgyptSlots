@@ -10,7 +10,7 @@ export const MATH_PAYTABLE = {
     name: '3D Solar Scarab Relic (Scatter)',
     tier: 'scatter',
     isBonus: true,
-    payouts: { 3: 55, 4: 148, 5: 554 },
+    payouts: { 3: 66, 4: 178, 5: 668 },
   },
 
   // HIGH TIER SYMBOLS
@@ -18,49 +18,49 @@ export const MATH_PAYTABLE = {
     name: 'Crimson Ruby Eye of Horus',
     tier: 'high',
     isTopHigh: true,
-    payouts: { 3: 31, 4: 98, 5: 308 },
+    payouts: { 3: 37, 4: 119, 5: 372 },
   },
   ankh: {
     name: 'Royal Amethyst Ankh Cuff',
     tier: 'high',
-    payouts: { 3: 22, 4: 68, 5: 215 },
+    payouts: { 3: 27, 4: 83, 5: 259 },
   },
   scarab: {
     name: 'Emerald Jade Winged Scarab',
     tier: 'high',
-    payouts: { 3: 18, 4: 55, 5: 172 },
+    payouts: { 3: 22, 4: 67, 5: 208 },
   },
   necklace: {
     name: 'Lapis Sapphire Lotus Collar',
     tier: 'high',
-    payouts: { 3: 14, 4: 39, 5: 123 },
+    payouts: { 3: 17, 4: 48, 5: 149 },
   },
 
   // LOW TIER 3D ROYALS
   neon_a: {
     name: '3D Imperial Gold Royal Ace (A)',
     tier: 'low',
-    payouts: { 3: 8, 4: 20, 5: 58 },
+    payouts: { 3: 10, 4: 24, 5: 72 },
   },
   neon_k: {
     name: '3D Royal Ruby King (K)',
     tier: 'low',
-    payouts: { 3: 7, 4: 16, 5: 46 },
+    payouts: { 3: 8, 4: 20, 5: 56 },
   },
   neon_q: {
     name: '3D Royal Amethyst Queen (Q)',
     tier: 'low',
-    payouts: { 3: 6, 4: 13, 5: 38 },
+    payouts: { 3: 7, 4: 16, 5: 46 },
   },
   neon_j: {
     name: '3D Beveled Emerald Jack (J)',
     tier: 'low',
-    payouts: { 3: 5, 4: 11, 5: 31 },
+    payouts: { 3: 6, 4: 13, 5: 38 },
   },
   neon_10: {
     name: '3D Cobalt-Sapphire Royal Ten (10)',
     tier: 'low',
-    payouts: { 3: 4, 4: 7, 5: 22 },
+    payouts: { 3: 5, 4: 8, 5: 27 },
   },
 
   // WILDS
@@ -69,7 +69,7 @@ export const MATH_PAYTABLE = {
     tier: 'wild',
     isWild: true,
     multiplier: 2,
-    payouts: { 3: 62, 4: 196, 5: 616 }, // Top High payouts doubled
+    payouts: { 3: 74, 4: 238, 5: 744 },
   },
   wild_expand: {
     name: '1×3 Expanding Guardian',
@@ -77,7 +77,7 @@ export const MATH_PAYTABLE = {
     isWild: true,
     isExpanding: true,
     multiplier: 2,
-    payouts: { 3: 62, 4: 196, 5: 616 },
+    payouts: { 3: 74, 4: 238, 5: 744 },
   },
 };
 

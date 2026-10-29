@@ -223,12 +223,50 @@ body {
   transition: transform 0.3s ease;
 }
 
+.ad-splash-bottom-deck {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+  z-index: 20;
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+.ad-splash-bottom-deck .ad-side-callout {
+  position: static;
+  width: clamp(140px, 18vw, 210px);
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(16, 3, 38, 0.92), rgba(42, 6, 76, 0.88));
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(0, 255, 255, 0.75);
+  box-shadow:
+    0 0 20px rgba(255, 0, 255, 0.45),
+    0 8px 20px rgba(0, 0, 0, 0.85);
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+}
+
+.ad-splash-bottom-deck .ad-side-callout:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 26px rgba(0, 229, 255, 0.7), 0 8px 20px rgba(0, 0, 0, 0.9);
+}
+
+.ad-splash-bottom-deck .ad-side-callout.right-callout {
+  border-color: rgba(255, 0, 255, 0.85);
+}
+
 .ad-hero-cta-bar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
   z-index: 20;
 }
 
@@ -305,16 +343,48 @@ body {
     border-radius: 12px;
     box-shadow: 0 0 25px rgba(0, 229, 255, 0.4), 0 10px 30px rgba(0, 0, 0, 0.9);
   }
+  .ad-splash-bottom-deck {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 0 4px;
+  }
+  .ad-splash-bottom-deck .ad-side-callout {
+    width: auto;
+    flex: 1 1 0;
+    max-width: 110px;
+    padding: 5px 6px;
+    border-radius: 10px;
+  }
+  .ad-splash-bottom-deck .callout-badge-header {
+    font-size: 0.50rem;
+    gap: 3px;
+  }
+  .ad-splash-bottom-deck .callout-big-metric {
+    font-size: 0.92rem;
+  }
+  .ad-splash-bottom-deck .callout-sub-label {
+    font-size: 0.56rem;
+  }
+  .ad-splash-bottom-deck .callout-fine-print {
+    font-size: 0.48rem;
+  }
   .ad-enter-casino-btn {
-    padding: 12px 32px;
-    gap: 8px;
+    padding: 10px 18px;
+    gap: 6px;
   }
   .cta-enter-text {
-    font-size: 1.05rem;
-    letter-spacing: 0.1em;
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+  }
+  .cta-play-badge {
+    width: 24px;
+    height: 24px;
   }
   .cta-tap-hint {
-    font-size: 0.65rem;
+    font-size: 0.60rem;
   }
 }
 
@@ -327,20 +397,42 @@ body {
     max-height: calc(100dvh - 65px);
     border-radius: 8px;
   }
+  .ad-splash-bottom-deck {
+    margin-top: 3px;
+    gap: 8px;
+    padding: 0 6px;
+  }
+  .ad-splash-bottom-deck .ad-side-callout {
+    padding: 3px 8px;
+    max-width: 120px;
+    border-radius: 8px;
+  }
+  .ad-splash-bottom-deck .callout-badge-header {
+    font-size: 0.48rem;
+  }
+  .ad-splash-bottom-deck .callout-big-metric {
+    font-size: 0.86rem;
+  }
+  .ad-splash-bottom-deck .callout-sub-label {
+    font-size: 0.52rem;
+  }
+  .ad-splash-bottom-deck .callout-fine-print {
+    font-size: 0.46rem;
+  }
   .ad-hero-cta-bar {
-    margin-top: 4px;
+    margin-top: 0;
     gap: 2px;
   }
   .ad-enter-casino-btn {
-    padding: 6px 24px;
-    gap: 8px;
+    padding: 6px 20px;
+    gap: 6px;
   }
   .cta-enter-text {
-    font-size: 0.92rem;
+    font-size: 0.8rem;
   }
   .cta-play-badge {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
   .cta-tap-hint {
     display: none;
@@ -761,7 +853,7 @@ body {
 }
 
 @media (max-width: 900px) {
-  .ad-side-callout {
+  .ad-hero-visual-viewport .ad-side-callout {
     display: none;
   }
 }
