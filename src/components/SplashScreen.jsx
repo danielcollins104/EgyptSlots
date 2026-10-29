@@ -36,6 +36,9 @@ export default function SplashScreen({ onEnterCasino }) {
 
   const heroImageUrl =
     THEME_ASSETS.splashHeroImage ||
+    '/assets/neon/dc_enterprises_splash_hd.webp';
+  const heroFallbackUrl =
+    THEME_ASSETS.splashHeroFallback ||
     '/assets/neon/dc_enterprises_splash_hd.jpg';
 
   return (
@@ -60,17 +63,25 @@ export default function SplashScreen({ onEnterCasino }) {
         alt=""
         className="splash-fx-sparks neon-fx-shift"
         draggable={false}
+        loading="lazy"
+        decoding="async"
       />
 
       {/* Hero Artwork Stage — Clean & Unobstructed */}
       <div className="ad-hero-artwork-stage" onClick={(e) => e.stopPropagation()}>
         <div className="ad-hero-image-wrapper">
-          <img
-            src={heroImageUrl}
-            alt="DC Enterprises Casino"
-            className="ad-hero-artwork-img"
-            draggable={false}
-          />
+          <picture className="ad-hero-picture">
+            <source srcSet={heroImageUrl} type="image/webp" />
+            <img
+              src={heroFallbackUrl}
+              alt="DC Enterprises Casino"
+              className="ad-hero-artwork-img"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              draggable={false}
+            />
+          </picture>
         </div>
 
         {/* Bottom Promotional Deck: 1,000 Free Coins (Left) • ENTER CASINO (Center) • 90.0% RTP (Right) */}

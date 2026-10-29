@@ -74,7 +74,8 @@ export const ACTIVE_THEME = {
     // '/assets/neon/splash_video.mp4' to restore the intro video.
     splashVideo: null,
     splashVideoEndFrame: '/assets/neon/splash_video_end_frame.jpg',
-    splashHeroImage: '/assets/neon/dc_enterprises_splash_hd.jpg',
+    splashHeroImage: '/assets/neon/dc_enterprises_splash_hd.webp',
+    splashHeroFallback: '/assets/neon/dc_enterprises_splash_hd.jpg',
     splashCreativeImage: '/assets/neon/daniel_creative_ad_splash.jpg',
     splashOriginalImage: '/assets/neon/daniel_welcome_treasure.jpg',
     megaWinVideo: '/assets/neon/mega_win_animation.mp4',
