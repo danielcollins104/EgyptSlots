@@ -62,6 +62,8 @@ import NeonKeyedImage from './components/NeonKeyedImage';
 import DcLogoPlaque from './components/DcLogoPlaque';
 import AuthModal from './components/AuthModal';
 import { authService } from './services/authService';
+import AmbientMusicBar from './components/AmbientMusicBar';
+import { ambientMusicEngine } from './audio/ambientMusicEngine';
 import PhaserReelEngine from './engine/PhaserReelEngine';
 import { slotMathEngine } from './engine/math/SlotMathEngine.js';
 import { spinPhysicalReels } from './engine/math/ReelStripModel.js';
@@ -315,6 +317,21 @@ export default function App() {
     });
     return unsubscribe;
   }, [currencyMode]);
+
+  // Ambient Flow Music: Auto-start on first interaction & sync with master mute
+  useEffect(() => {
+    ambientMusicEngine.initAutoStart();
+  }, []);
+
+  useEffect(() => {
+    ambientMusicEngine.setMuted(muted);
+  }, [muted]);
+
+  // Auto-duck ambient music during Big Wins, Free Spins, or 3D Bonus rounds
+  useEffect(() => {
+    const isSpecialActive = bigWinAmount > 0 || Boolean(bonusSession) || freeSpinsOpen;
+    ambientMusicEngine.duck(isSpecialActive);
+  }, [bigWinAmount, bonusSession, freeSpinsOpen]);
 
   // Periodic Guardian eye blink (if configured on the left or right guardian)
   useEffect(() => {
@@ -1230,6 +1247,8 @@ export default function App() {
             <RotateCcw size={15} />
           </button>
 
+          <AmbientMusicBar />
+
           <button
             className="dc-action-btn"
             onClick={toggleMute}
@@ -1284,6 +1303,8 @@ export default function App() {
           >
             {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
           </button>
+
+          <AmbientMusicBar />
 
           <button
             className="dc-action-btn"
@@ -1383,6 +1404,64 @@ export default function App() {
                 </div>
               </button>
             )}
+
+            {/* Mobile Ambient Flow Music Card */}
+            <div
+              className="mobile-drawer-card mobile-music-card"
+              style={{
+                gridColumn: '1 / -1',
+                borderColor: 'rgba(56, 189, 248, 0.4)',
+                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(15, 23, 42, 0.75))',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px'
+              }}
+            >
+              <Disc size={22} color="#38bdf8" className="card-icon" />
+              <div className="card-txt" style={{ flex: 1 }}>
+                <strong style={{ color: '#38bdf8', fontSize: '0.88rem' }}>🎵 Ambient Flow Music</strong>
+                <small style={{ color: '#94a3b8', display: 'block', marginTop: '2px' }}>
+                  {ambientMusicEngine.getCurrentTrack().title} (Quiet Mix)
+                </small>
+              </div>
+              <button
+                onClick={() => {
+                  soundEngine.playButtonClick(500);
+                  ambientMusicEngine.togglePlay();
+                }}
+                style={{
+                  background: 'rgba(255, 215, 0, 0.18)',
+                  border: '1px solid rgba(255, 215, 0, 0.4)',
+                  color: '#ffd700',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                {ambientMusicEngine.isPlaying ? 'PAUSE' : 'PLAY'}
+              </button>
+              <button
+                onClick={() => {
+                  soundEngine.playButtonClick(600);
+                  ambientMusicEngine.nextTrack(true);
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#f1f5f9',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                NEXT ⏭
+              </button>
+            </div>
 
             <button
               className="mobile-drawer-card store-card"
