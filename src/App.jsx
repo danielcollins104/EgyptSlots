@@ -46,6 +46,7 @@ import {
 } from './config/slotConfig';
 import { SWEEPSTAKES_CONFIG } from './config/sweepstakesConfig';
 import PaymentModal from './components/PaymentModal';
+import LowBalanceOfferModal from './components/LowBalanceOfferModal';
 import { soundEngine } from './audio/soundEngine';
 import SplashScreen from './components/SplashScreen';
 import BigWinPopup from './components/BigWinPopup';
@@ -136,6 +137,11 @@ export default function App() {
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentModalTab, setPaymentModalTab] = useState('store');
+  const [selectedStorePackage, setSelectedStorePackage] = useState(null);
+
+  // Proactive & Insufficient Balance Smart Offer Modal State
+  const [lowBalanceOfferOpen, setLowBalanceOfferOpen] = useState(false);
+  const lastLowBalanceOfferTimeRef = useRef(0);
 
   // Bottom UI State (Unified Bet Selector across 15 Fixed Paylines)
   const [betIndexGC, setBetIndexGC] = useState(4); // Default 75 GC (5 per line)
@@ -559,8 +565,33 @@ export default function App() {
           defaultGame: 'vault',
         });
       }, 750);
+    } else {
+      // Flow-Safe Low-Balance / Rescue Refill Check:
+      // Triggered only if player is running critically low, idle, not in bonus/free spins, and not spamming.
+      const nowTimestamp = Date.now();
+      if (
+        nowTimestamp - lastLowBalanceOfferTimeRef.current > 120000 &&
+        !isHoldingSpinRef.current
+      ) {
+        setTimeout(() => {
+          if (
+            !isSpinningRef.current &&
+            !freeSpinsOpen &&
+            !bonusSession &&
+            !isHoldingSpinRef.current
+          ) {
+            const isSC = currencyMode === 'SC';
+            const bal = isSC ? sweepsCoins : goldCoins;
+            const threshold = isSC ? 0.50 : 50;
+            if (bal <= threshold) {
+              setLowBalanceOfferOpen(true);
+              lastLowBalanceOfferTimeRef.current = Date.now();
+            }
+          }
+        }, 1800);
+      }
     }
-  }, [evaluateGridWins, currencyMode, turboFlow, flowStreak]);
+  }, [evaluateGridWins, currencyMode, turboFlow, flowStreak, sweepsCoins, goldCoins, freeSpinsOpen, bonusSession]);
 
   const openBonusGamesManually = (defaultGame = 'vault') => {
     if (isSpinning) return;
@@ -678,6 +709,8 @@ export default function App() {
         if (sweepsCoins < activeSpinBet) {
           setStatusMessage('INSUFFICIENT SWEEPS COINS! GET FREE SC WITH STORE BUNDLES OR SWITCH TO GOLD COINS!');
           setAutoPlayCount(0);
+          setLowBalanceOfferOpen(true);
+          lastLowBalanceOfferTimeRef.current = Date.now();
           return;
         }
         setSweepsCoins((prev) => Math.max(0, Number((prev - activeSpinBet).toFixed(2))));
@@ -685,6 +718,8 @@ export default function App() {
         if (goldCoins < activeSpinBet) {
           setStatusMessage(THEME_COPY.insufficientCoinsTicker);
           setAutoPlayCount(0);
+          setLowBalanceOfferOpen(true);
+          lastLowBalanceOfferTimeRef.current = Date.now();
           return;
         }
         setGoldCoins((prev) => prev - activeSpinBet);
@@ -1853,11 +1888,34 @@ export default function App() {
         currencyMode={currencyMode}
       />
 
+      {/* Non-Disruptive Smart Low Balance Offer / Rescue Modal */}
+      <LowBalanceOfferModal
+        isOpen={lowBalanceOfferOpen}
+        onClose={() => setLowBalanceOfferOpen(false)}
+        currencyMode={currencyMode}
+        balance={currencyMode === 'SC' ? sweepsCoins : goldCoins}
+        onSelectPackage={(pkg) => {
+          setLowBalanceOfferOpen(false);
+          setSelectedStorePackage(pkg);
+          setPaymentModalTab('store');
+          setPaymentModalOpen(true);
+        }}
+        onOpenStore={() => {
+          setLowBalanceOfferOpen(false);
+          setPaymentModalTab('store');
+          setPaymentModalOpen(true);
+        }}
+      />
+
       {/* Sweepstakes Payment & Coin Store Modal */}
       <PaymentModal
         isOpen={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setSelectedStorePackage(null);
+        }}
         initialTab={paymentModalTab}
+        initialPackage={selectedStorePackage}
         goldCoins={goldCoins}
         sweepsCoins={sweepsCoins}
         onPurchaseSuccess={handlePurchaseSuccess}

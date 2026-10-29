@@ -82,6 +82,81 @@ export const SWEEPSTAKES_CONFIG = {
     },
   ],
 
+  // High Roller Exclusive VIP Vault Packages ($5,000, $10,000, and $50,000)
+  highRollerPackages: [
+    {
+      id: 'pkg_hr_5000',
+      priceUsd: 5000.0,
+      goldCoins: 65000000,
+      freeSweepsCoins: 5600.0,
+      stripePriceId: 'price_dc_hr_5000',
+      stripePaymentLink: 'https://buy.stripe.com/test_dc_hr_5000',
+      popular: false,
+      badge: 'VIP SOVEREIGN • +12% SC',
+      tagline: 'VIP Concierge & Fast-Track Cashout',
+      savings: '12% Extra Free SC ($600 Value)',
+      tierName: 'Sovereign Vault',
+    },
+    {
+      id: 'pkg_hr_10000',
+      priceUsd: 10000.0,
+      goldCoins: 140000000,
+      freeSweepsCoins: 11800.0,
+      stripePriceId: 'price_dc_hr_10000',
+      stripePaymentLink: 'https://buy.stripe.com/test_dc_hr_10000',
+      popular: true,
+      badge: 'ROYAL PHARAOH • +18% SC',
+      tagline: 'Personal Host & Priority 24/7 Redemptions',
+      savings: '18% Extra Free SC ($1,800 Value)',
+      tierName: 'Royal Pharaoh Vault',
+    },
+    {
+      id: 'pkg_hr_50000',
+      priceUsd: 50000.0,
+      goldCoins: 800000000,
+      freeSweepsCoins: 62500.0,
+      stripePriceId: 'price_dc_hr_50000',
+      stripePaymentLink: 'https://buy.stripe.com/test_dc_hr_50000',
+      popular: false,
+      badge: 'EMPEROR VAULT • +25% SC',
+      tagline: 'Private Vault, Max Limits & Direct Wire Settlement',
+      savings: '25% Extra Free SC ($12,500 Value)',
+      tierName: 'Emperor Dynasty Vault',
+    },
+  ],
+
+  // Special Low-Balance Rescue Packages (High Conversion Incentive)
+  rescuePackages: [
+    {
+      id: 'pkg_rescue_bronze',
+      priceUsd: 9.99,
+      goldCoins: 30000,
+      freeSweepsCoins: 12.0,
+      badge: 'RESCUE DEAL • +20% BONUS',
+      tagline: 'Quick reload to stay in the action',
+      savings: '20% Extra Free SC',
+    },
+    {
+      id: 'pkg_rescue_silver',
+      priceUsd: 19.99,
+      goldCoins: 75000,
+      freeSweepsCoins: 25.0,
+      badge: 'MOST POPULAR RESCUE • +25% BONUS',
+      tagline: 'Best value bankroll booster',
+      savings: '25% Extra Free SC',
+      recommended: true,
+    },
+    {
+      id: 'pkg_rescue_gold',
+      priceUsd: 49.99,
+      goldCoins: 210000,
+      freeSweepsCoins: 65.0,
+      badge: 'WHALE RESCUE • +30% BONUS',
+      tagline: 'Massive bankroll refill with VIP host perk',
+      savings: '30% Extra Free SC',
+    },
+  ],
+
   // Free Daily Claim / Faucet Rewards
   dailyReward: {
     goldCoins: 5000,
@@ -113,3 +188,40 @@ export const SWEEPSTAKES_CONFIG = {
     },
   ],
 };
+
+/**
+ * Calculates dynamic Gold Coins and Free Sweeps Coins for any custom purchase amount ($USD)
+ * with scaling VIP bonuses for high rollers.
+ */
+export function calculateCustomPackage(amountUsd) {
+  const num = Math.max(10, Math.min(1000000, Math.round(Number(amountUsd) || 0)));
+
+  // Tiered VIP bonuses:
+  // >= $50,000  -> +25% Extra Free SC
+  // >= $10,000  -> +18% Extra Free SC
+  // >= $5,000   -> +12% Extra Free SC
+  // >= $1,000   -> +10% Extra Free SC
+  // >= $100     -> +5% Extra Free SC
+  let bonusRate = 0.05;
+  if (num >= 50000) bonusRate = 0.25;
+  else if (num >= 10000) bonusRate = 0.18;
+  else if (num >= 5000) bonusRate = 0.12;
+  else if (num >= 1000) bonusRate = 0.10;
+
+  const freeSweepsCoins = Number((num * (1 + bonusRate)).toFixed(2));
+  const gcPerDollar = num >= 5000 ? 16000 : num >= 1000 ? 14000 : 12000;
+  const goldCoins = Math.round(num * gcPerDollar);
+  const bonusPct = Math.round(bonusRate * 100);
+
+  return {
+    id: `pkg_custom_${num}`,
+    priceUsd: num,
+    goldCoins,
+    freeSweepsCoins,
+    popular: false,
+    badge: `CUSTOM VIP • +${bonusPct}% SC`,
+    tagline: `Custom High Roller Bundle (${bonusPct}% Extra SC)`,
+    savings: `${bonusPct}% Extra Free SC`,
+    isCustom: true,
+  };
+}
