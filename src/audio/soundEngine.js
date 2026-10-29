@@ -248,26 +248,50 @@ class SoundEngine {
   playReelTick(colIndex = 0) {
     if (this.muted) return;
     const nowMs = performance.now();
-    if (nowMs - this.lastTickMs < 36) return;
+    if (nowMs - this.lastTickMs < 45) return;
     this.lastTickMs = nowMs;
 
     this.init();
     if (!this.ctx) return;
 
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(160 + colIndex * 18, now);
-    osc.frequency.exponentialRampToValueAtTime(65, now + 0.025);
+    if (!this.tickBuffers) {
+      this.initTickBuffers();
+    }
 
-    gain.gain.setValueAtTime(0.055, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
+    const buf = this.tickBuffers?.[colIndex % 5];
+    if (buf) {
+      try {
+        const source = this.ctx.createBufferSource();
+        source.buffer = buf;
+        source.connect(this.ctx.destination);
+        source.start();
+      } catch (_) {}
+    }
+  }
 
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.03);
+  initTickBuffers() {
+    if (!this.ctx || this.tickBuffers) return;
+    try {
+      this.tickBuffers = [];
+      const sampleRate = this.ctx.sampleRate || 44100;
+      const numSamples = Math.round(sampleRate * 0.022); // 22ms per tick
+
+      for (let c = 0; c < 5; c++) {
+        const buffer = this.ctx.createBuffer(1, numSamples, sampleRate);
+        const data = buffer.getChannelData(0);
+        const startFreq = 160 + c * 18;
+        const endFreq = 65;
+
+        for (let i = 0; i < numSamples; i++) {
+          const t = i / sampleRate;
+          const progress = i / numSamples;
+          const freq = startFreq * Math.pow(endFreq / startFreq, progress);
+          const amp = 0.045 * (1 - progress);
+          data[i] = Math.sin(2 * Math.PI * freq * t) * amp;
+        }
+        this.tickBuffers.push(buffer);
+      }
+    } catch (_) {}
   }
 
   playReelStop(colIndex = 0, hasSpecial = false) {

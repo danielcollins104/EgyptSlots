@@ -615,7 +615,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+    const ctx = canvas.getContext('2d', { alpha: true });
 
     const nonExpandingSymbols = SYMBOLS.filter((s) => !s.isExpanding);
     const randomSymbol = () =>
@@ -1068,13 +1068,15 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         });
     };
 
-    // Ultra-fast 60/120 FPS Render Loop
+    // Ultra-smooth 60/120 FPS Render Loop with Delta Smoothing & Integer Pixel Blitting
     let lastTime = performance.now();
     const tick = () => {
       if (isDisposed) return;
       const now = performance.now();
-      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      const rawDt = (now - lastTime) / 1000;
       lastTime = now;
+      // Clamp delta time to 30fps-120fps window to eliminate stutter spikes
+      const dt = Math.min(0.033, Math.max(0.008, rawDt));
 
       ctx.clearRect(0, 0, GAME_W, GAME_H);
 
@@ -1159,19 +1161,17 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             // If this symbol is a winning cell and has separate 3D Frame + Pop-Out Artifact layers,
             // animate the 3D object lifting up and bursting out off its tile frame!
             if (isWinningCell && frameSprite && popSprite) {
-              const fw = frameSprite.width * framePulse;
-              const fh = frameSprite.height * framePulse;
-              ctx.drawImage(frameSprite, reel.centerX - fw / 2, centerY - fh / 2, fw, fh);
+              const fw = Math.round(frameSprite.width * framePulse);
+              const fh = Math.round(frameSprite.height * framePulse);
+              const fx = Math.round(reel.centerX - fw / 2);
+              const fy = Math.round(centerY - fh / 2);
+              ctx.drawImage(frameSprite, fx, fy, fw, fh);
 
-              const pw = popSprite.width * popOutPulse;
-              const ph = popSprite.height * popOutPulse;
-              ctx.drawImage(
-                popSprite,
-                reel.centerX - pw / 2,
-                centerY - ph / 2 + popLiftY,
-                pw,
-                ph
-              );
+              const pw = Math.round(popSprite.width * popOutPulse);
+              const ph = Math.round(popSprite.height * popOutPulse);
+              const px = Math.round(reel.centerX - pw / 2);
+              const py = Math.round(centerY - ph / 2 + popLiftY);
+              ctx.drawImage(popSprite, px, py, pw, ph);
             } else {
               const sprite = isWinningCell
                 ? sprites[`win_${sym.id}`] || sprites[`sym_${sym.id}`]
@@ -1183,15 +1183,21 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
               const sh = sprite.height;
 
               if (isWinningCell) {
-                const dw = sw * popOutPulse;
-                const dh = sh * popOutPulse;
-                ctx.drawImage(sprite, reel.centerX - dw / 2, centerY - dh / 2, dw, dh);
+                const dw = Math.round(sw * popOutPulse);
+                const dh = Math.round(sh * popOutPulse);
+                const dx = Math.round(reel.centerX - dw / 2);
+                const dy = Math.round(centerY - dh / 2);
+                ctx.drawImage(sprite, dx, dy, dw, dh);
               } else if (speedRatio > 0.02) {
-                const dw = sw * squashX;
-                const dh = sh * stretchY;
-                ctx.drawImage(sprite, reel.centerX - dw / 2, centerY - dh / 2, dw, dh);
+                const dw = Math.round(sw * squashX);
+                const dh = Math.round(sh * stretchY);
+                const dx = Math.round(reel.centerX - dw / 2);
+                const dy = Math.round(centerY - dh / 2);
+                ctx.drawImage(sprite, dx, dy, dw, dh);
               } else {
-                ctx.drawImage(sprite, reel.centerX - sw / 2, centerY - sh / 2);
+                const dx = Math.round(reel.centerX - sw / 2);
+                const dy = Math.round(centerY - sh / 2);
+                ctx.drawImage(sprite, dx, dy);
               }
             }
 
