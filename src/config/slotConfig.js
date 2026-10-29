@@ -187,8 +187,8 @@ export const ACTIVE_THEME = {
   // 7. Interactive 3D Bonus Games Configuration (Game 1: Pick Vault + Game 2: Fortune Wheel)
   bonus: {
     modalTitle: 'DC ENTERPRISES 3D ROYAL BONUS VAULT',
-    game1TabLabel: '1. 3D Jeweled Relic Vault',
-    game2TabLabel: '2. 3D Wheel of Kemet',
+    game1TabLabel: '3D Jeweled Relic Vault',
+    game2TabLabel: '3D Wheel of Kemet',
     scatterTriggerName: '3D BONUS CHEST SCATTERS',
     meterTriggerName: '36/36 BONUS COLLECTOR METER FULL',
     vipDirectTriggerName: 'DANIEL VIP BONUS CHAMBER ACCESS',

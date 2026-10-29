@@ -80,10 +80,11 @@ export default function BonusGameModal({
   }, [bonusSession, currentBet]);
 
   // Draw the 3D Brushed-Gold & Cabochon-Gemstone Fortune Wheel onto Canvas
-  useEffect(() => {
+  const drawWheelCanvas = useCallback(() => {
     const canvas = wheelCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     const size = canvas.width;
     const cx = size / 2;
     const cy = size / 2;
@@ -194,7 +195,22 @@ export default function BonusGameModal({
     ctx.strokeStyle = '#fde047';
     ctx.stroke();
     ctx.restore();
+
+    // Preserve rotation state
+    if (wheelCanvasRef.current) {
+      wheelCanvasRef.current.style.transform = `rotate(${wheelRotationRef.current.deg}deg)`;
+    }
   }, [wedges, wheelMultiplier, activeWedgeIdx]);
+
+  useEffect(() => {
+    drawWheelCanvas();
+    const raf = requestAnimationFrame(drawWheelCanvas);
+    const tm = setTimeout(drawWheelCanvas, 60);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(tm);
+    };
+  }, [drawWheelCanvas, activeTab]);
 
   const jackpotsWithValues = useMemo(() => {
     return BONUS_JACKPOT_TIERS.map((tier) => ({
@@ -344,12 +360,16 @@ export default function BonusGameModal({
       <div className="bonus-modal-cabinet">
         {/* Top Header & 4 Progressive 3D Cabochon Jackpot Meters */}
         <div className="bonus-modal-header">
-          <div className="bonus-header-title-row">
+          {/* Centered Title */}
+          <div className="bonus-title-center-row">
             <div className="bonus-title-badge">
               <Sparkles size={18} />
               <span>{BONUS_CONFIG.modalTitle}</span>
             </div>
+          </div>
 
+          {/* Centered Game Selection Tabs */}
+          <div className="bonus-tabs-center-row">
             <div className="bonus-game-tabs">
               <button
                 className={`bonus-tab-btn ${activeTab === 'vault' ? 'active' : ''}`}
@@ -403,8 +423,10 @@ export default function BonusGameModal({
         </div>
 
         {/* GAME 1: 3D POP-OUT PICK VAULT (12 TILES) */}
-        {activeTab === 'vault' && (
-          <div className="bonus-vault-stage">
+        <div
+          className="bonus-vault-stage"
+          style={{ display: activeTab === 'vault' ? 'block' : 'none' }}
+        >
             <div className="bonus-stats-ribbon">
               <div className="bonus-stat-pill">
                 <span>VAULT PICKS LEFT</span>
@@ -483,81 +505,81 @@ export default function BonusGameModal({
                 );
               })}
             </div>
-          </div>
-        )}
+        </div>
 
         {/* GAME 2: 3D CABOCHON FORTUNE WHEEL */}
-        {activeTab === 'wheel' && (
-          <div className="bonus-wheel-stage">
-            <div className="bonus-stats-ribbon">
-              <div className="bonus-stat-pill">
-                <span>WHEEL SPINS LEFT</span>
-                <strong>{wheelSpinsLeft}</strong>
-              </div>
-              <div className="bonus-stat-pill mult-pill">
-                <span>WHEEL WEDGE MULTIPLIER</span>
-                <strong>{wheelMultiplier}×</strong>
-              </div>
-              <div className="bonus-stat-pill">
-                <span>WHEEL WINNINGS</span>
-                <strong>+{wheelWinCoins.toLocaleString()} COINS</strong>
-              </div>
+        <div
+          className="bonus-wheel-stage"
+          style={{ display: activeTab === 'wheel' ? 'block' : 'none' }}
+        >
+          <div className="bonus-stats-ribbon">
+            <div className="bonus-stat-pill">
+              <span>WHEEL SPINS LEFT</span>
+              <strong>{wheelSpinsLeft}</strong>
             </div>
-
-            <div className="bonus-live-banner">
-              <Sparkles size={16} />
-              <span>{wheelBanner}</span>
+            <div className="bonus-stat-pill mult-pill">
+              <span>WHEEL WEDGE MULTIPLIER</span>
+              <strong>{wheelMultiplier}×</strong>
             </div>
-
-            <div className="wheel-chamber-layout">
-              <div className="wheel-canvas-container">
-                <div className="wheel-top-pointer">▼</div>
-
-                <canvas
-                  ref={wheelCanvasRef}
-                  width={420}
-                  height={420}
-                  className="kemet-wheel-canvas"
-                />
-
-                <button
-                  className="wheel-center-scarab-btn"
-                  onClick={handleSpinWheel}
-                  disabled={wheelSpinning || wheelSpinsLeft <= 0}
-                  title="Click to Spin the 3D Fortune Wheel!"
-                >
-                  <img
-                    src={BONUS_CONFIG.wheelCenterIcon}
-                    alt="Spin Wheel"
-                    className="wheel-center-scarab-img"
-                    draggable={false}
-                  />
-                  <span>{wheelSpinning ? 'SPINNING' : 'SPIN'}</span>
-                </button>
-              </div>
-
-              <div className="wheel-controls-panel">
-                <h3>{BONUS_CONFIG.wheelTitle}</h3>
-                <p>{BONUS_CONFIG.wheelDescription}</p>
-
-                <button
-                  className="wheel-spin-cta-btn"
-                  onClick={handleSpinWheel}
-                  disabled={wheelSpinning || wheelSpinsLeft <= 0}
-                >
-                  <RotateCw size={18} className={wheelSpinning ? 'spin-icon-anim' : ''} />
-                  <span>
-                    {wheelSpinning
-                      ? '3D FORTUNE WHEEL SPINNING...'
-                      : wheelSpinsLeft > 0
-                      ? `SPIN 3D FORTUNE WHEEL (${wheelSpinsLeft} LEFT)`
-                      : 'ALL WHEEL SPINS COMPLETED'}
-                  </span>
-                </button>
-              </div>
+            <div className="bonus-stat-pill">
+              <span>WHEEL WINNINGS</span>
+              <strong>+{wheelWinCoins.toLocaleString()} COINS</strong>
             </div>
           </div>
-        )}
+
+          <div className="bonus-live-banner">
+            <Sparkles size={16} />
+            <span>{wheelBanner}</span>
+          </div>
+
+          <div className="wheel-chamber-layout">
+            <div className="wheel-canvas-container">
+              <div className="wheel-top-pointer">▼</div>
+
+              <canvas
+                ref={wheelCanvasRef}
+                width={420}
+                height={420}
+                className="kemet-wheel-canvas"
+              />
+
+              <button
+                className="wheel-center-scarab-btn"
+                onClick={handleSpinWheel}
+                disabled={wheelSpinning || wheelSpinsLeft <= 0}
+                title="Click to Spin the 3D Fortune Wheel!"
+              >
+                <img
+                  src={BONUS_CONFIG.wheelCenterIcon}
+                  alt="Spin Wheel"
+                  className="wheel-center-scarab-img"
+                  draggable={false}
+                />
+                <span>{wheelSpinning ? 'SPINNING' : 'SPIN'}</span>
+              </button>
+            </div>
+
+            <div className="wheel-controls-panel">
+              <h3>{BONUS_CONFIG.wheelTitle}</h3>
+              <p>{BONUS_CONFIG.wheelDescription}</p>
+
+              <button
+                className="wheel-spin-cta-btn"
+                onClick={handleSpinWheel}
+                disabled={wheelSpinning || wheelSpinsLeft <= 0}
+              >
+                <RotateCw size={18} className={wheelSpinning ? 'spin-icon-anim' : ''} />
+                <span>
+                  {wheelSpinning
+                    ? '3D FORTUNE WHEEL SPINNING...'
+                    : wheelSpinsLeft > 0
+                    ? `SPIN 3D FORTUNE WHEEL (${wheelSpinsLeft} LEFT)`
+                    : 'ALL WHEEL SPINS COMPLETED'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Footer: Total Bonus Payout & Collect Button */}
         <div className="bonus-modal-footer">
