@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "egyptslots2",
   "compatibility_date": "2024-11-01",
-  "workers_dev": false,
+  "workers_dev": true,
   "preview_urls": false,
   "routes": [
     { "pattern": "oopsiwon.com", "custom_domain": true },
