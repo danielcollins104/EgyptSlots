@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import PsdGoldNumber from './PsdGoldNumber';
-import { CASINO_BRAND, THEME_COPY } from '../config/slotConfig';
+import { CASINO_BRAND, THEME_ASSETS, THEME_COPY } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
+import { Volume2, VolumeX } from 'lucide-react';
 
 export default function BigWinPopup({
   winCoins,
@@ -10,6 +11,8 @@ export default function BigWinPopup({
   onClose,
 }) {
   const [displayCoins, setDisplayCoins] = useState(0);
+  const [videoMuted, setVideoMuted] = useState(soundEngine.muted);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     if (!winCoins || winCoins <= 0) return;
@@ -17,8 +20,25 @@ export default function BigWinPopup({
       soundEngine.playWin(true);
     } catch (_) {}
 
+    // Video playback handling with autoplay resilience
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.muted = soundEngine.muted;
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // If browser restricts unmuted autoplay, mute and resume
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            setVideoMuted(true);
+            videoRef.current.play().catch(() => {});
+          }
+        });
+      }
+    }
+
     let frameId;
-    const duration = 2100;
+    const duration = 2400;
     const start = performance.now();
     let lastRenderedVal = -1;
     let lastTickTime = 0;
@@ -26,7 +46,7 @@ export default function BigWinPopup({
     const animate = (now) => {
       const elapsed = now - start;
       const progress = Math.min(1, elapsed / duration);
-      // Silky smooth quintic ease-out curve for authentic casino roll-up
+      // Quintic ease-out curve for authentic casino roll-up
       const eased = 1 - Math.pow(1 - progress, 4);
 
       const current =
@@ -34,7 +54,6 @@ export default function BigWinPopup({
           ? Number((winCoins * eased).toFixed(2))
           : Math.round(winCoins * eased);
 
-      // Only update DOM state when the display value actually advances
       if (current !== lastRenderedVal) {
         lastRenderedVal = current;
         setDisplayCoins(current);
@@ -55,10 +74,23 @@ export default function BigWinPopup({
     return () => cancelAnimationFrame(frameId);
   }, [winCoins, currencyMode]);
 
+  const toggleVideoAudio = (e) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      const nextMuted = !videoRef.current.muted;
+      videoRef.current.muted = nextMuted;
+      setVideoMuted(nextMuted);
+    }
+  };
+
   if (!winCoins || winCoins <= 0) return null;
 
   const isSC = currencyMode === 'SC';
   const cashValue = isSC ? Number(displayCoins).toFixed(2) : (displayCoins * coinValue).toFixed(2);
+  const megaWinVideoSrc =
+    THEME_ASSETS.megaWinVideo ||
+    CASINO_BRAND.megaWinVideo ||
+    '/assets/neon/mega_win_animation.mp4';
 
   return (
     <div className="bigwin-overlay" onClick={onClose}>
@@ -88,18 +120,29 @@ export default function BigWinPopup({
           <span className="ribbon-star">★</span>
         </div>
 
-        <div className="bigwin-neon-banner-wrap">
-          <img
-            src={CASINO_BRAND.megaWinNeonImage}
-            alt="MEGA WIN"
-            className="bigwin-neon-mega-img"
-            draggable={false}
+        {/* Centerpiece Mega Win Video Animation Showcase */}
+        <div className="bigwin-video-banner-frame">
+          <video
+            ref={videoRef}
+            src={megaWinVideoSrc}
+            autoPlay
+            loop
+            playsInline
+            className="bigwin-animated-video"
           />
+          <button
+            className="bigwin-video-sound-toggle"
+            onClick={toggleVideoAudio}
+            aria-label={videoMuted ? 'Unmute Mega Win sound' : 'Mute Mega Win sound'}
+            title={videoMuted ? 'Unmute Sound' : 'Mute Sound'}
+          >
+            {videoMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
         </div>
 
         <div className="bigwin-numbers-stage">
           <div className="neon-psd-digits">
-            <PsdGoldNumber value={displayCoins} height={92} gap={-5} />
+            <PsdGoldNumber value={displayCoins} height={82} gap={-4} />
           </div>
           <div className="bigwin-cash-sub">
             {isSC ? 'SWEEPS COINS WON • REAL CASH PRIZE: ' : 'GOLD COINS WON • SOCIAL VALUE: '}

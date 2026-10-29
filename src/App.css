@@ -1883,6 +1883,58 @@ body {
   transform: translate3d(0, 0, 0);
 }
 
+.bigwin-video-banner-frame {
+  position: relative;
+  width: min(680px, 92vw);
+  max-width: 680px;
+  aspect-ratio: 960 / 544;
+  max-height: 46vh;
+  margin: 0 auto;
+  border-radius: 16px;
+  border: 2.5px solid #ffd700;
+  box-shadow:
+    0 0 35px rgba(255, 215, 0, 0.75),
+    0 0 65px rgba(245, 158, 11, 0.4),
+    0 16px 40px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+  background: #000000;
+  z-index: 3;
+  transform: translate3d(0, 0, 0);
+  animation: smoothGoldenPulse 2.2s ease-in-out infinite alternate;
+}
+
+.bigwin-animated-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.bigwin-video-sound-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1.5px solid #ffd700;
+  color: #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+  transition: all 0.18s ease;
+}
+
+.bigwin-video-sound-toggle:hover {
+  background: rgba(255, 215, 0, 0.25);
+  transform: scale(1.1);
+}
+
 .bigwin-neon-mega-img {
   width: 100%;
   height: auto;
@@ -6178,6 +6230,37 @@ body {
   .psd-label-img {
     height: clamp(8px, 1.8vw, 13px);
   }
+
+  /* Mega Win Video Modal Phone Portrait Tuning */
+  .bigwin-modal {
+    max-width: 95vw !important;
+    gap: 4px !important;
+  }
+  .bigwin-casino-ribbon {
+    padding: 5px 18px !important;
+    font-size: 0.75rem !important;
+    margin-bottom: -10px !important;
+  }
+  .bigwin-video-banner-frame {
+    width: min(390px, 92vw) !important;
+    max-height: 34vh !important;
+    border-radius: 12px !important;
+  }
+  .bigwin-numbers-stage {
+    margin-top: -6px !important;
+    gap: 4px !important;
+  }
+  .bigwin-cash-sub {
+    font-size: 0.8rem !important;
+  }
+  .bigwin-cash-highlight {
+    font-size: 1.1rem !important;
+  }
+  .bigwin-collect-btn {
+    margin-top: 10px !important;
+    padding: 10px 32px !important;
+    font-size: 0.95rem !important;
+  }
 }
 
 .mobile-dock-bet-group {
@@ -6426,6 +6509,39 @@ body {
     right: 4% !important;
     bottom: 1.5% !important;
     height: 16% !important;
+  }
+
+  /* Mega Win Video Modal Phone Landscape Tuning */
+  .bigwin-modal {
+    max-height: 96dvh !important;
+    max-width: 96vw !important;
+    gap: 2px !important;
+  }
+  .bigwin-casino-ribbon {
+    padding: 3px 14px !important;
+    font-size: 0.7rem !important;
+    margin-bottom: -6px !important;
+  }
+  .bigwin-video-banner-frame {
+    max-height: 42dvh !important;
+    width: auto !important;
+    aspect-ratio: 960 / 544 !important;
+    border-radius: 10px !important;
+  }
+  .bigwin-numbers-stage {
+    margin-top: -4px !important;
+    gap: 2px !important;
+  }
+  .bigwin-cash-sub {
+    font-size: 0.72rem !important;
+  }
+  .bigwin-cash-highlight {
+    font-size: 0.95rem !important;
+  }
+  .bigwin-collect-btn {
+    margin-top: 6px !important;
+    padding: 6px 24px !important;
+    font-size: 0.85rem !important;
   }
 }
 
