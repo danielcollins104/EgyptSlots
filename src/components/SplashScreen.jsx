@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   Volume2,
-  VolumeX,
   Play,
   Crown,
   Zap,
@@ -11,10 +10,6 @@ import {
   ShieldCheck,
   Award,
   Flame,
-  Eye,
-  Film,
-  Upload,
-  RotateCw,
 } from 'lucide-react';
 import { CASINO_BRAND, THEME_ASSETS, SPLASH_CONFIG } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
@@ -22,36 +17,13 @@ import DcLogoPlaque from './DcLogoPlaque';
 
 export default function SplashScreen({ onEnterCasino }) {
   const [exiting, setExiting] = useState(false);
-  const [artMode, setArtMode] = useState(THEME_ASSETS.splashVideo ? 'video' : 'creative'); // 'video' | 'creative' | 'original'
   const [liveJackpot, setLiveJackpot] = useState(12584920);
-  const [videoAvailable, setVideoAvailable] = useState(!!THEME_ASSETS.splashVideo);
-  const [videoEnded, setVideoEnded] = useState(false);
-  const [customVideoUrl, setCustomVideoUrl] = useState(null);
-  const [isVideoMuted, setIsVideoMuted] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadFeedback, setUploadFeedback] = useState('');
-  const fileInputRef = useRef(null);
-  const videoRef = useRef(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setLiveJackpot((prev) => prev + Math.floor(Math.random() * 485) + 120);
     }, 350);
     return () => clearInterval(interval);
-  }, []);
-
-  // Check if a bundled splash video is available in public assets
-  useEffect(() => {
-    if (THEME_ASSETS.splashVideo) {
-      fetch(THEME_ASSETS.splashVideo, { method: 'HEAD' })
-        .then((res) => {
-          if (res.ok && res.status !== 404) {
-            setVideoAvailable(true);
-            setArtMode('video');
-          }
-        })
-        .catch(() => {});
-    }
   }, []);
 
   const handleEnter = () => {
@@ -63,89 +35,17 @@ export default function SplashScreen({ onEnterCasino }) {
     }, 650);
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('video/') && !/\.(mp4|webm|ogg|mov)$/i.test(file.name)) {
-        setUploadFeedback('Please select a valid video file (.mp4, .webm, or .mov)');
-        setTimeout(() => setUploadFeedback(''), 4500);
-        return;
-      }
-      const url = URL.createObjectURL(file);
-      setCustomVideoUrl(url);
-      setVideoEnded(false);
-      setArtMode('video');
-      setUploadFeedback(`Playing Video: ${file.name}`);
-      setTimeout(() => setUploadFeedback(''), 4000);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('video/') && !/\.(mp4|webm|ogg|mov)$/i.test(file.name)) {
-        setUploadFeedback('Please drop a valid video file (.mp4, .webm, or .mov)');
-        setTimeout(() => setUploadFeedback(''), 4500);
-        return;
-      }
-      const url = URL.createObjectURL(file);
-      setCustomVideoUrl(url);
-      setVideoEnded(false);
-      setArtMode('video');
-      setUploadFeedback(`Playing Video: ${file.name}`);
-      setTimeout(() => setUploadFeedback(''), 4000);
-    }
-  };
-
-  const activeVideoUrl = customVideoUrl || (videoAvailable ? THEME_ASSETS.splashVideo : null);
-
-  const handleVideoEnded = () => {
-    setVideoEnded(true);
-  };
-
-  const handleReplayVideo = () => {
-    setVideoEnded(false);
-    setTimeout(() => {
-      if (videoRef.current) {
-        videoRef.current.currentTime = 0;
-        videoRef.current.play().catch(() => {});
-      }
-    }, 50);
-  };
-
-  const handleToggleMode = () => {
-    if (artMode === 'video') {
-      setArtMode('creative');
-    } else if (artMode === 'creative') {
-      setArtMode('original');
-    } else {
-      if (activeVideoUrl) {
-        setArtMode('video');
-      } else {
-        setArtMode('creative');
-      }
-    }
-  };
-
   const heroImageUrl =
-    artMode === 'creative'
-      ? THEME_ASSETS.splashHeroImage || THEME_ASSETS.splashCreativeImage
-      : THEME_ASSETS.splashOriginalImage;
+    THEME_ASSETS.splashHeroImage ||
+    THEME_ASSETS.splashCreativeImage ||
+    '/assets/neon/dc_enterprises_splash_hd.jpg';
 
   return (
     <div className={`ad-creative-splash-root ${exiting ? 'splash-exit' : ''}`}>
-      {/* PLANE 0: Ambient Blurred Backdrop & PSD Sparks */}
+      {/* PLANE 0: Ambient Blurred Backdrop & Sparks */}
       <div
         className="ad-splash-ambient-bg"
-        style={{
-          backgroundImage: `url('${
-            artMode === 'video' && videoEnded
-              ? THEME_ASSETS.splashVideoEndFrame || heroImageUrl
-              : heroImageUrl
-          }')`,
-        }}
+        style={{ backgroundImage: `url('${heroImageUrl}')` }}
       />
       <div className="ad-splash-laser-grid" />
       <img
@@ -186,61 +86,13 @@ export default function SplashScreen({ onEnterCasino }) {
           </div>
         </header>
 
-        {/* PLANE 2: Center Hero Portrait / Video Frame */}
-        <div
-          className={`ad-hero-visual-viewport ${isDragging ? 'is-dragging' : ''}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-        >
-          {artMode === 'video' && activeVideoUrl ? (
-            videoEnded ? (
-              <img
-                src={THEME_ASSETS.splashVideoEndFrame || heroImageUrl}
-                alt={`${CASINO_BRAND.creatorName} — ${CASINO_BRAND.casinoFullTitle}`}
-                className="ad-hero-main-img mode-creative-cover"
-                draggable={false}
-              />
-            ) : (
-              <video
-                ref={videoRef}
-                src={activeVideoUrl}
-                autoPlay
-                loop={false}
-                muted={isVideoMuted}
-                playsInline
-                preload="auto"
-                disablePictureInPicture
-                disableRemotePlayback
-                className="ad-hero-main-video"
-                onEnded={handleVideoEnded}
-                onError={() => {
-                  setVideoAvailable(false);
-                  setArtMode('creative');
-                }}
-              />
-            )
-          ) : (
-            <img
-              src={heroImageUrl}
-              alt={`${CASINO_BRAND.creatorName} — ${CASINO_BRAND.casinoFullTitle}`}
-              className={`ad-hero-main-img ${
-                artMode === 'original' ? 'mode-original-contain' : 'mode-creative-cover'
-              }`}
-              draggable={false}
-            />
-          )}
-
-          {/* Hidden File Input for Video Picker */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*"
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
+        {/* PLANE 2: Center Hero Portrait Viewport */}
+        <div className="ad-hero-visual-viewport">
+          <img
+            src={heroImageUrl}
+            alt={`${CASINO_BRAND.creatorName} — ${CASINO_BRAND.casinoFullTitle}`}
+            className="ad-hero-main-img"
+            draggable={false}
           />
 
           {/* Top-Left Floating Ad Campaign Tag */}
@@ -251,72 +103,6 @@ export default function SplashScreen({ onEnterCasino }) {
               <div className="tag-main-title">{SPLASH_CONFIG.topLeftTitle}</div>
             </div>
           </div>
-
-          {/* Top-Right Media Controls Group */}
-          <div className="ad-art-controls-group">
-            {/* If in video mode and finished, show Replay Button */}
-            {artMode === 'video' && activeVideoUrl && videoEnded && (
-              <button
-                type="button"
-                className="ad-art-mode-toggle ad-video-replay-toggle"
-                onClick={handleReplayVideo}
-                title="Watch Video Again"
-              >
-                <RotateCw size={14} />
-                <span>Replay</span>
-              </button>
-            )}
-
-            {/* If in video mode, toggle Mute/Unmute */}
-            {artMode === 'video' && activeVideoUrl && !videoEnded && (
-              <button
-                type="button"
-                className="ad-art-mode-toggle ad-video-mute-toggle"
-                onClick={() => setIsVideoMuted((m) => !m)}
-                title={isVideoMuted ? 'Unmute Video Audio' : 'Mute Video Audio'}
-              >
-                {isVideoMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                <span>{isVideoMuted ? 'Unmute' : 'Muted'}</span>
-              </button>
-            )}
-
-            {/* Video File Selector / Add Video Button */}
-            <button
-              type="button"
-              className="ad-art-mode-toggle ad-upload-video-toggle"
-              onClick={() => fileInputRef.current?.click()}
-              title="Select an MP4/WebM video file from your computer"
-            >
-              <Upload size={14} />
-              <span>{customVideoUrl ? 'Change Video' : 'Add Video'}</span>
-            </button>
-
-            {/* Media Mode Toggle Button */}
-            <button
-              type="button"
-              className="ad-art-mode-toggle"
-              onClick={handleToggleMode}
-              title="Switch between Video, Widescreen Key Art, and Original Photo"
-            >
-              {artMode === 'video' ? <Film size={14} /> : <Eye size={14} />}
-              <span>
-                {artMode === 'video'
-                  ? 'Key Art'
-                  : artMode === 'creative'
-                  ? SPLASH_CONFIG.viewOriginalLabel
-                  : activeVideoUrl
-                  ? 'Play Video'
-                  : 'Creative Art'}
-              </span>
-            </button>
-          </div>
-
-          {/* Upload / Drag Feedback Toast */}
-          {uploadFeedback && (
-            <div className="ad-upload-feedback-toast">
-              <Film size={13} /> {uploadFeedback}
-            </div>
-          )}
 
           {/* Left & Right Flanking Ad Callout Cards */}
           <aside className="ad-side-callout left-callout">
@@ -365,6 +151,7 @@ export default function SplashScreen({ onEnterCasino }) {
               type="button"
               className="ad-mega-claim-cta"
               onClick={handleEnter}
+              aria-label="Enter Casino and Claim Bonus"
             >
               <span className="cta-shimmer-layer" />
               <Play size={22} fill="currentColor" />

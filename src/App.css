@@ -347,101 +347,6 @@ body {
   color: #ffffff;
 }
 
-.ad-art-controls-group {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ad-art-mode-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(14, 3, 34, 0.88);
-  backdrop-filter: blur(8px);
-  border: 1.5px solid #00ffff;
-  color: #00ffff;
-  font-family: var(--font-royal);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  box-shadow: 0 0 16px rgba(0, 255, 255, 0.45);
-  transition: all 0.2s ease;
-}
-
-.ad-upload-video-toggle {
-  border-color: #fbbf24;
-  color: #fbbf24;
-  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
-}
-
-.ad-upload-video-toggle:hover {
-  background: rgba(68, 40, 10, 0.95);
-  border-color: #fde047;
-  color: #ffffff;
-  box-shadow: 0 0 22px rgba(253, 224, 71, 0.7);
-}
-
-.ad-video-mute-toggle {
-  border-color: #a855f7;
-  color: #c084fc;
-  box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
-}
-
-.ad-video-mute-toggle:hover {
-  background: rgba(88, 28, 135, 0.95);
-  border-color: #e879f9;
-  color: #ffffff;
-  box-shadow: 0 0 22px rgba(232, 121, 249, 0.7);
-}
-
-.ad-video-replay-toggle {
-  border-color: #38bdf8;
-  color: #38bdf8;
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
-}
-
-.ad-video-replay-toggle:hover {
-  background: rgba(12, 74, 110, 0.95);
-  border-color: #7dd3fc;
-  color: #ffffff;
-  box-shadow: 0 0 22px rgba(125, 211, 252, 0.7);
-}
-
-.ad-upload-feedback-toast {
-  position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 15;
-  background: rgba(10, 2, 26, 0.92);
-  border: 1.5px solid #fbbf24;
-  color: #fef08a;
-  padding: 8px 18px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 0 24px rgba(251, 191, 36, 0.6);
-  animation: fadeInOut 4s ease forwards;
-}
-
-.ad-art-mode-toggle:hover {
-  background: rgba(68, 10, 118, 0.95);
-  border-color: #ff00ff;
-  color: #ffffff;
-  box-shadow: 0 0 22px #ff00ff;
-}
 
 /* Left & Right Flanking Ad Callout Cards (Positioned safely in the side wings) */
 .ad-side-callout {
@@ -661,23 +566,219 @@ body {
 }
 
 @media (max-width: 900px) {
-  .ad-marquee-header {
-    grid-template-columns: 1fr;
-    justify-items: center;
-  }
-  .ad-trust-badge,
-  .ad-live-jackpot-pill {
-    justify-self: center;
-  }
   .ad-side-callout {
     display: none;
   }
-  .ad-conversion-footer {
-    justify-content: center;
-    text-align: center;
+}
+
+/* Mobile & Tablet Responsive Optimizations (< 768px) */
+@media (max-width: 768px) {
+  .ad-creative-splash-root {
+    padding: 0;
   }
-  .ad-feature-pills-row {
+
+  .ad-billboard-stage {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .ad-marquee-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: max(8px, env(safe-area-inset-top, 8px)) 12px 6px 12px;
+    gap: 8px;
+    border-bottom: 1.5px solid rgba(255, 0, 255, 0.6);
+  }
+
+  .ad-trust-badge {
+    display: none;
+  }
+
+  .ad-header-logo-center {
+    width: clamp(140px, 42vw, 210px);
+    margin: 0;
+  }
+
+  .ad-live-jackpot-pill {
+    padding: 4px 10px;
+    font-size: 0.65rem;
+    gap: 6px;
+  }
+
+  .jackpot-pill-label {
+    font-size: 0.58rem;
+  }
+
+  .jackpot-pill-value {
+    font-size: 0.82rem;
+  }
+
+  .ad-hero-visual-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    height: auto;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
     justify-content: center;
+  }
+
+  .ad-hero-main-img {
+    object-fit: contain;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    object-position: center center;
+  }
+
+  .ad-floating-corner-tag.top-left {
+    top: 8px;
+    left: 8px;
+    padding: 4px 8px;
+    border-radius: 8px;
+  }
+
+  .tag-tiny-kicker {
+    font-size: 0.5rem;
+    letter-spacing: 0.08em;
+  }
+
+  .tag-main-title {
+    font-size: 0.72rem;
+  }
+
+  .ad-conversion-footer {
+    padding: 8px 14px max(12px, env(safe-area-inset-bottom, 12px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    border-top: 1.5px solid #00ffff;
+  }
+
+  .ad-offer-copy-col {
+    align-items: center;
+    text-align: center;
+    gap: 3px;
+  }
+
+  .ad-Headline-eyebrow {
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+  }
+
+  .ad-main-campaign-title {
+    font-size: clamp(0.95rem, 3.8vw, 1.25rem);
+  }
+
+  .ad-feature-pills-row {
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .ad-perk-pill {
+    padding: 2px 8px;
+    font-size: 0.58rem;
+  }
+
+  .ad-cta-action-col {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .ad-mega-claim-cta {
+    width: 100%;
+    max-width: 380px;
+    min-height: 48px;
+    padding: 10px 18px;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .cta-primary-line {
+    font-size: clamp(0.95rem, 3.4vw, 1.08rem);
+    letter-spacing: 0.08em;
+  }
+
+  .cta-secondary-line {
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* Small Smartphone Screen Adjustments (< 480px) */
+@media (max-width: 480px) {
+  .ad-floating-corner-tag.top-left {
+    display: none;
+  }
+
+  .ad-feature-pills-row {
+    display: none;
+  }
+
+  .ad-main-campaign-title {
+    font-size: 0.98rem;
+  }
+
+  .ad-Headline-eyebrow {
+    font-size: 0.54rem;
+  }
+}
+
+/* Mobile Landscape Mode for Splash */
+@media (orientation: landscape) and (max-height: 560px) {
+  .ad-billboard-stage {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    border: none;
+  }
+
+  .ad-marquee-header {
+    padding: 4px 12px;
+  }
+
+  .ad-header-logo-center {
+    width: 130px;
+  }
+
+  .ad-floating-corner-tag.top-left {
+    display: none;
+  }
+
+  .ad-conversion-footer {
+    padding: 4px 14px max(6px, env(safe-area-inset-bottom, 6px));
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .ad-offer-copy-col {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .ad-feature-pills-row {
+    display: none;
+  }
+
+  .ad-mega-claim-cta {
+    padding: 6px 14px;
+    min-height: 38px;
+    width: auto;
   }
 }
 
