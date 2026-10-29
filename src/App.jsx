@@ -55,6 +55,9 @@ import PsdGoldNumber from './components/PsdGoldNumber';
 import NeonKeyedImage from './components/NeonKeyedImage';
 import DcLogoPlaque from './components/DcLogoPlaque';
 import PhaserReelEngine from './engine/PhaserReelEngine';
+import { slotMathEngine } from './engine/math/SlotMathEngine.js';
+import { spinPhysicalReels } from './engine/math/ReelStripModel.js';
+import { slotEventBus } from './engine/math/EventBus.js';
 import './App.css';
 
 const COLS = 5;
@@ -277,162 +280,70 @@ export default function App() {
    *     awarding whichever valid combination pays higher.
    *  4. Evaluates 3+ `isBonus` Scatter symbols anywhere on the 5×3 grid (awards Scatter payout + Bonus Game).
    */
-  const evaluateGridWins = useCallback((finalGrid, betLevel) => {
-    const wins = [];
-    const winCoordSet = new Set();
-    let totalCoinsWon = 0;
+  const evaluateGridWins = useCallback((finalGrid, betLevel, stripMetadata = {}) => {
+    // Phase 1 Math Core: Decoupled evaluation via SlotMathEngine
+    const outcome = slotMathEngine.evaluateGrid(finalGrid, betLevel, stripMetadata);
 
-    // 1. Evaluate 15 Left-to-Right Paylines
-    for (const line of PAYLINES) {
-      const lineSymbols = line.rows.map((r, c) => finalGrid[c][r]);
-
-      if (!lineSymbols[0] || lineSymbols[0].isBonus) {
-        continue;
-      }
-
-      // A) Count consecutive pure Wilds starting from c = 0
-      let pureWildCount = 0;
+    // Map outcome to UI-compatible format
+    const wins = outcome.winningLines.map((wl) => {
+      // Find original symbol object from grid for UI rendering
+      let symObj = null;
       for (let c = 0; c < COLS; c++) {
-        if (lineSymbols[c]?.isWild) {
-          pureWildCount++;
-        } else {
-          break;
-        }
-      }
-      const pureWildSym = lineSymbols[0];
-      const pureWildWin =
-        pureWildCount >= 3 ? (pureWildSym.payouts?.[pureWildCount] || 0) * betLevel : 0;
-
-      // B) Find the first non-wild, non-bonus symbol along the contiguous chain from c = 0
-      let firstRegularSym = null;
-      for (let c = 0; c < COLS; c++) {
-        const s = lineSymbols[c];
-        if (!s || s.isBonus) break;
-        if (!s.isWild) {
-          firstRegularSym = s;
-          break;
-        }
-      }
-
-      let regMatchCount = 0;
-      let hasDoublingWild = false;
-      let regWin = 0;
-
-      if (firstRegularSym) {
-        for (let c = 0; c < COLS; c++) {
-          const s = lineSymbols[c];
-          if (!s || s.isBonus) break;
-          if (s.id === firstRegularSym.id || s.isWild) {
-            regMatchCount++;
-            if (s.doublesLineWin || (s.isWild && !s.isExpanding)) {
-              hasDoublingWild = true;
-            }
-          } else {
+        for (let r = 0; r < ROWS; r++) {
+          if (finalGrid[c][r]?.id === wl.symbolId) {
+            symObj = finalGrid[c][r];
             break;
           }
         }
-        if (regMatchCount >= 3) {
-          const basePayout = firstRegularSym.payouts?.[regMatchCount] || 0;
-          const wildMult = hasDoublingWild ? 2 : 1;
-          regWin = basePayout * betLevel * wildMult;
+        if (symObj) break;
+      }
+      return {
+        line: wl.line,
+        symbol: symObj || { id: wl.symbolId, name: wl.symbolName },
+        matchCount: wl.matchCount,
+        lineWin: wl.lineWin,
+        wildMultiplier: wl.multiplier,
+        isScatter: false,
+      };
+    });
+
+    if (outcome.scatterCount >= 3) {
+      let bonusSym = null;
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          if (finalGrid[c][r]?.isBonus) {
+            bonusSym = finalGrid[c][r];
+            break;
+          }
         }
+        if (bonusSym) break;
       }
-
-      // Pick the highest valid left-to-right win on this payline
-      let bestSym = null;
-      let bestCount = 0;
-      let bestWin = 0;
-      let bestWildMult = 1;
-
-      if (regWin >= pureWildWin && regWin > 0) {
-        bestSym = firstRegularSym;
-        bestCount = regMatchCount;
-        bestWin = regWin;
-        bestWildMult = hasDoublingWild ? 2 : 1;
-      } else if (pureWildWin > 0) {
-        bestSym = pureWildSym;
-        bestCount = pureWildCount;
-        bestWin = pureWildWin;
-        bestWildMult = 1;
-      }
-
-      if (bestWin > 0 && bestCount >= 3) {
-        totalCoinsWon += bestWin;
-        const cells = [];
-        for (let c = 0; c < bestCount; c++) {
-          const r = line.rows[c];
-          cells.push([c, r]);
-          winCoordSet.add(`${c}-${r}`);
-        }
-        wins.push({
-          line,
-          symbol: bestSym,
-          matchCount: bestCount,
-          lineWin: bestWin,
-          wildMultiplier: bestWildMult,
-          cells,
-          isScatter: false,
-        });
-      }
-    }
-
-    // 2. Evaluate 3+ Bonus Scatters anywhere on the 5×3 grid & count meter charges
-    const bonusCells = [];
-    let bonusSymRef = null;
-    let meterChargesEarned = 0;
-
-    for (let c = 0; c < COLS; c++) {
-      for (let r = 0; r < ROWS; r++) {
-        const sym = finalGrid[c][r];
-        if (!sym) continue;
-        if (sym.isBonus) {
-          bonusCells.push([c, r]);
-          bonusSymRef = sym;
-          meterChargesEarned += 1;
-        } else if (sym.isWild && !sym.isExpanding) {
-          meterChargesEarned += 1;
-        }
-      }
-      // If entire column is expanded 1x3 Guardian, count +1 charge for that column
-      if (
-        finalGrid[c][0]?.isExpanding &&
-        finalGrid[c][1]?.isExpanding &&
-        finalGrid[c][2]?.isExpanding
-      ) {
-        meterChargesEarned += 1;
-      }
-    }
-
-    let scatterWinCoins = 0;
-    if (bonusCells.length >= 3 && bonusSymRef) {
-      const cappedCount = Math.min(5, bonusCells.length);
-      scatterWinCoins = (bonusSymRef.payouts?.[cappedCount] || 75) * betLevel;
-      totalCoinsWon += scatterWinCoins;
-      bonusCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
-
       wins.unshift({
         line: {
           id: 'BONUS',
-          name: `${bonusCells.length}× ${bonusSymRef.name}`,
+          name: `${outcome.scatterCount}× ${bonusSym?.name || 'Solar Scarab Scatters'}`,
           rows: [1, 1, 1, 1, 1],
           color: '#fbbf24',
         },
-        symbol: bonusSymRef,
-        matchCount: bonusCells.length,
-        lineWin: scatterWinCoins,
+        symbol: bonusSym || { id: 'bonus_crest', name: '3D Solar Scarab Relic' },
+        matchCount: outcome.scatterCount,
+        lineWin: outcome.scatterWin,
         wildMultiplier: 1,
-        cells: bonusCells,
         isScatter: true,
       });
     }
 
     return {
       wins,
-      winCoordSet,
-      totalCoinsWon,
-      bonusCount: bonusCells.length,
-      scatterWinCoins,
-      meterChargesEarned,
+      winCoordSet: new Set(outcome.winningCells),
+      totalCoinsWon: outcome.totalWin,
+      bonusCount: outcome.scatterCount,
+      scatterWinCoins: outcome.scatterWin,
+      meterChargesEarned: outcome.meterChargesEarned,
+      winCategory: outcome.winCategory,
+      isLDW: outcome.isLDW,
+      nearMiss: outcome.nearMiss,
+      outcome,
     };
   }, []);
 
@@ -453,7 +364,7 @@ export default function App() {
       return;
     }
 
-    const { nextGrid, activeLevel, spinBet, forcedMode } = pending;
+    const { nextGrid, activeLevel, spinBet, forcedMode, stripMetadata } = pending;
     const {
       wins,
       winCoordSet,
@@ -461,7 +372,10 @@ export default function App() {
       bonusCount,
       scatterWinCoins,
       meterChargesEarned,
-    } = evaluateGridWins(nextGrid, activeLevel);
+      winCategory,
+      isLDW,
+      nearMiss,
+    } = evaluateGridWins(nextGrid, activeLevel, stripMetadata || {});
 
     // Update the 3D Bonus Collector Meter
     let meterTriggeredBonus = false;
@@ -541,7 +455,11 @@ export default function App() {
     } else {
       // Do not display losses; bet was already subtracted from total at spin start
       setWinSplashAmount(0);
-      setStatusMessage(`${CASINO_BRAND.casinoFullTitle} • ${CASINO_BRAND.edition}`);
+      if (nearMiss?.isNearMiss) {
+        setStatusMessage(`⚡ NEAR-MISS! ${nearMiss.description}`);
+      } else {
+        setStatusMessage(`${CASINO_BRAND.casinoFullTitle} • ${CASINO_BRAND.edition}`);
+      }
     }
 
     // Psychological Flow State Momentum Tracking
@@ -755,34 +673,49 @@ export default function App() {
       const regs = getRegularSymbols(currencyMode);
       const r = (idx) => regs[idx % regs.length] || topHigh;
 
-      const nextGrid = Array.from({ length: COLS }, () =>
-        Array.from({ length: ROWS }, () => pickWeightedSymbol(activeSymbols, true))
-      );
+      let nextGrid;
+      let stripMetadata = {};
       const nextExpanded = [false, false, false, false, false];
 
       if (forcedMode === 'anubis') {
         nextExpanded[1] = true;
         nextExpanded[3] = true;
-        nextGrid[0] = [r(5), topHigh, r(7)];
-        nextGrid[1] = [expSym, expSym, expSym];
-        nextGrid[2] = [r(6), topHigh, r(4)];
-        nextGrid[3] = [expSym, expSym, expSym];
-        nextGrid[4] = [r(7), topHigh, r(5)];
+        nextGrid = [
+          [r(5), topHigh, r(7)],
+          [expSym, expSym, expSym],
+          [r(6), topHigh, r(4)],
+          [expSym, expSym, expSym],
+          [r(7), topHigh, r(5)],
+        ];
       } else if (forcedMode === 'bigwin') {
-        nextGrid[0] = [topHigh, topHigh, r(4)];
-        nextGrid[1] = [topHigh, wildSym, r(5)];
-        nextGrid[2] = [wildSym, topHigh, topHigh];
-        nextGrid[3] = [topHigh, wildSym, r(6)];
-        nextGrid[4] = [topHigh, topHigh, r(7)];
+        nextGrid = [
+          [topHigh, topHigh, r(4)],
+          [topHigh, wildSym, r(5)],
+          [wildSym, topHigh, topHigh],
+          [topHigh, wildSym, r(6)],
+          [topHigh, topHigh, r(7)],
+        ];
       } else if (forcedMode === 'bonus') {
-        nextGrid[0] = [r(4), bonusSym, r(6)];
-        nextGrid[1] = [r(2), r(5), r(7)];
-        nextGrid[2] = [r(6), bonusSym, r(1)];
-        nextGrid[3] = [r(3), r(4), r(5)];
-        nextGrid[4] = [r(7), bonusSym, r(2)];
+        nextGrid = [
+          [r(4), bonusSym, r(6)],
+          [r(2), r(5), r(7)],
+          [r(6), bonusSym, r(1)],
+          [r(3), r(4), r(5)],
+          [r(7), bonusSym, r(2)],
+        ];
       } else {
+        // Phase 1 Math Core: Authentic Casino Physical Reel Strip RNG
+        const stripResult = spinPhysicalReels();
+        stripMetadata = stripResult;
+        const symbolMap = new Map(activeSymbols.map((s) => [s.id, s]));
+
+        nextGrid = stripResult.grid.map((col) =>
+          col.map((id) => symbolMap.get(id) || symbolMap.get('neon_10') || activeSymbols[0])
+        );
+
+        // Check expanding wild columns (Reels 2, 3, 4)
         for (let c = 1; c <= 3; c++) {
-          if (Math.random() < 0.035) {
+          if (nextGrid[c].some((s) => s.isExpanding) || Math.random() < 0.032) {
             nextExpanded[c] = true;
             nextGrid[c] = [expSym, expSym, expSym];
           }
@@ -795,6 +728,7 @@ export default function App() {
         activeLevel,
         spinBet: activeSpinBet,
         forcedMode,
+        stripMetadata,
       };
 
       setSpinTrigger({
