@@ -7,6 +7,8 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 :root {
@@ -21,12 +23,36 @@
   --font-royal: 'Cinzel', serif;
 }
 
+html, body, #root {
+  width: 100vw;
+  height: 100%;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: manipulation;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#root::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 body {
   font-family: var(--font-royal);
   background-color: var(--kemet-dark);
   color: #fff;
-  overflow-x: hidden;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 /* ============================================================================
@@ -275,6 +301,8 @@ body {
 .ad-hero-main-img {
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  object-position: center center;
   display: block;
   transition: transform 0.45s ease;
   image-rendering: -webkit-optimize-contrast;
@@ -797,12 +825,17 @@ body {
 
 .casino-app-root {
   position: relative;
-  min-height: 100vh;
   width: 100vw;
+  height: 100%;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  overflow: hidden;
+  overflow: hidden !important;
+  margin: 0;
+  padding: 0;
 }
 
 .temple-background {
@@ -954,15 +987,18 @@ body {
 .slot-stage-container {
   position: relative;
   z-index: 10;
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 4px 12px 10px;
+  padding: 4px 12px;
   max-width: 1720px;
   width: 100%;
   margin: 0 auto;
+  overflow: hidden;
 }
 
 .anubis-guardian-column {
@@ -1079,17 +1115,25 @@ body {
 
 .slot-cabinet-wrapper {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
   width: 100%;
-  max-width: min(1200px, calc((100vh - 160px) * (2000 / 1350)));
+  height: 100%;
+  max-height: 100%;
+  max-width: min(1200px, calc((100dvh - 160px) * (2000 / 1350)));
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .reel-cabinet-box {
   position: relative;
-  width: 100%;
+  width: auto;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
   aspect-ratio: 2000 / 1350;
   display: flex;
   align-items: center;
@@ -6014,17 +6058,97 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
     background: linear-gradient(180deg, rgba(16, 8, 30, 0.95) 0%, rgba(6, 2, 14, 0.99) 100%);
     border-top: 2px solid #ffd700;
     box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.9), 0 0 16px rgba(255, 215, 0, 0.3);
     backdrop-filter: blur(14px);
     gap: 8px;
+    box-sizing: border-box !important;
   }
 
   /* Offset container so dock doesn't obscure content */
   .casino-app-root {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box !important;
+  }
+
+  .dc-casino-topbar {
+    height: 46px !important;
+    min-height: 46px !important;
+    max-height: 46px !important;
+    padding: max(4px, env(safe-area-inset-top, 4px)) 10px 4px !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+
+  .dc-crest-badge {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.95rem !important;
+  }
+
+  .dc-casino-name {
+    font-size: 0.92rem !important;
+  }
+
+  .dc-creator-tag {
+    display: none !important;
+  }
+
+  /* Hide redundant bottom pediment on phone portrait to give maximum stage room */
+  .cabinet-status-pediment {
+    display: none !important;
+  }
+
+  .anubis-guardian-column {
+    display: none !important;
+  }
+
+  .slot-stage-container {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 46px - 64px - env(safe-area-inset-bottom, 0px)) !important;
+    padding: 2px 6px !important;
+    margin: 0 auto !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .slot-cabinet-wrapper {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    max-width: min(98vw, calc((100dvh - 120px) * (2000 / 1350))) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .reel-cabinet-box {
+    aspect-ratio: 2000 / 1350 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    height: auto !important;
+    flex-shrink: 1 !important;
+  }
+
+  .cabinet-bonus-and-win-bar {
+    margin: 2px auto !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-width: 96% !important;
   }
 
   /* Smooth in-cabinet bottom bar scaling on small screens */
@@ -6214,43 +6338,228 @@ body {
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.7);
 }
 
-/* Mobile Landscape Mode Optimizations */
-@media (orientation: landscape) and (max-height: 540px) {
+/* Mobile & Compact Landscape Mode Optimizations (< 600px height) */
+@media (orientation: landscape) and (max-height: 600px) {
   .ad-marquee-header {
     display: none !important;
   }
-  .dc-casino-topbar {
-    padding: 3px 12px;
-    gap: 6px;
+
+  .casino-app-root {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
   }
-  .dc-crest-badge {
-    width: 28px;
-    height: 28px;
-    font-size: 0.85rem;
-  }
-  .dc-casino-name {
-    font-size: 0.85rem;
-  }
-  .dc-creator-tag {
-    display: none;
-  }
-  .slot-cabinet-wrapper {
-    max-width: calc((100dvh - 84px) * (2000 / 1350));
-  }
-  .cabinet-bonus-and-win-bar {
-    display: none !important;
-  }
-  .cabinet-status-pediment {
-    display: none !important;
-  }
+
   .mobile-floating-control-dock {
     display: none !important;
   }
+
+  .dc-casino-topbar {
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    padding: max(2px, env(safe-area-inset-top, 2px)) 10px 2px !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+
+  .dc-crest-badge {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .dc-casino-name {
+    font-size: 0.82rem !important;
+  }
+
+  .dc-creator-tag {
+    display: none !important;
+  }
+
+  .anubis-guardian-column {
+    display: none !important;
+  }
+
+  .cabinet-bonus-and-win-bar {
+    display: none !important;
+  }
+
+  .cabinet-status-pediment {
+    display: none !important;
+  }
+
+  .slot-stage-container {
+    height: calc(100dvh - 36px) !important;
+    max-height: calc(100dvh - 36px) !important;
+    padding: 2px 8px !important;
+    margin: 0 auto !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .slot-cabinet-wrapper {
+    height: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    max-width: calc((100dvh - 40px) * (2000 / 1350)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .reel-cabinet-box {
+    aspect-ratio: 2000 / 1350 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
+  }
+
   .psd-bottom-control-bar {
-    left: 8%;
-    right: 8%;
-    bottom: 2%;
-    height: 16%;
+    left: 4% !important;
+    right: 4% !important;
+    bottom: 1.5% !important;
+    height: 16% !important;
+  }
+}
+
+/* Tablet Portrait Mode Optimizations (681px - 1200px) */
+@media (min-width: 681px) and (max-width: 1200px) and (orientation: portrait) {
+  .casino-app-root {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+  }
+
+  .mobile-floating-control-dock {
+    display: none !important;
+  }
+
+  .dc-casino-topbar {
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding: 4px 16px !important;
+  }
+
+  .slot-stage-container {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 48px) !important;
+    overflow: hidden !important;
+    padding: 6px 12px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .anubis-guardian-column {
+    display: none !important;
+  }
+
+  .slot-cabinet-wrapper {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    max-width: min(96vw, calc((100dvh - 130px) * (2000 / 1350))) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .reel-cabinet-box {
+    aspect-ratio: 2000 / 1350 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    height: auto !important;
+  }
+
+  .cabinet-bonus-and-win-bar {
+    margin: 4px auto !important;
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+
+  .cabinet-status-pediment {
+    margin-top: 4px !important;
+    padding: 4px 12px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+  }
+}
+
+/* Tablet Landscape Mode Optimizations (681px - 1200px, min-height: 601px) */
+@media (min-width: 681px) and (max-width: 1200px) and (orientation: landscape) and (min-height: 601px) {
+  .casino-app-root {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+  }
+
+  .mobile-floating-control-dock {
+    display: none !important;
+  }
+
+  .dc-casino-topbar {
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding: 4px 16px !important;
+  }
+
+  .slot-stage-container {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 48px) !important;
+    overflow: hidden !important;
+    padding: 4px 12px !important;
+    gap: 8px !important;
+  }
+
+  .anubis-guardian-column {
+    display: flex !important;
+    width: clamp(100px, 12vw, 150px) !important;
+  }
+
+  .slot-cabinet-wrapper {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    max-width: calc((100dvh - 120px) * (2000 / 1350)) !important;
+  }
+
+  .reel-cabinet-box {
+    aspect-ratio: 2000 / 1350 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
+  }
+
+  .cabinet-bonus-and-win-bar {
+    margin: 3px auto !important;
+    height: 30px !important;
+    min-height: 30px !important;
+  }
+
+  .cabinet-status-pediment {
+    margin-top: 3px !important;
+    padding: 3px 10px !important;
+    height: 38px !important;
+    min-height: 38px !important;
   }
 }
 
