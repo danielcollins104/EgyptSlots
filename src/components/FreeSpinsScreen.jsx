@@ -115,8 +115,10 @@ export default function FreeSpinsScreen({
           if (basePayout > 0) {
             const lineWin = basePayout * multiplier;
             totalCoinsWon += lineWin;
+            const winCells = [];
             for (let c = 0; c < matchCount; c++) {
               winCoordSet.add(`${c}-${line.rows[c]}`);
+              winCells.push([c, line.rows[c]]);
             }
             wins.push({
               line,
@@ -124,6 +126,7 @@ export default function FreeSpinsScreen({
               matchCount,
               lineWin,
               hasWild,
+              cells: winCells,
             });
           }
         }
@@ -146,11 +149,29 @@ export default function FreeSpinsScreen({
         scatterWinCoins = (scatterCells.length >= 4 ? 180 : 60) * multiplier;
         totalCoinsWon += scatterWinCoins;
         scatterCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
+        wins.unshift({
+          line: { id: 'SCATTER', name: `${scatterCells.length}× Sun God Ra`, rows: [1, 1, 1, 1, 1], color: '#fbbf24' },
+          symbol: { id: 'fs_retrigger', name: 'Sun God Ra Aureole' },
+          matchCount: scatterCells.length,
+          lineWin: scatterWinCoins,
+          hasWild: false,
+          isScatter: true,
+          cells: scatterCells,
+        });
       } else if (scatterCells.length === 2) {
         // 2 Scatters awards a nice coin payout, but no extra spins
         scatterWinCoins = 15 * multiplier;
         totalCoinsWon += scatterWinCoins;
         scatterCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
+        wins.unshift({
+          line: { id: 'SCATTER', name: '2× Sun God Ra Scatters', rows: [1, 1, 1, 1, 1], color: '#fbbf24' },
+          symbol: { id: 'fs_retrigger', name: 'Sun God Ra Aureole' },
+          matchCount: 2,
+          lineWin: scatterWinCoins,
+          hasWild: false,
+          isScatter: true,
+          cells: scatterCells,
+        });
       }
 
       return {
@@ -245,7 +266,7 @@ export default function FreeSpinsScreen({
       if (totalCoinsWon > 0) {
         wonAmount = isSC
           ? Number(((totalCoinsWon / 15) * betAmount).toFixed(2))
-          : Math.round(totalCoinsWon * (coinValue >= 1 ? coinValue : 1));
+          : Math.round((totalCoinsWon / 15) * betAmount);
 
         setLastSpinWin(wonAmount);
         setTotalAccumulatedWin((prev) =>

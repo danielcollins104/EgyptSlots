@@ -49,11 +49,16 @@ export class SlotMathEngine {
     const rawGrid = grid.map((col) =>
       col.map((cell) => {
         const id = typeof cell === 'string' ? cell : cell?.id || 'neon_10';
+        const isWild = id === 'wild' || id === 'anubis' || id === 'wild_expand' || Boolean(cell?.isWild);
+        const isBonus = id === 'bonus_chest' || id === 'bonus_crest' || Boolean(cell?.isBonus);
+        const isExpanding = id === 'anubis' || id === 'wild_expand' || Boolean(cell?.isExpanding);
         return {
           id,
-          isWild: id === 'wild' || id === 'wild_expand' || Boolean(cell?.isWild),
-          isBonus: id === 'bonus_crest' || Boolean(cell?.isBonus),
-          isExpanding: id === 'wild_expand' || Boolean(cell?.isExpanding),
+          name: cell?.name || this.paytable[id]?.name || id,
+          isWild,
+          isBonus,
+          isExpanding,
+          payouts: cell?.payouts || this.paytable[id]?.payouts || {},
         };
       })
     );
@@ -126,41 +131,51 @@ export class SlotMathEngine {
         }
       }
 
-      const pureWildPay = (this.paytable.wild.payouts[pureWildCount] || 0) * betLevel;
-      const targetSymbolPaytable = this.paytable[matchSymbolId];
-      const basePay = targetSymbolPaytable?.payouts?.[regularMatchCount] || 0;
+      const firstWildCell = lineCells[0]?.cell;
+      const wildPaytable = firstWildCell?.payouts || this.paytable[firstWildCell?.id]?.payouts || this.paytable.wild?.payouts || {};
+      const pureWildPay = (wildPaytable[pureWildCount] || 0) * betLevel;
+
+      const matchCell = lineCells.find((c) => c.cell.id === matchSymbolId)?.cell;
+      const targetSymbolPaytable = matchCell?.payouts || this.paytable[matchSymbolId]?.payouts;
+      const basePay = targetSymbolPaytable?.[regularMatchCount] || 0;
       const regularMultiplier = hasWildInRegular ? 2 : 1;
       const regularPay = basePay * regularMultiplier * betLevel;
 
       if (pureWildPay > 0 && pureWildPay >= regularPay) {
         // Pure Wild win took priority
         lineWinsTotal += pureWildPay;
+        const winCells = [];
         for (let c = 0; c < pureWildCount; c++) {
           winningCells.add(`${c}-${line.rows[c]}`);
+          winCells.push([c, line.rows[c]]);
         }
         winningLines.push({
           line,
-          symbolId: 'wild',
-          symbolName: 'Pure Pharaoh Wilds',
+          symbolId: firstWildCell?.id || 'wild',
+          symbolName: firstWildCell?.name || '3D Jeweled Pyramid Wild',
           matchCount: pureWildCount,
           isWild: true,
           multiplier: 1,
           lineWin: pureWildPay,
+          cells: winCells,
         });
       } else if (regularPay > 0) {
         // Regular line win
         lineWinsTotal += regularPay;
+        const winCells = [];
         for (let c = 0; c < regularMatchCount; c++) {
           winningCells.add(`${c}-${line.rows[c]}`);
+          winCells.push([c, line.rows[c]]);
         }
         winningLines.push({
           line,
           symbolId: matchSymbolId,
-          symbolName: targetSymbolPaytable?.name || matchSymbolId,
+          symbolName: matchCell?.name || this.paytable[matchSymbolId]?.name || matchSymbolId,
           matchCount: regularMatchCount,
           isWild: hasWildInRegular,
           multiplier: regularMultiplier,
           lineWin: regularPay,
+          cells: winCells,
         });
       }
     }
@@ -169,8 +184,9 @@ export class SlotMathEngine {
     let scatterWin = 0;
     const isBonusTriggered = scatterCount >= 3;
     if (isBonusTriggered) {
-      const scatterPaytable = this.paytable.bonus_crest;
-      const baseScatterPay = scatterPaytable.payouts[Math.min(5, scatterCount)] || 0;
+      const scatterCell = rawGrid.flat().find((c) => c.isBonus);
+      const scatterPaytable = scatterCell?.payouts || this.paytable[scatterCell?.id]?.payouts || this.paytable.bonus_chest?.payouts || this.paytable.bonus_crest?.payouts;
+      const baseScatterPay = scatterPaytable?.[Math.min(5, scatterCount)] || 0;
       scatterWin = baseScatterPay * betLevel;
       for (const pos of scatterPositions) {
         winningCells.add(`${pos.col}-${pos.row}`);
@@ -236,6 +252,7 @@ export class SlotMathEngine {
       winningLines,
       winningCells: Array.from(winningCells),
       scatterCount,
+      scatterPositions,
       isBonusTriggered,
       meterChargesEarned,
       nearMiss,

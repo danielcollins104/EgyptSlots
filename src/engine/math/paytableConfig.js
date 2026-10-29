@@ -5,12 +5,20 @@
 // ============================================================================
 
 export const MATH_PAYTABLE = {
-  // SCATTER BONUS
+  // SCATTER BONUS (Supports both 'bonus_chest' and 'bonus_crest')
+  bonus_chest: {
+    name: "Pharaoh's 3D Royal Bonus Chest (Scatter)",
+    tier: 'scatter',
+    isBonus: true,
+    payouts: { 3: 55, 4: 148, 5: 554 },
+    payoutsSC: { 3: 57, 4: 152, 5: 572 },
+  },
   bonus_crest: {
     name: '3D Solar Scarab Relic (Scatter)',
     tier: 'scatter',
     isBonus: true,
-    payouts: { 3: 66, 4: 178, 5: 668 },
+    payouts: { 3: 55, 4: 148, 5: 554 },
+    payoutsSC: { 3: 57, 4: 152, 5: 572 },
   },
 
   // HIGH TIER SYMBOLS
@@ -18,66 +26,86 @@ export const MATH_PAYTABLE = {
     name: 'Crimson Ruby Eye of Horus',
     tier: 'high',
     isTopHigh: true,
-    payouts: { 3: 37, 4: 119, 5: 372 },
+    payouts: { 3: 31, 4: 98, 5: 308 },
+    payoutsSC: { 3: 32, 4: 102, 5: 318 },
   },
   ankh: {
     name: 'Royal Amethyst Ankh Cuff',
     tier: 'high',
-    payouts: { 3: 27, 4: 83, 5: 259 },
+    payouts: { 3: 22, 4: 68, 5: 215 },
+    payoutsSC: { 3: 23, 4: 70, 5: 222 },
   },
   scarab: {
     name: 'Emerald Jade Winged Scarab',
     tier: 'high',
-    payouts: { 3: 22, 4: 67, 5: 208 },
+    payouts: { 3: 18, 4: 55, 5: 172 },
+    payoutsSC: { 3: 19, 4: 57, 5: 178 },
   },
   necklace: {
     name: 'Lapis Sapphire Lotus Collar',
     tier: 'high',
-    payouts: { 3: 17, 4: 48, 5: 149 },
+    payouts: { 3: 14, 4: 39, 5: 123 },
+    payoutsSC: { 3: 14, 4: 41, 5: 127 },
   },
 
   // LOW TIER 3D ROYALS
   neon_a: {
     name: '3D Imperial Gold Royal Ace (A)',
     tier: 'low',
-    payouts: { 3: 10, 4: 24, 5: 72 },
+    payouts: { 3: 10, 4: 27, 5: 74 },
+    payoutsSC: { 3: 10, 4: 28, 5: 76 },
   },
   neon_k: {
     name: '3D Royal Ruby King (K)',
     tier: 'low',
     payouts: { 3: 8, 4: 20, 5: 56 },
+    payoutsSC: { 3: 8, 4: 21, 5: 58 },
   },
   neon_q: {
     name: '3D Royal Amethyst Queen (Q)',
     tier: 'low',
     payouts: { 3: 7, 4: 16, 5: 46 },
+    payoutsSC: { 3: 7, 4: 17, 5: 48 },
   },
   neon_j: {
     name: '3D Beveled Emerald Jack (J)',
     tier: 'low',
-    payouts: { 3: 6, 4: 13, 5: 38 },
+    payouts: { 3: 5, 4: 11, 5: 31 },
+    payoutsSC: { 3: 5, 4: 11, 5: 32 },
   },
   neon_10: {
     name: '3D Cobalt-Sapphire Royal Ten (10)',
     tier: 'low',
-    payouts: { 3: 5, 4: 8, 5: 27 },
+    payouts: { 3: 4, 4: 7, 5: 22 },
+    payoutsSC: { 3: 4, 4: 8, 5: 23 },
   },
 
-  // WILDS
+  // WILDS (Supports both 'wild' and expanding 'anubis' / 'wild_expand')
   wild: {
-    name: 'Golden Pharaoh Mask (Wild)',
+    name: '3D Jeweled Pyramid Wild',
     tier: 'wild',
     isWild: true,
     multiplier: 2,
-    payouts: { 3: 74, 4: 238, 5: 744 },
+    payouts: { 3: 55, 4: 185, 5: 615 },
+    payoutsSC: { 3: 57, 4: 191, 5: 635 },
   },
-  wild_expand: {
-    name: '1×3 Expanding Guardian',
+  anubis: {
+    name: 'Anubis & Bastet 1×3 Expanding Wild',
     tier: 'wild',
     isWild: true,
     isExpanding: true,
     multiplier: 2,
-    payouts: { 3: 74, 4: 238, 5: 744 },
+    payouts: { 3: 62, 4: 221, 5: 738 },
+    payoutsSC: { 3: 64, 4: 229, 5: 762 },
+  },
+  wild_expand: {
+    name: '1×3 Expanding Guardian Wild',
+    tier: 'wild',
+    isWild: true,
+    isExpanding: true,
+    multiplier: 2,
+    payouts: { 3: 62, 4: 221, 5: 738 },
+    payoutsSC: { 3: 64, 4: 229, 5: 762 },
   },
 };
 

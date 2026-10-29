@@ -142,11 +142,11 @@ export default function BigWinPopup({
 
         <div className="bigwin-numbers-stage">
           <div className="neon-psd-digits">
-            <PsdGoldNumber value={displayCoins} height={82} gap={-4} />
+            <PsdGoldNumber value={isSC ? displayCoins.toFixed(2) : displayCoins} height={82} gap={-4} />
           </div>
           <div className="bigwin-cash-sub">
-            {isSC ? 'SWEEPS COINS WON • REAL CASH PRIZE: ' : 'GOLD COINS WON • SOCIAL VALUE: '}
-            <span className="bigwin-cash-highlight">${cashValue}{isSC ? ' USD' : ''}</span>
+            {isSC ? 'SWEEPS COINS WON • REAL CASH PRIZE: ' : 'TOTAL GOLD COINS WON: '}
+            <span className="bigwin-cash-highlight">{isSC ? `$${cashValue} USD` : `${displayCoins.toLocaleString()} GC`}</span>
           </div>
         </div>
 

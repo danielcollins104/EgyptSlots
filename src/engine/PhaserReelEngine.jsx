@@ -1260,34 +1260,37 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           ctx.lineJoin = 'round';
 
           if (activeWin.isScatter) {
-            const sPts = activeWin.cells.map(([c, r]) => ({
+            const rawScatterCells = activeWin.cells || [];
+            const sPts = rawScatterCells.map(([c, r]) => ({
               x: c * COL_W + COL_W / 2,
               y: r * ROW_H + ROW_H / 2,
             }));
 
-            ctx.beginPath();
-            sPts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-            ctx.strokeStyle = '#fbbf24';
-            ctx.lineWidth = 14;
-            ctx.globalAlpha = 0.35;
-            ctx.stroke();
-
-            ctx.beginPath();
-            sPts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-            ctx.strokeStyle = '#fef08a';
-            ctx.lineWidth = 4.5;
-            ctx.globalAlpha = 0.95;
-            ctx.stroke();
-
-            sPts.forEach((p) => {
+            if (sPts.length > 0) {
               ctx.beginPath();
-              ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
-              ctx.fillStyle = '#fbbf24';
-              ctx.fill();
-              ctx.lineWidth = 3.5;
-              ctx.strokeStyle = '#ffffff';
+              sPts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+              ctx.strokeStyle = '#fbbf24';
+              ctx.lineWidth = 14;
+              ctx.globalAlpha = 0.35;
               ctx.stroke();
-            });
+
+              ctx.beginPath();
+              sPts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+              ctx.strokeStyle = '#fef08a';
+              ctx.lineWidth = 4.5;
+              ctx.globalAlpha = 0.95;
+              ctx.stroke();
+
+              sPts.forEach((p) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+                ctx.fillStyle = '#fbbf24';
+                ctx.fill();
+                ctx.lineWidth = 3.5;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+              });
+            }
           } else if (activeWin.line) {
             const allPts = activeWin.line.rows.map((r, c) => ({
               x: c * COL_W + COL_W / 2,
@@ -1332,7 +1335,13 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             ctx.globalAlpha = 0.96;
             ctx.stroke();
 
-            activeWin.cells.forEach(([c, r]) => {
+            const winCells =
+              activeWin.cells ||
+              (activeWin.line
+                ? Array.from({ length: activeWin.matchCount || 0 }, (_, c) => [c, activeWin.line.rows[c]])
+                : []);
+
+            winCells.forEach(([c, r]) => {
               const cx = c * COL_W + COL_W / 2;
               const cy = r * ROW_H + ROW_H / 2;
               ctx.beginPath();

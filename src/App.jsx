@@ -357,7 +357,7 @@ export default function App() {
     // Phase 1 Math Core: Decoupled evaluation via SlotMathEngine
     const outcome = slotMathEngine.evaluateGrid(finalGrid, betLevel, stripMetadata);
 
-    // Map outcome to UI-compatible format
+    // Map outcome to UI-compatible format with explicit cell coordinates and dual-currency figures
     const wins = outcome.winningLines.map((wl) => {
       // Find original symbol object from grid for UI rendering
       let symObj = null;
@@ -370,13 +370,21 @@ export default function App() {
         }
         if (symObj) break;
       }
+      const winCells =
+        wl.cells ||
+        Array.from({ length: wl.matchCount }, (_, c) => [c, wl.line.rows[c]]);
+      const lineWinSC = Number(
+        (((wl.lineWin / (15 * (betLevel || 1))) * (currentBetSC || 0.75))).toFixed(2)
+      );
       return {
         line: wl.line,
         symbol: symObj || { id: wl.symbolId, name: wl.symbolName },
         matchCount: wl.matchCount,
         lineWin: wl.lineWin,
+        lineWinSC,
         wildMultiplier: wl.multiplier,
         isScatter: false,
+        cells: winCells,
       };
     });
 
@@ -391,6 +399,20 @@ export default function App() {
         }
         if (bonusSym) break;
       }
+      const scatterCells =
+        outcome.scatterPositions && outcome.scatterPositions.length > 0
+          ? outcome.scatterPositions.map((p) => [p.col, p.row])
+          : [];
+      if (scatterCells.length === 0) {
+        for (let c = 0; c < COLS; c++) {
+          for (let r = 0; r < ROWS; r++) {
+            if (finalGrid[c][r]?.isBonus) scatterCells.push([c, r]);
+          }
+        }
+      }
+      const scatterWinSC = Number(
+        (((outcome.scatterWin / (15 * (betLevel || 1))) * (currentBetSC || 0.75))).toFixed(2)
+      );
       wins.unshift({
         line: {
           id: 'BONUS',
@@ -401,8 +423,10 @@ export default function App() {
         symbol: bonusSym || { id: 'bonus_crest', name: '3D Solar Scarab Relic' },
         matchCount: outcome.scatterCount,
         lineWin: outcome.scatterWin,
+        lineWinSC: scatterWinSC,
         wildMultiplier: 1,
         isScatter: true,
+        cells: scatterCells,
       });
     }
 
@@ -418,7 +442,7 @@ export default function App() {
       nearMiss: outcome.nearMiss,
       outcome,
     };
-  }, []);
+  }, [currentBetSC]);
 
   const handleColumnStop = useCallback((colIdx, didExpand) => {
     if (didExpand) {
@@ -642,8 +666,8 @@ export default function App() {
       totalBonusCoins - (bonusSession?.scatterWinCoins || 0);
 
     if (isSC) {
-      const extraSC = Number((extraCoinsBeyondScatter * 0.01).toFixed(2));
-      const totalSC = Number((totalBonusCoins * 0.01).toFixed(2));
+      const extraSC = Number(extraCoinsBeyondScatter.toFixed(2));
+      const totalSC = Number(totalBonusCoins.toFixed(2));
       if (extraSC > 0) {
         setSweepsCoins((prev) => Number((prev + extraSC).toFixed(2)));
       }
@@ -817,7 +841,18 @@ export default function App() {
         // Phase 1 Math Core: Authentic Casino Physical Reel Strip RNG
         const stripResult = spinPhysicalReels();
         stripMetadata = stripResult;
-        const symbolMap = new Map(activeSymbols.map((s) => [s.id, s]));
+        const symbolMap = new Map();
+        activeSymbols.forEach((s) => {
+          symbolMap.set(s.id, s);
+          if (s.isBonus) {
+            symbolMap.set('bonus_chest', s);
+            symbolMap.set('bonus_crest', s);
+          }
+          if (s.isExpanding) {
+            symbolMap.set('anubis', s);
+            symbolMap.set('wild_expand', s);
+          }
+        });
 
         nextGrid = stripResult.grid.map((col) =>
           col.map((id) => symbolMap.get(id) || symbolMap.get('neon_10') || activeSymbols[0])
@@ -1886,12 +1921,20 @@ export default function App() {
                       {activeW.isScatter
                         ? `SCATTER BONUS: ${activeW.matchCount}× ${
                             activeW.symbol.name
-                          } = +${activeW.lineWin.toLocaleString()} COINS`
+                          } = +${
+                            currencyMode === 'SC'
+                              ? `$${formatCoinValue(activeW.lineWinSC || (activeW.lineWin / (15 * activeLevel)) * currentBetSC)} SC`
+                              : `${activeW.lineWin.toLocaleString()} GC`
+                          }`
                         : `LINE #${activeW.line.id} (${activeW.line.name}): ${
                             activeW.matchCount
                           }× ${activeW.symbol.name}${
                             activeW.wildMultiplier > 1 ? ' [2× WILD]' : ''
-                          } = +${activeW.lineWin.toLocaleString()} COINS (${
+                          } = +${
+                            currencyMode === 'SC'
+                              ? `$${formatCoinValue(activeW.lineWinSC || (activeW.lineWin / (15 * activeLevel)) * currentBetSC)} SC`
+                              : `${activeW.lineWin.toLocaleString()} GC`
+                          } (${
                             (activeWinLineIdx % winningLines.length) + 1
                           }/${winningLines.length})`}
                     </span>
