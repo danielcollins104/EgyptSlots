@@ -64,6 +64,10 @@ import AuthModal from './components/AuthModal';
 import { authService } from './services/authService';
 import AmbientMusicBar from './components/AmbientMusicBar';
 import { ambientMusicEngine } from './audio/ambientMusicEngine';
+import AmbientAtmosphere from './components/AmbientAtmosphere';
+import CabinetPillars from './components/CabinetPillars';
+import JackpotMarqueeBar from './components/JackpotMarqueeBar';
+import CabinetGlassOverlay from './components/CabinetGlassOverlay';
 import PhaserReelEngine from './engine/PhaserReelEngine';
 import { slotMathEngine } from './engine/math/SlotMathEngine.js';
 import { spinPhysicalReels } from './engine/math/ReelStripModel.js';
@@ -1697,10 +1701,18 @@ export default function App() {
               <strong>{GUARDIANS.left.plaqueBottom}</strong>
             </div>
           </div>
+          <div className="guardian-floor-runes" />
         </aside>
 
         {/* Center Slot Machine Cabinet */}
         <section className="slot-cabinet-wrapper">
+          {/* 2026 Volumetric Temple Light & 3D Gold Dust Engine */}
+          <AmbientAtmosphere
+            isSpinning={isSpinning}
+            hasWin={winningLines.length > 0}
+            intensity={flowStreak >= 3 ? 1.4 : 1.0}
+          />
+
           <div className={`reel-cabinet-box ${cabinetImpact ? `cabinet-impact-${cabinetImpact}` : ''} ${flowStreak >= 3 ? 'flow-momentum-active' : ''}`}>
             <img
               src={THEME_ASSETS.reelGlowImage}
@@ -1716,10 +1728,24 @@ export default function App() {
               draggable={false}
             />
 
+            {/* 2026 Architectural Egyptian Temple Pillars: Left & Right Bas-Relief Carved Stone & Gold Textures */}
+            <CabinetPillars
+              isSpinning={isSpinning}
+              hasWin={winningLines.length > 0}
+            />
+
             {/* Top Arch 3D Gold & Jewel-Toned Plaque Logo */}
             <div className="cabinet-dc-neon-logo">
               <DcLogoPlaque className="cabinet-dc-logo-img" />
             </div>
+
+            {/* 2026 Progressive Jackpot Display Marquee (Grand, Major, Minor, Mini) */}
+            <JackpotMarqueeBar
+              currencyMode={currencyMode}
+              currentBet={currentBet}
+              isSpinning={isSpinning}
+              hasWin={winningLines.length > 0}
+            />
 
             {/* Reel Cabinet Frame */}
             <img
@@ -1755,6 +1781,12 @@ export default function App() {
                 winningLines={winningLines}
                 winningCells={winningCells}
                 activeWinLineIdx={activeWinLineIdx}
+              />
+
+              {/* 2026 Curved OLED Glass Overlay, Perimeter LEDs & 24K Micro-Filigree Corners */}
+              <CabinetGlassOverlay
+                isSpinning={isSpinning}
+                hasWin={winningLines.length > 0}
               />
 
               {/* Floating Coin Win Badge with Golden Orbit */}
@@ -2119,6 +2151,7 @@ export default function App() {
               <strong>{GUARDIANS.right.plaqueBottom}</strong>
             </div>
           </div>
+          <div className="guardian-floor-runes" />
         </aside>
       </main>
 

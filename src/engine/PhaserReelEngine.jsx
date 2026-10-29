@@ -690,6 +690,61 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       bgCan.width = GAME_W;
       bgCan.height = GAME_H;
       const bCtx = bgCan.getContext('2d');
+
+      // 1. Deep Basalt / Obsidian Base Stone with Micro-Grain Texture
+      const stoneGrad = bCtx.createLinearGradient(0, 0, GAME_W, GAME_H);
+      stoneGrad.addColorStop(0, '#060710');
+      stoneGrad.addColorStop(0.35, '#0c0f1c');
+      stoneGrad.addColorStop(0.7, '#070814');
+      stoneGrad.addColorStop(1, '#03040a');
+      bCtx.fillStyle = stoneGrad;
+      bCtx.fillRect(0, 0, GAME_W, GAME_H);
+
+      // Micro-texture grain
+      bCtx.fillStyle = 'rgba(255, 230, 160, 0.02)';
+      for (let i = 0; i < 400; i++) {
+        bCtx.fillRect(Math.random() * GAME_W, Math.random() * GAME_H, 1.5, 1.5);
+      }
+
+      // 2. 5x3 Recessed Cell Tablets with Carved Egyptian Sun Cartouche
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          const cx = c * COL_W;
+          const cy = r * ROW_H;
+          const pad = 5;
+
+          // Tablet background
+          bCtx.fillStyle = 'rgba(3, 4, 10, 0.82)';
+          bCtx.beginPath();
+          bCtx.roundRect(cx + pad, cy + pad, COL_W - pad * 2, ROW_H - pad * 2, 8);
+          bCtx.fill();
+
+          // Beveled border
+          bCtx.strokeStyle = 'rgba(251, 191, 36, 0.18)';
+          bCtx.lineWidth = 1;
+          bCtx.stroke();
+
+          // Inner carved hieroglyphic disc
+          bCtx.save();
+          bCtx.translate(cx + COL_W / 2, cy + ROW_H / 2);
+          bCtx.strokeStyle = 'rgba(251, 191, 36, 0.07)';
+          bCtx.lineWidth = 1.2;
+          bCtx.beginPath();
+          bCtx.arc(0, 0, 48, 0, Math.PI * 2);
+          bCtx.stroke();
+
+          // 8 decorative solar radial rays
+          for (let ray = 0; ray < 8; ray++) {
+            const ang = (ray * Math.PI) / 4;
+            bCtx.beginPath();
+            bCtx.moveTo(Math.cos(ang) * 36, Math.sin(ang) * 36);
+            bCtx.lineTo(Math.cos(ang) * 46, Math.sin(ang) * 46);
+            bCtx.stroke();
+          }
+          bCtx.restore();
+        }
+      }
+
       if (netImg) {
         bCtx.save();
         bCtx.globalAlpha = 0.55;
@@ -697,6 +752,52 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         bCtx.restore();
       }
       sprites.staticBg = bgCan;
+
+      // 3. Pre-render 2026 High-Def Fluted Gold & Lapis Reel Divider Pillars
+      const pillarCan = document.createElement('canvas');
+      pillarCan.width = GAME_W;
+      pillarCan.height = GAME_H;
+      const pCtx = pillarCan.getContext('2d');
+
+      for (let c = 1; c < COLS; c++) {
+        const px = c * COL_W;
+
+        // Soft drop shadow cast left and right onto spinning reel strips
+        const shGrad = pCtx.createLinearGradient(px - 12, 0, px + 12, 0);
+        shGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        shGrad.addColorStop(0.35, 'rgba(0, 0, 0, 0.65)');
+        shGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.9)');
+        shGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0.65)');
+        shGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        pCtx.fillStyle = shGrad;
+        pCtx.fillRect(px - 12, 0, 24, GAME_H);
+
+        // Fluted 24k Gold Pillar Shaft (6px wide)
+        const goldGrad = pCtx.createLinearGradient(px - 3, 0, px + 3, 0);
+        goldGrad.addColorStop(0, '#78350f');
+        goldGrad.addColorStop(0.3, '#d97706');
+        goldGrad.addColorStop(0.5, '#fef08a');
+        goldGrad.addColorStop(0.7, '#b45309');
+        goldGrad.addColorStop(1, '#451a03');
+        pCtx.fillStyle = goldGrad;
+        pCtx.fillRect(px - 3, 0, 6, GAME_H);
+
+        // Center specular line
+        pCtx.fillStyle = 'rgba(255, 255, 230, 0.6)';
+        pCtx.fillRect(px - 0.5, 0, 1, GAME_H);
+
+        // Micro-relief Egyptian notches down the pillar
+        pCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        for (let y = 15; y < GAME_H; y += 22) {
+          pCtx.fillRect(px - 2, y, 4, 1.5);
+        }
+
+        // 3D Jeweled Cabochon Nodes at Row Junctions (y = 0, 170, 340, 510)
+        [0, ROW_H, ROW_H * 2, GAME_H].forEach((nodeY) => {
+          drawCabochonGem(pCtx, px, nodeY, 6, 6, '#0284c7', '#38bdf8');
+        });
+      }
+      sprites.reelDividerPillars = pillarCan;
 
       const shadeCan = document.createElement('canvas');
       shadeCan.width = GAME_W;
@@ -1246,6 +1347,11 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           }
         }
       });
+
+      // 2026 Architectural Fluted Gold & Lapis Reel Divider Pillars
+      if (sprites.reelDividerPillars) {
+        ctx.drawImage(sprites.reelDividerPillars, 0, 0);
+      }
 
       if (sprites.staticShade) {
         ctx.drawImage(sprites.staticShade, 0, 0);

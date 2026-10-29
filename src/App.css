@@ -8862,3 +8862,459 @@ body {
   }
 }
 
+
+/* ============================================================================
+   2026 AAA CASINO VISUAL UPGRADE: TEXTURED PILLARS, ATMOSPHERE, JACKPOTS, GLASS & FX
+   ============================================================================ */
+
+/* 1. Ambient Atmospheric Canvas (Volumetric God Rays & 3D Gold Dust) */
+.ambient-atmosphere-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: screen;
+}
+
+/* 2. Architectural Egyptian Temple Flanking Pillars (Left & Right Cabinet Pillars) */
+.cabinet-pillar-overlay {
+  position: absolute;
+  top: 12.8%;
+  height: 72.4%;
+  width: 13.8%;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 24px rgba(0, 0, 0, 0.92),
+    0 4px 18px rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: #0d111d;
+  contain: strict;
+}
+
+.cabinet-pillar-overlay.pillar-left {
+  left: 2.1%;
+}
+
+.cabinet-pillar-overlay.pillar-right {
+  right: 2.1%;
+}
+
+.pillar-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.pillar-specular-sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(254, 240, 138, 0.18) 45%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(254, 240, 138, 0.18) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateY(-100%);
+  animation: pillarLightSweep 6.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+.cabinet-pillar-overlay.spinning .pillar-specular-sweep {
+  animation-duration: 2.2s;
+}
+
+.pillar-neon-inlay-pulse {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(56, 189, 248, 0.14) 0%,
+    rgba(251, 191, 36, 0.08) 50%,
+    transparent 80%
+  );
+  animation: pillarRunicBreathe 3.6s ease-in-out infinite alternate;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.cabinet-pillar-overlay.spinning .pillar-neon-inlay-pulse {
+  animation: pillarRunicBreathe 1.2s ease-in-out infinite alternate;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(56, 189, 248, 0.25) 0%,
+    rgba(251, 191, 36, 0.16) 50%,
+    transparent 80%
+  );
+}
+
+.cabinet-pillar-overlay.winning .pillar-neon-inlay-pulse {
+  animation: pillarWinBurst 0.6s ease-in-out infinite alternate;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(254, 240, 138, 0.35) 0%,
+    rgba(245, 158, 11, 0.22) 50%,
+    transparent 80%
+  );
+}
+
+@keyframes pillarLightSweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  45% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes pillarRunicBreathe {
+  0% { opacity: 0.35; filter: brightness(0.9); }
+  100% { opacity: 0.85; filter: brightness(1.25); }
+}
+
+@keyframes pillarWinBurst {
+  0% { opacity: 0.6; filter: brightness(1.1); }
+  100% { opacity: 1.0; filter: brightness(1.5); }
+}
+
+/* 3. 2026 Progressive Jackpot Display Marquee */
+.jackpot-marquee-bar {
+  position: absolute;
+  top: 17.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 65.75%;
+  height: 4.6%;
+  min-height: 28px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.jackpot-marquee-glass-back {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 12, 28, 0.94) 0%, rgba(4, 6, 16, 0.98) 100%);
+  border: 1.5px solid #d97706;
+  border-radius: 8px;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 14px rgba(217, 119, 6, 0.35);
+}
+
+.jackpot-marquee-items {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 3px 6px;
+}
+
+.jackpot-tier-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(24, 20, 14, 0.9) 0%, rgba(10, 8, 6, 0.95) 100%);
+  border: 1px solid var(--tier-color, #fbbf24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.jackpot-gem-crest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--tier-highlight, #fff) 0%, var(--tier-color, #fbbf24) 60%, #000 100%);
+  box-shadow: 0 0 6px var(--tier-color, #fbbf24);
+  flex-shrink: 0;
+}
+
+.jackpot-gem-crest .gem-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.9;
+}
+
+.jackpot-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
+  min-width: 0;
+  flex: 1;
+}
+
+.jackpot-tier-name {
+  font-family: var(--font-royal);
+  font-size: clamp(0.48rem, 0.65vw, 0.62rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--tier-color, #fbbf24);
+  text-shadow: 0 0 4px var(--tier-color, #fbbf24);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jackpot-tier-amount {
+  font-family: var(--font-display);
+  font-size: clamp(0.6rem, 0.85vw, 0.82rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #fffbeb;
+  text-shadow:
+    0 0 8px var(--tier-color, #fbbf24),
+    0 2px 4px #000;
+  white-space: nowrap;
+}
+
+.jackpot-shimmer-sweep {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 100%
+  );
+  transform: skewX(-25deg) translateX(-150%);
+  animation: jackpotCardSweep 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.tier-grand .jackpot-shimmer-sweep { animation-delay: 0s; }
+.tier-major .jackpot-shimmer-sweep { animation-delay: 1s; }
+.tier-minor .jackpot-shimmer-sweep { animation-delay: 2s; }
+.tier-mini .jackpot-shimmer-sweep { animation-delay: 3s; }
+
+@keyframes jackpotCardSweep {
+  0% { transform: skewX(-25deg) translateX(-150%); }
+  30% { transform: skewX(-25deg) translateX(350%); }
+  100% { transform: skewX(-25deg) translateX(350%); }
+}
+
+/* 4. 2026 Cabinet Glass & Refractive Curved Screen Overlay */
+.cabinet-glass-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.cabinet-glass-glare {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.02) 24%,
+    rgba(255, 255, 255, 0) 42%,
+    rgba(251, 191, 36, 0.025) 75%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  mix-blend-mode: screen;
+}
+
+/* Dynamic Addressable LED Edge Strip around Reel Viewport */
+.cabinet-led-perimeter {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+}
+
+.led-segment {
+  position: absolute;
+  background: linear-gradient(90deg, #38bdf8, #fbbf24, #ec4899, #38bdf8);
+  background-size: 300% 100%;
+  animation: ledChase 4s linear infinite;
+  opacity: 0.65;
+  filter: blur(1.5px);
+}
+
+.cabinet-glass-overlay.spinning .led-segment {
+  animation-duration: 1.2s;
+  opacity: 0.95;
+  filter: blur(1px) drop-shadow(0 0 6px #fbbf24);
+}
+
+.cabinet-glass-overlay.winning .led-segment {
+  animation: ledWinStrobe 0.4s linear infinite;
+  opacity: 1;
+  filter: blur(1px) drop-shadow(0 0 10px #fef08a);
+}
+
+.led-top { top: 0; left: 0; right: 0; height: 2px; }
+.led-bottom { bottom: 0; left: 0; right: 0; height: 2px; }
+.led-left { top: 0; bottom: 0; left: 0; width: 2px; background: linear-gradient(180deg, #38bdf8, #fbbf24, #ec4899, #38bdf8); background-size: 100% 300%; }
+.led-right { top: 0; bottom: 0; right: 0; width: 2px; background: linear-gradient(180deg, #38bdf8, #fbbf24, #ec4899, #38bdf8); background-size: 100% 300%; }
+
+@keyframes ledChase {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 300% 0%; }
+}
+
+@keyframes ledWinStrobe {
+  0% { background-position: 0% 0%; filter: brightness(1.2) drop-shadow(0 0 6px #ffd700); }
+  50% { background-position: 150% 0%; filter: brightness(1.8) drop-shadow(0 0 14px #ff00ff); }
+  100% { background-position: 300% 0%; filter: brightness(1.2) drop-shadow(0 0 6px #ffd700); }
+}
+
+/* 24K Gold Egyptian Filigree Corner Brackets */
+.cabinet-corner-bracket {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  z-index: 14;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
+}
+
+.cabinet-corner-bracket.top-left { top: 3px; left: 3px; }
+.cabinet-corner-bracket.top-right { top: 3px; right: 3px; }
+.cabinet-corner-bracket.bottom-left { bottom: 3px; left: 3px; }
+.cabinet-corner-bracket.bottom-right { bottom: 3px; right: 3px; }
+
+.bracket-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 5. 2026 Concentric Holographic Sun-Disc Gyro Spin Button */
+.psd-spin-button {
+  position: relative;
+  z-index: 6;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
+}
+
+/* Outer Astrological Gyro Ring */
+.psd-spin-button::before {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(251, 191, 36, 0.65);
+  box-shadow:
+    0 0 16px rgba(251, 191, 36, 0.35),
+    inset 0 0 12px rgba(56, 189, 248, 0.25);
+  animation: gyroSpinIdle 18s linear infinite;
+  pointer-events: none;
+}
+
+/* Inner Solar Corona */
+.psd-spin-button::after {
+  content: '';
+  position: absolute;
+  inset: -6%;
+  border-radius: 50%;
+  border: 1.2px solid rgba(254, 240, 138, 0.4);
+  animation: gyroSpinCounter 12s linear infinite reverse;
+  pointer-events: none;
+}
+
+.psd-spin-button.spinning::before {
+  border-color: #38bdf8;
+  animation: gyroSpinOverdrive 0.8s linear infinite;
+  box-shadow:
+    0 0 24px rgba(56, 189, 248, 0.8),
+    inset 0 0 16px rgba(251, 191, 36, 0.5);
+}
+
+.psd-spin-button.spinning::after {
+  border-color: #fef08a;
+  animation: gyroSpinOverdrive 0.5s linear infinite reverse;
+}
+
+@keyframes gyroSpinIdle {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes gyroSpinCounter {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes gyroSpinOverdrive {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 6. Guardian Colonnade Floor Runic Rings (Anubis & Bastet Pedestal Polish) */
+.guardian-floor-runes {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) perspective(400px) rotateX(68deg);
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px dashed rgba(251, 191, 36, 0.5);
+  box-shadow:
+    0 0 20px rgba(251, 191, 36, 0.4),
+    inset 0 0 15px rgba(56, 189, 248, 0.3);
+  animation: runeFloorRotate 22s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes runeFloorRotate {
+  0% { transform: translateX(-50%) perspective(400px) rotateX(68deg) rotate(0deg); }
+  100% { transform: translateX(-50%) perspective(400px) rotateX(68deg) rotate(360deg); }
+}
+
+/* Mobile Responsiveness for 2026 Visual Additions */
+@media (max-width: 840px) {
+  .cabinet-pillar-overlay {
+    display: none !important;
+  }
+  .jackpot-marquee-bar {
+    top: 19.5% !important;
+    width: 92% !important;
+    height: 5.2% !important;
+  }
+  .jackpot-tier-card {
+    padding: 1px 4px !important;
+  }
+  .jackpot-tier-name {
+    font-size: 0.42rem !important;
+  }
+  .jackpot-tier-amount {
+    font-size: 0.56rem !important;
+  }
+}
