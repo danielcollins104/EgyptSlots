@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import gsap from 'gsap';
 import { Sparkles, Flame, Compass, Gem, CheckCircle2, RotateCw } from 'lucide-react';
 import { BONUS_CONFIG, BONUS_JACKPOT_TIERS } from '../config/slotConfig';
