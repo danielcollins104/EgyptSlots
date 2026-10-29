@@ -137,10 +137,11 @@ function create3DPopOutRoyalSprites(sym, size) {
   frameCan.height = size;
   const fCtx = frameCan.getContext('2d');
 
-  const tileSize = Math.round(size * 0.72);
+  // Larger tiles with less space between each other
+  const tileSize = Math.round(size * 0.85);
   const tileX = Math.round((size - tileSize) / 2);
   const tileY = Math.round((size - tileSize) / 2);
-  const radius = Math.round(tileSize * 0.18);
+  const radius = Math.round(tileSize * 0.16);
 
   // Outer drop shadow of the tile itself
   fCtx.save();
@@ -317,10 +318,11 @@ function create3DPopOutBonusSprites(sym, size, scarabNoFrameImg) {
   frameCan.height = size;
   const fCtx = frameCan.getContext('2d');
 
-  const tileSize = Math.round(size * 0.74);
+  // Larger tiles with less space between each other
+  const tileSize = Math.round(size * 0.86);
   const tileX = Math.round((size - tileSize) / 2);
   const tileY = Math.round((size - tileSize) / 2);
-  const radius = Math.round(tileSize * 0.18);
+  const radius = Math.round(tileSize * 0.16);
 
   // Outer drop shadow of the tile
   fCtx.save();
@@ -711,9 +713,9 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         for (let r = 0; r < ROWS; r++) {
           const cx = c * COL_W;
           const cy = r * ROW_H;
-          const pad = 5;
+          const pad = 2;
 
-          // Tablet background
+          // Tablet background (expanded to reduce space between tiles)
           bCtx.fillStyle = 'rgba(3, 4, 10, 0.82)';
           bCtx.beginPath();
           bCtx.roundRect(cx + pad, cy + pad, COL_W - pad * 2, ROW_H - pad * 2, 8);
@@ -963,8 +965,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
               loadImage(sym.noFrameImage),
             ]);
             if (fImg && nfImg && !isDisposed) {
-              const frameSz = Math.round(ROW_H * 0.82);
-              const popSz = Math.round(ROW_H * 1.10);
+              const frameSz = Math.round(ROW_H * 0.90);
+              const popSz = Math.round(ROW_H * 1.18);
               sprites[`frame_${sym.id}`] = createBakedSprite(
                 fImg,
                 frameSz,
@@ -1093,7 +1095,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         }
 
         if (callbacksRef.current.onColumnStop) {
-          callbacksRef.current.onColumnStop(reel.colIndex, reel.willExpand);
+          callbacksRef.current.onColumnStop(reel.colIndex, reel.willExpand, reel.targetSymbols);
         }
       });
 
@@ -1148,7 +1150,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 );
               }
               if (callbacksRef.current.onColumnStop) {
-                callbacksRef.current.onColumnStop(reel.colIndex, reel.willExpand);
+                callbacksRef.current.onColumnStop(reel.colIndex, reel.willExpand, reel.targetSymbols);
               }
             },
           }

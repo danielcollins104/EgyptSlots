@@ -68,6 +68,7 @@ import AmbientAtmosphere from './components/AmbientAtmosphere';
 import CabinetPillars from './components/CabinetPillars';
 import JackpotMarqueeBar from './components/JackpotMarqueeBar';
 import CabinetGlassOverlay from './components/CabinetGlassOverlay';
+import GuardianLightningStrike from './components/GuardianLightningStrike';
 import PhaserReelEngine from './engine/PhaserReelEngine';
 import { slotMathEngine } from './engine/math/SlotMathEngine.js';
 import { spinPhysicalReels } from './engine/math/ReelStripModel.js';
@@ -214,6 +215,11 @@ export default function App() {
   const [freeSpinsCount, setFreeSpinsCount] = useState(10);
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
+  // Dynamic Guardian Illumination & Strike System:
+  // 0 = idle, 1 = alert (early scatters/high pairs), 2 = perched & charged (anticipation/2+ scatters ready to cast), 3 = strike
+  const [guardianChargeLevel, setGuardianChargeLevel] = useState(0);
+  const [guardianStrikeEvent, setGuardianStrikeEvent] = useState(null);
+  const landedSymbolsByColRef = useRef([null, null, null, null, null]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -465,11 +471,37 @@ export default function App() {
     };
   }, [currentBetSC]);
 
-  const handleColumnStop = useCallback((colIdx, didExpand) => {
+  const handleColumnStop = useCallback((colIdx, didExpand, targetSymbols) => {
+    if (targetSymbols) {
+      landedSymbolsByColRef.current[colIdx] = targetSymbols;
+    }
     if (didExpand) {
       setGuardianAction(true);
       soundEngine.playAnubisExpand();
       setTimeout(() => setGuardianAction(false), 1200);
+    }
+
+    // Dynamic Guardian Perched & Illumination Suspense Evaluation:
+    // Check symbols landed across stopped reels (col 0 through colIdx)
+    let scattersLanded = 0;
+    let highMatchingCount = 0;
+    const landedCols = landedSymbolsByColRef.current.slice(0, colIdx + 1).filter(Boolean);
+    landedCols.forEach((colSyms) => {
+      colSyms.forEach((sym) => {
+        if (sym?.isBonus) scattersLanded++;
+        if (sym?.isTopHigh || sym?.id === 'high_scarab' || sym?.id === 'high_eye' || sym?.id === 'high_ankh') {
+          highMatchingCount++;
+        }
+      });
+    });
+
+    if (scattersLanded >= 2 && colIdx < COLS - 1) {
+      // 2 Scatters on board during active spin -> GUARDIANS PERCH UP, FULLY CHARGED WITH FIRE & LIGHTNING!
+      setGuardianChargeLevel(2);
+      soundEngine.playAnticipationRiser();
+    } else if (scattersLanded === 1 || highMatchingCount >= 2) {
+      // Alert level illumination: eyes glow, gentle aura surge
+      setGuardianChargeLevel((prev) => Math.max(prev, 1));
     }
   }, []);
 
@@ -541,7 +573,27 @@ export default function App() {
         setWinSplashAmount(finalWin); // WinCelebrationSplash handles display and sound once
       }
 
+      // Guardian Projectile Strike Engine:
       if (bonusCount >= 3) {
+        // Scatter Bonus: Both guardians throw violent lightning and solar fire bolts at the reels!
+        setGuardianChargeLevel(3);
+        setGuardianStrikeEvent({
+          from: 'left',
+          type: 'lightning',
+          targetX: window.innerWidth * 0.46,
+          targetY: window.innerHeight * 0.44,
+        });
+        soundEngine.playThunderStrike();
+        setTimeout(() => {
+          setGuardianStrikeEvent({
+            from: 'right',
+            type: 'fire',
+            targetX: window.innerWidth * 0.54,
+            targetY: window.innerHeight * 0.46,
+          });
+        }, 220);
+        setTimeout(() => setGuardianChargeLevel(0), 2200);
+
         setStatusMessage(
           `3D BONUS UNLOCKED! ${bonusCount}× ${getBonusSymbol().name} PAID ${
             isSC
@@ -549,17 +601,42 @@ export default function App() {
               : `${finalScatterWin.toLocaleString()} GC`
           } + BONUS FEATURE!`
         );
-      } else if (isBig) {
-        setBigWinAmount(finalWin);
-        setStatusMessage(
-          `${THEME_COPY.megaWinTickerPrefix} ${
-            isSC
-              ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD PRIZE)`
-              : `${finalWin.toLocaleString()} GC`
-          } AT ${CASINO_BRAND.casinoFullTitle}!`
-        );
+      } else if (isBig || wins.some((w) => w.matchCount >= 4)) {
+        // Big Win or 4+ of a kind: Guardian casts projectile strike directly into the winning line!
+        const winningCol = wins[0]?.cells?.[0]?.[0] ?? 2;
+        const isRightBastet = winningCol >= 2;
+        setGuardianChargeLevel(3);
+        setGuardianStrikeEvent({
+          from: isRightBastet ? 'right' : 'left',
+          type: isRightBastet ? 'fire' : 'lightning',
+        });
+        soundEngine.playThunderStrike();
+        setTimeout(() => setGuardianChargeLevel(0), 1600);
+
+        if (isBig) {
+          setBigWinAmount(finalWin);
+          setStatusMessage(
+            `${THEME_COPY.megaWinTickerPrefix} ${
+              isSC
+                ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD PRIZE)`
+                : `${finalWin.toLocaleString()} GC`
+            } AT ${CASINO_BRAND.casinoFullTitle}!`
+          );
+        } else {
+          const firstWin = wins[0];
+          setStatusMessage(
+            `VERIFIED WIN! ${wins.length} PAYLINE${
+              wins.length > 1 ? 'S' : ''
+            } (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
+              isSC
+                ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)`
+                : `${finalWin.toLocaleString()} GC`
+            }!`
+          );
+        }
       } else {
         const firstWin = wins[0];
+        setGuardianChargeLevel(0);
         setStatusMessage(
           `VERIFIED WIN! ${wins.length} PAYLINE${
             wins.length > 1 ? 'S' : ''
@@ -574,8 +651,12 @@ export default function App() {
       // Do not display losses; bet was already subtracted from total at spin start
       setWinSplashAmount(0);
       if (nearMiss?.isNearMiss) {
+        // Near miss keeps character perched up & crackling with blue flame & amber lightning to hold suspense!
+        setGuardianChargeLevel(2);
+        setTimeout(() => setGuardianChargeLevel(0), 1600);
         setStatusMessage(`⚡ NEAR-MISS! ${nearMiss.description}`);
       } else {
+        setGuardianChargeLevel(0);
         setStatusMessage(`${CASINO_BRAND.casinoFullTitle} • ${CASINO_BRAND.edition}`);
       }
     }
@@ -811,6 +892,9 @@ export default function App() {
       setWinningLines([]);
       setWinningCells(new Set());
       setBigWinAmount(0);
+      setGuardianChargeLevel(0);
+      setGuardianStrikeEvent(null);
+      landedSymbolsByColRef.current = [null, null, null, null, null];
       isSpinningRef.current = true;
       setIsSpinning(true);
       setStatusMessage(THEME_COPY.spinningTicker);
@@ -1645,9 +1729,14 @@ export default function App() {
         <aside
           className={`anubis-guardian-column left-col ${
             guardianAction ? 'anubis-action-surge' : ''
-          }`}
+          } ${guardianChargeLevel === 1 ? 'guardian-charge-alert' : ''} ${
+            guardianChargeLevel === 2 ? 'guardian-charge-perched' : ''
+          } ${guardianChargeLevel >= 3 ? 'guardian-charge-strike' : ''}`}
         >
           <div className="anubis-guardian-figure">
+            {guardianChargeLevel >= 2 && (
+              <div className="guardian-charged-crackling-aura" />
+            )}
             {GUARDIANS.left.auraImage && (
               <img
                 src={GUARDIANS.left.auraImage}
@@ -1656,7 +1745,15 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {GUARDIANS.left.keyedBackground ? (
+            {guardianChargeLevel >= 2 && GUARDIANS.left.chargedBodyImage ? (
+              <NeonKeyedImage
+                src={GUARDIANS.left.chargedBodyImage}
+                alt={GUARDIANS.left.name}
+                className="guardian-body-img neon-char-filter guardian-perched-charged"
+                threshold={26}
+                feather={44}
+              />
+            ) : GUARDIANS.left.keyedBackground ? (
               <NeonKeyedImage
                 src={GUARDIANS.left.bodyImage}
                 alt={GUARDIANS.left.name}
@@ -2095,9 +2192,14 @@ export default function App() {
         <aside
           className={`anubis-guardian-column right-col ${
             guardianAction ? 'anubis-action-surge' : ''
-          }`}
+          } ${guardianChargeLevel === 1 ? 'guardian-charge-alert' : ''} ${
+            guardianChargeLevel === 2 ? 'guardian-charge-perched' : ''
+          } ${guardianChargeLevel >= 3 ? 'guardian-charge-strike' : ''}`}
         >
           <div className="anubis-guardian-figure bastet-figure">
+            {guardianChargeLevel >= 2 && (
+              <div className="guardian-charged-crackling-aura bastet-charged-crackling-aura" />
+            )}
             {GUARDIANS.right.auraImage && (
               <img
                 src={GUARDIANS.right.auraImage}
@@ -2106,7 +2208,15 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {GUARDIANS.right.keyedBackground ? (
+            {guardianChargeLevel >= 2 && GUARDIANS.right.chargedBodyImage ? (
+              <NeonKeyedImage
+                src={GUARDIANS.right.chargedBodyImage}
+                alt={GUARDIANS.right.name}
+                className="guardian-body-img bastet-guardian-img guardian-perched-charged"
+                threshold={26}
+                feather={44}
+              />
+            ) : GUARDIANS.right.keyedBackground ? (
               <NeonKeyedImage
                 src={GUARDIANS.right.bodyImage}
                 alt={GUARDIANS.right.name}
@@ -2153,6 +2263,12 @@ export default function App() {
           </div>
           <div className="guardian-floor-runes" />
         </aside>
+
+        {/* 2026 Guardian Dynamic Lightning & Fire Projectile Strike Overlay */}
+        <GuardianLightningStrike
+          strikeEvent={guardianStrikeEvent}
+          onComplete={() => setGuardianStrikeEvent(null)}
+        />
       </main>
 
       {/* 3D Bonus Games Modal */}

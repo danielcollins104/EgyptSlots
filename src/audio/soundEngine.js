@@ -364,6 +364,42 @@ class SoundEngine {
     });
   }
 
+  playThunderStrike() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // 1. Sharp electric crackle / snap
+    const snapOsc = this.ctx.createOscillator();
+    const snapGain = this.ctx.createGain();
+    snapOsc.type = 'sawtooth';
+    snapOsc.frequency.setValueAtTime(1400, now);
+    snapOsc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+    snapGain.gain.setValueAtTime(0.24, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    snapOsc.connect(snapGain);
+    snapGain.connect(this.ctx.destination);
+    snapOsc.start(now);
+    snapOsc.stop(now + 0.1);
+
+    // 2. Deep sub-bass thunder boom & rumble
+    const boomOsc = this.ctx.createOscillator();
+    const boomGain = this.ctx.createGain();
+    boomOsc.type = 'triangle';
+    boomOsc.frequency.setValueAtTime(110, now);
+    boomOsc.frequency.exponentialRampToValueAtTime(32, now + 0.65);
+    boomGain.gain.setValueAtTime(0.35, now);
+    boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+    boomOsc.connect(boomGain);
+    boomGain.connect(this.ctx.destination);
+    boomOsc.start(now);
+    boomOsc.stop(now + 0.72);
+
+    // Haptics for tactile physical lightning strike
+    this.triggerHaptics([40, 30, 80, 40, 160]);
+  }
+
   playWinCelebration(tier = 'standard') {
     if (this.muted) return;
     this.init();

@@ -11,11 +11,11 @@ export default function DcLogoPlaque({ className = '', textOverride = null }) {
   return (
     <div className={`dc-cabinet-logo-container ${className}`}>
       <NeonKeyedImage
-        src="/assets/neon/dc_enterprises_cabinet_logo.jpg"
+        src="/assets/neon/dc_enterprises_wide_logo.jpg"
         alt={textOverride || 'DC ENTERPRISES'}
-        className="dc-cabinet-logo-emblem"
-        threshold={30}
-        feather={44}
+        className="dc-cabinet-logo-emblem dc-cabinet-logo-wide-emblem"
+        threshold={26}
+        feather={42}
         draggable={false}
       />
     </div>
