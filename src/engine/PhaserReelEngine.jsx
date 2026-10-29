@@ -505,12 +505,15 @@ function createBakedSprite(sourceImgOrCanvas, targetW, targetH, filterStr = '', 
  * into a single static sprite at startup so expanding columns cost only 1 drawImage call per frame!
  */
 function createBakedTallColumnSprite(bgImg, charImg, fireImg, isRightGuardian, bannerText) {
+  // Allow canvas width to accommodate full natural guardian shoulder/staff/aura width
+  const spriteW = Math.round(COL_W * 1.55);
+  const spriteH = GAME_H;
   const canvas = document.createElement('canvas');
-  canvas.width = COL_W;
-  canvas.height = GAME_H;
+  canvas.width = spriteW;
+  canvas.height = spriteH;
   const ctx = canvas.getContext('2d');
-  const cx = COL_W / 2;
-  const cy = GAME_H / 2;
+  const cx = spriteW / 2;
+  const cy = spriteH / 2;
 
   if (bgImg) {
     ctx.drawImage(
@@ -523,9 +526,16 @@ function createBakedTallColumnSprite(bgImg, charImg, fireImg, isRightGuardian, b
   }
 
   if (charImg) {
-    const cw = isRightGuardian ? COL_W * 1.12 : COL_W * 1.24;
-    const ch = isRightGuardian ? GAME_H * 0.95 : GAME_H * 1.2;
-    const cyOff = isRightGuardian ? 0 : 16;
+    const naturalW = charImg.naturalWidth || charImg.width || 380;
+    const naturalH = charImg.naturalHeight || charImg.height || 680;
+    const aspect = naturalW / naturalH; // Exact aspect ratio preserving true physique
+
+    // Scale height to fit the 1x3 column frame gracefully
+    const ch = Math.round(GAME_H * (isRightGuardian ? 0.97 : 1.05));
+    // Calculate width strictly preserving natural aspect ratio so character is never squished
+    const cw = Math.round(ch * aspect);
+    const cyOff = isRightGuardian ? -2 : 12;
+
     ctx.drawImage(charImg, cx - cw / 2, cy - ch / 2 + cyOff, cw, ch);
   }
 
@@ -1151,7 +1161,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             ctx.translate(reel.centerX, GAME_H / 2);
             ctx.scale(reel.tallScaleX, reel.tallScaleY);
             ctx.globalAlpha = reel.tallAlpha;
-            ctx.drawImage(tallSprite, -COL_W / 2, -GAME_H / 2);
+            ctx.drawImage(tallSprite, -tallSprite.width / 2, -tallSprite.height / 2);
             ctx.restore();
           }
         } else {
