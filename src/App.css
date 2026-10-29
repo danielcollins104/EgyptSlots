@@ -180,6 +180,173 @@ body {
   animation: pulseFloat 3.5s ease-in-out infinite alternate;
 }
 
+/* Clean, Unobstructed Hero Artwork Splash Screen */
+.ad-hero-artwork-stage {
+  position: relative;
+  z-index: 10;
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: env(safe-area-inset-top, 12px) 16px max(16px, env(safe-area-inset-bottom, 16px));
+  box-sizing: border-box;
+}
+
+.ad-hero-image-wrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.ad-hero-artwork-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center center;
+  border-radius: 18px;
+  box-shadow:
+    0 0 40px rgba(0, 229, 255, 0.45),
+    0 0 80px rgba(192, 132, 252, 0.35),
+    0 20px 60px rgba(0, 0, 0, 0.95);
+  border: 1.5px solid rgba(255, 215, 0, 0.45);
+  transition: transform 0.3s ease;
+}
+
+.ad-hero-cta-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  z-index: 20;
+}
+
+.ad-enter-casino-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 44px;
+  border-radius: 999px;
+  border: 2px solid #ffd700;
+  background: linear-gradient(135deg, #ffd700 0%, #f59e0b 50%, #d97706 100%);
+  color: #0c0414;
+  font-family: var(--font-royal, 'Cinzel Decorative', serif);
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow:
+    0 0 28px rgba(255, 215, 0, 0.8),
+    0 8px 30px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ad-enter-casino-btn:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow:
+    0 0 40px rgba(255, 215, 0, 1),
+    0 12px 36px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 #ffffff;
+}
+
+.ad-enter-casino-btn:active {
+  transform: scale(0.96);
+}
+
+.cta-sparkle-icon {
+  color: #0c0414;
+  animation: pulseFloat 1.2s ease-in-out infinite alternate;
+}
+
+.cta-enter-text {
+  font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+  letter-spacing: 0.14em;
+  font-weight: 900;
+}
+
+.cta-play-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+}
+
+.cta-tap-hint {
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  color: #00e5ff;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+  animation: pulseFloat 2s ease-in-out infinite alternate;
+}
+
+/* Mobile Portrait Tuning */
+@media (max-width: 680px) and (orientation: portrait) {
+  .ad-hero-artwork-stage {
+    padding: env(safe-area-inset-top, 8px) 10px max(12px, env(safe-area-inset-bottom, 12px));
+  }
+  .ad-hero-artwork-img {
+    border-radius: 12px;
+    box-shadow: 0 0 25px rgba(0, 229, 255, 0.4), 0 10px 30px rgba(0, 0, 0, 0.9);
+  }
+  .ad-enter-casino-btn {
+    padding: 12px 32px;
+    gap: 8px;
+  }
+  .cta-enter-text {
+    font-size: 1.05rem;
+    letter-spacing: 0.1em;
+  }
+  .cta-tap-hint {
+    font-size: 0.65rem;
+  }
+}
+
+/* Mobile Landscape Tuning */
+@media (orientation: landscape) and (max-height: 600px) {
+  .ad-hero-artwork-stage {
+    padding: 4px 14px max(6px, env(safe-area-inset-bottom, 6px));
+  }
+  .ad-hero-artwork-img {
+    max-height: calc(100dvh - 65px);
+    border-radius: 8px;
+  }
+  .ad-hero-cta-bar {
+    margin-top: 4px;
+    gap: 2px;
+  }
+  .ad-enter-casino-btn {
+    padding: 6px 24px;
+    gap: 8px;
+  }
+  .cta-enter-text {
+    font-size: 0.92rem;
+  }
+  .cta-play-badge {
+    width: 24px;
+    height: 24px;
+  }
+  .cta-tap-hint {
+    display: none;
+  }
+}
+
 /* Main Widescreen Vegas Billboard Container */
 .ad-billboard-stage {
   position: relative;
