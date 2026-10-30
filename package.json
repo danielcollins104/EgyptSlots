@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "server": "node server/server.js",
+    "security:audit": "node scripts/test-security-audit.js",
+    "test:all": "node scripts/test-all-aspects.js",
     "setup:stripe": "node scripts/setup-stripe.js"
   },
   "dependencies": {
