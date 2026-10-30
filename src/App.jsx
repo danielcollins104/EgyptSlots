@@ -128,8 +128,10 @@ export default function App() {
   // Playing for SC requires VIP player login
   const [currencyMode, setCurrencyMode] = useState(() => {
     try {
-      const saved = localStorage.getItem('dc_casino_currency_mode');
       const user = authService.getCurrentUser();
+      const userAcc = authService.getUserData(user?.id);
+      if (userAcc?.currencyMode === 'SC' && user) return 'SC';
+      const saved = localStorage.getItem('dc_casino_currency_mode');
       if (saved === 'SC' && user) return 'SC';
       return 'GC';
     } catch {
@@ -139,6 +141,11 @@ export default function App() {
 
   const [goldCoins, setGoldCoins] = useState(() => {
     try {
+      const user = authService.getCurrentUser();
+      const userAcc = authService.getUserData(user?.id);
+      if (userAcc && typeof userAcc.goldCoins === 'number') {
+        return userAcc.goldCoins;
+      }
       const saved = localStorage.getItem('dc_casino_gold_coins');
       return saved !== null ? parseInt(saved, 10) : SWEEPSTAKES_CONFIG.defaultGoldCoins;
     } catch {
@@ -148,6 +155,11 @@ export default function App() {
 
   const [sweepsCoins, setSweepsCoins] = useState(() => {
     try {
+      const user = authService.getCurrentUser();
+      const userAcc = authService.getUserData(user?.id);
+      if (userAcc && typeof userAcc.sweepsCoins === 'number') {
+        return userAcc.sweepsCoins;
+      }
       const saved = localStorage.getItem('dc_casino_sweeps_coins');
       return saved !== null ? parseFloat(saved) : SWEEPSTAKES_CONFIG.defaultSweepsCoins;
     } catch {
@@ -296,14 +308,16 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('dc_casino_gold_coins', String(goldCoins));
+      authService.saveUserData(currentUser?.id, { goldCoins });
     } catch {}
-  }, [goldCoins]);
+  }, [goldCoins, currentUser]);
 
   useEffect(() => {
     try {
       localStorage.setItem('dc_casino_sweeps_coins', sweepsCoins.toFixed(2));
+      authService.saveUserData(currentUser?.id, { sweepsCoins });
     } catch {}
-  }, [sweepsCoins]);
+  }, [sweepsCoins, currentUser]);
 
   // Dynamically sync browser document title to the active theme
   useEffect(() => {
@@ -325,13 +339,27 @@ export default function App() {
     } catch (_) {}
   }, []);
 
-  // VIP Player Authentication Listener: auto-react to login/logout events
+  // VIP Player Authentication Listener: auto-react to login/logout events & swap per-account bankrolls
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChanged((user) => {
       setCurrentUser(user);
+      const acc = authService.getUserData(user?.id);
+      if (acc) {
+        setGoldCoins(acc.goldCoins);
+        goldCoinsRef.current = acc.goldCoins;
+        setSweepsCoins(acc.sweepsCoins);
+        sweepsCoinsRef.current = acc.sweepsCoins;
+        if (user && acc.currencyMode) {
+          setCurrencyMode(acc.currencyMode);
+        } else if (!user) {
+          setCurrencyMode('GC');
+        }
+      }
       if (!user && currencyMode === 'SC') {
         setCurrencyMode('GC');
         setStatusMessage('GUEST SESSION • SWITCHED TO SOCIAL GOLD COINS (GC).');
+      } else if (user) {
+        setStatusMessage(`WELCOME BACK, ${user.name.toUpperCase()}! VIP ACCOUNT DATA RESTORED.`);
       }
     });
     return unsubscribe;

@@ -44,6 +44,107 @@ export const authService = {
     return () => window.removeEventListener('dc-auth-state-changed', handler);
   },
 
+  // Retrieve persistent wallet, bankroll, and game data for an individual account
+  getUserData(userId) {
+    if (!userId) {
+      return this._getGuestData();
+    }
+    try {
+      const key = `dc_casino_account_${userId}`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+      // First-time VIP registration starter package: 100,000 GC + 10.00 SC
+      const initial = {
+        goldCoins: 100000,
+        sweepsCoins: 10.0,
+        currencyMode: 'GC',
+        bonusMeter: 0,
+        totalSpins: 0,
+        totalWins: 0,
+        vipPoints: 100,
+        createdAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
+      };
+      this.saveUserData(userId, initial);
+      return initial;
+    } catch {
+      return this._getGuestData();
+    }
+  },
+
+  // Save per-user persistent account wallet and game data
+  saveUserData(userId, data) {
+    if (!userId) {
+      this._saveGuestData(data);
+      return;
+    }
+    try {
+      const key = `dc_casino_account_${userId}`;
+      let current = null;
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) current = JSON.parse(raw);
+      } catch {}
+
+      const updated = {
+        ...(current || {
+          goldCoins: 100000,
+          sweepsCoins: 10.0,
+          currencyMode: 'GC',
+          bonusMeter: 0,
+          totalSpins: 0,
+          totalWins: 0,
+          vipPoints: 100,
+          createdAt: new Date().toISOString(),
+        }),
+        ...data,
+        lastActiveAt: new Date().toISOString(),
+      };
+      localStorage.setItem(key, JSON.stringify(updated));
+
+      // Update registry of accounts on this machine
+      try {
+        const accountsRaw = localStorage.getItem(STORAGE_KEYS.AUTH_ACCOUNTS);
+        const accounts = accountsRaw ? JSON.parse(accountsRaw) : {};
+        accounts[userId] = {
+          id: userId,
+          lastActiveAt: updated.lastActiveAt,
+          goldCoins: updated.goldCoins,
+          sweepsCoins: updated.sweepsCoins,
+        };
+        localStorage.setItem(STORAGE_KEYS.AUTH_ACCOUNTS, JSON.stringify(accounts));
+      } catch {}
+    } catch (e) {
+      console.error('Failed to save user account data:', e);
+    }
+  },
+
+  _getGuestData() {
+    try {
+      const raw = localStorage.getItem('dc_casino_account_guest');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {
+      goldCoins: 25000,
+      sweepsCoins: 0.0,
+      currencyMode: 'GC',
+      bonusMeter: 0,
+      totalSpins: 0,
+      totalWins: 0,
+      vipPoints: 0,
+    };
+  },
+
+  _saveGuestData(data) {
+    try {
+      let current = this._getGuestData();
+      const updated = { ...current, ...data };
+      localStorage.setItem('dc_casino_account_guest', JSON.stringify(updated));
+    } catch {}
+  },
+
   // Sign in with Google (OAuth / One-Click Credential)
   async loginWithGoogle() {
     // Simulated realistic Google Auth handshake (can plug into real Google Identity Services Client ID)
