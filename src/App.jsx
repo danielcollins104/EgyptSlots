@@ -583,25 +583,34 @@ export default function App() {
       }
 
       // Guardian Projectile Strike Engine:
+      const allWinCells = Array.from(winCoordSet).map((k) => k.split(',').map(Number));
+
       if (bonusCount >= 3) {
         // Scatter Bonus: Both guardians throw violent lightning and solar fire bolts at the reels!
         setGuardianChargeLevel(3);
+        const scatterCells =
+          outcome.scatterPositions && outcome.scatterPositions.length > 0
+            ? outcome.scatterPositions.map((p) => [p.col, p.row])
+            : [[1, 1], [3, 1]];
         setGuardianStrikeEvent({
-          from: 'left',
-          type: 'lightning',
-          targetX: window.innerWidth * 0.46,
-          targetY: window.innerHeight * 0.44,
+          strikes: [
+            {
+              from: 'left',
+              type: 'lightning',
+              targetCells: scatterCells.slice(0, 2),
+              delay: 0,
+            },
+            {
+              from: 'right',
+              type: 'fire',
+              targetCells: scatterCells.slice(2),
+              delay: 140,
+            },
+          ],
         });
         soundEngine.playThunderStrike();
-        setTimeout(() => {
-          setGuardianStrikeEvent({
-            from: 'right',
-            type: 'fire',
-            targetX: window.innerWidth * 0.54,
-            targetY: window.innerHeight * 0.46,
-          });
-        }, 220);
-        setTimeout(() => setGuardianChargeLevel(0), 2200);
+        setTimeout(() => soundEngine.playSolarFireball(), 160);
+        setTimeout(() => setGuardianChargeLevel(0), 2400);
 
         setStatusMessage(
           `3D BONUS UNLOCKED! ${bonusCount}× ${getBonusSymbol().name} PAID ${
@@ -612,15 +621,28 @@ export default function App() {
         );
       } else if (isBig || wins.some((w) => w.matchCount >= 4)) {
         // Big Win or 4+ of a kind: Guardian casts projectile strike directly into the winning line!
-        const winningCol = wins[0]?.cells?.[0]?.[0] ?? 2;
-        const isRightBastet = winningCol >= 2;
         setGuardianChargeLevel(3);
+        const leftTargets = allWinCells.filter((c) => c[0] <= 2);
+        const rightTargets = allWinCells.filter((c) => c[0] >= 2);
         setGuardianStrikeEvent({
-          from: isRightBastet ? 'right' : 'left',
-          type: isRightBastet ? 'fire' : 'lightning',
+          strikes: [
+            {
+              from: 'left',
+              type: 'lightning',
+              targetCells: leftTargets.length > 0 ? leftTargets : allWinCells,
+              delay: 0,
+            },
+            {
+              from: 'right',
+              type: 'fire',
+              targetCells: rightTargets.length > 0 ? rightTargets : allWinCells,
+              delay: 130,
+            },
+          ],
         });
         soundEngine.playThunderStrike();
-        setTimeout(() => setGuardianChargeLevel(0), 1600);
+        setTimeout(() => soundEngine.playSolarFireball(), 150);
+        setTimeout(() => setGuardianChargeLevel(0), 2000);
 
         if (isBig) {
           setBigWinAmount(finalWin);
@@ -644,8 +666,28 @@ export default function App() {
           );
         }
       } else {
+        // ANY Regular Win: The corresponding guardian attacks the winning symbols with elemental power!
         const firstWin = wins[0];
-        setGuardianChargeLevel(0);
+        const avgCol =
+          allWinCells.reduce((acc, c) => acc + c[0], 0) / (allWinCells.length || 1);
+        const isRightBastet = avgCol >= 2.2;
+        setGuardianChargeLevel(3);
+        if (isRightBastet) {
+          setGuardianStrikeEvent({
+            from: 'right',
+            type: 'fire',
+            targetCells: allWinCells,
+          });
+          soundEngine.playSolarFireball();
+        } else {
+          setGuardianStrikeEvent({
+            from: 'left',
+            type: 'lightning',
+            targetCells: allWinCells,
+          });
+          soundEngine.playThunderStrike();
+        }
+        setTimeout(() => setGuardianChargeLevel(0), 1600);
         setStatusMessage(
           `VERIFIED WIN! ${wins.length} PAYLINE${
             wins.length > 1 ? 'S' : ''
@@ -662,7 +704,9 @@ export default function App() {
       if (nearMiss?.isNearMiss) {
         // Near miss keeps character perched up & crackling with blue flame & amber lightning to hold suspense!
         setGuardianChargeLevel(2);
-        setTimeout(() => setGuardianChargeLevel(0), 1600);
+        setTimeout(() => {
+          setGuardianChargeLevel((lvl) => (lvl === 2 ? 0 : lvl));
+        }, 3200);
         setStatusMessage(`⚡ NEAR-MISS! ${nearMiss.description}`);
       } else {
         setGuardianChargeLevel(0);
@@ -1012,7 +1056,8 @@ export default function App() {
       setWinningLines([]);
       setWinningCells(new Set());
       setBigWinAmount(0);
-      setGuardianChargeLevel(0);
+      // If characters were charged from a near-miss/scatters, maintain alert combat posture into the spin!
+      setGuardianChargeLevel((lvl) => (lvl >= 2 ? 1 : 0));
       setGuardianStrikeEvent(null);
       landedSymbolsByColRef.current = [null, null, null, null, null];
       isSpinningRef.current = true;
@@ -1885,6 +1930,13 @@ export default function App() {
           } ${guardianChargeLevel >= 3 ? 'guardian-charge-strike' : ''}`}
         >
           <div className="anubis-guardian-figure">
+            <div className="guardian-living-aura anubis-living-aura" />
+            <div
+              className={`guardian-divine-eyes anubis-divine-eyes ${
+                guardianBlinking ? 'blinking' : ''
+              }`}
+            />
+            <div className="guardian-power-orb anubis-power-orb" />
             {guardianChargeLevel >= 2 && (
               <div className="guardian-charged-crackling-aura" />
             )}
@@ -2348,6 +2400,13 @@ export default function App() {
           } ${guardianChargeLevel >= 3 ? 'guardian-charge-strike' : ''}`}
         >
           <div className="anubis-guardian-figure bastet-figure">
+            <div className="guardian-living-aura bastet-living-aura" />
+            <div
+              className={`guardian-divine-eyes bastet-divine-eyes ${
+                guardianBlinking ? 'blinking' : ''
+              }`}
+            />
+            <div className="guardian-power-orb bastet-power-orb" />
             {guardianChargeLevel >= 2 && (
               <div className="guardian-charged-crackling-aura bastet-charged-crackling-aura" />
             )}

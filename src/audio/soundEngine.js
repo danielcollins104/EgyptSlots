@@ -404,6 +404,44 @@ class SoundEngine {
     this.triggerHaptics([40, 30, 80, 40, 160]);
   }
 
+  playSolarFireball() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // 1. Whooshing solar plasma ascent
+    const whooshOsc = this.ctx.createOscillator();
+    const whooshGain = this.ctx.createGain();
+    whooshOsc.type = 'sine';
+    whooshOsc.frequency.setValueAtTime(260, now);
+    whooshOsc.frequency.exponentialRampToValueAtTime(740, now + 0.18);
+    whooshOsc.frequency.exponentialRampToValueAtTime(80, now + 0.55);
+    whooshGain.gain.setValueAtTime(0.01, now);
+    whooshGain.gain.linearRampToValueAtTime(0.28, now + 0.15);
+    whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    whooshOsc.connect(whooshGain);
+    whooshGain.connect(this.ctx.destination);
+    whooshOsc.start(now);
+    whooshOsc.stop(now + 0.62);
+
+    // 2. Warm solar flare resonance
+    const flareOsc = this.ctx.createOscillator();
+    const flareGain = this.ctx.createGain();
+    flareOsc.type = 'triangle';
+    flareOsc.frequency.setValueAtTime(140, now + 0.12);
+    flareOsc.frequency.exponentialRampToValueAtTime(45, now + 0.65);
+    flareGain.gain.setValueAtTime(0.001, now);
+    flareGain.gain.setValueAtTime(0.26, now + 0.14);
+    flareGain.gain.exponentialRampToValueAtTime(0.001, now + 0.68);
+    flareOsc.connect(flareGain);
+    flareGain.connect(this.ctx.destination);
+    flareOsc.start(now + 0.12);
+    flareOsc.stop(now + 0.7);
+
+    this.triggerHaptics([30, 25, 60, 35, 120]);
+  }
+
   playWinCelebration(tier = 'standard') {
     if (this.muted) return;
     this.init();
