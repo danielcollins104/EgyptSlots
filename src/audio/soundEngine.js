@@ -121,24 +121,49 @@ class SoundEngine {
     this.init();
     if (!this.ctx) return;
 
-    this.triggerHaptics([22]);
+    this.triggerHaptics([24]);
 
     const now = this.ctx.currentTime;
-    // Egyptian Hijaz scale ascending sweep: D4, Eb4, F#4, G4, A4, Bb4, C#5, D5
-    const notes = [293.66, 311.13, 369.99, 392.0, 440.0, 466.16, 554.37, 587.33];
-    notes.forEach((freq, i) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      const t = now + i * 0.032;
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.12, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.19);
-    });
+
+    // Single authentic, satisfying, premium casino spin button punch:
+    // 1. Crisp tactile physical button snap (micro-transient)
+    const clickOsc = this.ctx.createOscillator();
+    const clickGain = this.ctx.createGain();
+    clickOsc.type = 'triangle';
+    clickOsc.frequency.setValueAtTime(540, now);
+    clickOsc.frequency.exponentialRampToValueAtTime(140, now + 0.022);
+    clickGain.gain.setValueAtTime(0.15, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+    clickOsc.connect(clickGain);
+    clickGain.connect(this.ctx.destination);
+    clickOsc.start(now);
+    clickOsc.stop(now + 0.028);
+
+    // 2. Deep solid dampened cabinet thud (tactile body)
+    const thudOsc = this.ctx.createOscillator();
+    const thudGain = this.ctx.createGain();
+    thudOsc.type = 'sine';
+    thudOsc.frequency.setValueAtTime(110, now);
+    thudOsc.frequency.exponentialRampToValueAtTime(38, now + 0.12);
+    thudGain.gain.setValueAtTime(0.20, now);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+    thudOsc.connect(thudGain);
+    thudGain.connect(this.ctx.destination);
+    thudOsc.start(now);
+    thudOsc.stop(now + 0.15);
+
+    // 3. Smooth, low mechanical reel release whoosh
+    const whooshOsc = this.ctx.createOscillator();
+    const whooshGain = this.ctx.createGain();
+    whooshOsc.type = 'triangle';
+    whooshOsc.frequency.setValueAtTime(75, now);
+    whooshOsc.frequency.linearRampToValueAtTime(140, now + 0.16);
+    whooshGain.gain.setValueAtTime(0.035, now);
+    whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+    whooshOsc.connect(whooshGain);
+    whooshGain.connect(this.ctx.destination);
+    whooshOsc.start(now);
+    whooshOsc.stop(now + 0.22);
   }
 
   playFlowStreak(streak = 1) {
@@ -246,27 +271,8 @@ class SoundEngine {
   }
 
   playReelTick(colIndex = 0) {
-    if (this.muted) return;
-    const nowMs = performance.now();
-    if (nowMs - this.lastTickMs < 45) return;
-    this.lastTickMs = nowMs;
-
-    this.init();
-    if (!this.ctx) return;
-
-    if (!this.tickBuffers) {
-      this.initTickBuffers();
-    }
-
-    const buf = this.tickBuffers?.[colIndex % 5];
-    if (buf) {
-      try {
-        const source = this.ctx.createBufferSource();
-        source.buffer = buf;
-        source.connect(this.ctx.destination);
-        source.start();
-      } catch (_) {}
-    }
+    // Disabled continuous reel clicking to eliminate annoying stereo/clattering noise during spins
+    return;
   }
 
   initTickBuffers() {
@@ -274,23 +280,21 @@ class SoundEngine {
     try {
       this.tickBuffers = [];
       const sampleRate = this.ctx.sampleRate || 44100;
-      const numSamples = Math.round(sampleRate * 0.022); // 22ms per tick
+      const numSamples = Math.round(sampleRate * 0.016); // 16ms subtle dampened tick
 
-      for (let c = 0; c < 5; c++) {
-        const buffer = this.ctx.createBuffer(1, numSamples, sampleRate);
-        const data = buffer.getChannelData(0);
-        const startFreq = 160 + c * 18;
-        const endFreq = 65;
+      const buffer = this.ctx.createBuffer(1, numSamples, sampleRate);
+      const data = buffer.getChannelData(0);
+      const startFreq = 120;
+      const endFreq = 50;
 
-        for (let i = 0; i < numSamples; i++) {
-          const t = i / sampleRate;
-          const progress = i / numSamples;
-          const freq = startFreq * Math.pow(endFreq / startFreq, progress);
-          const amp = 0.045 * (1 - progress);
-          data[i] = Math.sin(2 * Math.PI * freq * t) * amp;
-        }
-        this.tickBuffers.push(buffer);
+      for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        const progress = i / numSamples;
+        const freq = startFreq * Math.pow(endFreq / startFreq, progress);
+        const amp = 0.009 * (1 - progress); // Gentle, subtle, non-intrusive whisper
+        data[i] = Math.sin(2 * Math.PI * freq * t) * amp;
       }
+      this.tickBuffers.push(buffer);
     } catch (_) {}
   }
 

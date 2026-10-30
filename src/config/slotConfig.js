@@ -41,7 +41,7 @@ export const ACTIVE_THEME = {
     logoImage: '/assets/psd/logo_long_frame.png',
     logoFrameImage: '/assets/psd/logo_long_frame.png',
     megaWinNeonImage: '/assets/neon/mega_win_royal_gold.png',
-    megaWinVideo: '/assets/neon/mega_win_animation.mp4',
+    megaWinVideo: null,
     baseLines: 15,
     defaultCoins: 1000,
     coinValues: [
@@ -78,7 +78,7 @@ export const ACTIVE_THEME = {
     splashHeroFallback: '/assets/neon/dc_enterprises_splash_hd.jpg',
     splashCreativeImage: '/assets/neon/daniel_creative_ad_splash.jpg',
     splashOriginalImage: '/assets/neon/daniel_welcome_treasure.jpg',
-    megaWinVideo: '/assets/neon/mega_win_animation.mp4',
+    megaWinVideo: null,
     reelFrameImage: '/assets/reel/reel_frame_filled.png',
     reelGlowImage: '/assets/psd/reel_glow.png',
     reelShadowImage: '/assets/psd/reel_shadow.png',
