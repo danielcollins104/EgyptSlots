@@ -57,6 +57,7 @@ export default function FreeSpinsScreen({
 
   const isSC = currencyMode === 'SC';
   const autoLoopTimerRef = useRef(null);
+  const multiplier = FREE_SPINS_CONFIG.winMultiplier || 2;
 
   const rollTape = useMemo(() => {
     const list = FREE_SPINS_CONFIG.symbols;
