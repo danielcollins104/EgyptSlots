@@ -155,6 +155,15 @@ export default function App() {
     }
   });
 
+  const goldCoinsRef = useRef(goldCoins);
+  const sweepsCoinsRef = useRef(sweepsCoins);
+  useEffect(() => {
+    goldCoinsRef.current = goldCoins;
+  }, [goldCoins]);
+  useEffect(() => {
+    sweepsCoinsRef.current = sweepsCoins;
+  }, [sweepsCoins]);
+
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentModalTab, setPaymentModalTab] = useState('store');
@@ -733,7 +742,7 @@ export default function App() {
             !isHoldingSpinRef.current
           ) {
             const isSC = currencyMode === 'SC';
-            const bal = isSC ? sweepsCoins : goldCoins;
+            const bal = isSC ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins);
             const threshold = isSC ? 0.50 : 50;
             if (bal <= threshold) {
               setLowBalanceOfferOpen(true);
@@ -827,9 +836,40 @@ export default function App() {
   const handlePurchaseSuccess = (data) => {
     const addedGC = data.goldCoins ?? data.goldCoinsAdded ?? 0;
     const addedSC = data.freeSweepsCoins ?? data.sweepsCoinsAdded ?? 0;
-    setGoldCoins((prev) => prev + addedGC);
-    setSweepsCoins((prev) => Number((prev + addedSC).toFixed(2)));
-    setPaymentModalOpen(false); // Automatically return to the game!
+
+    const nextGC = (goldCoinsRef.current ?? goldCoins) + addedGC;
+    const nextSC = Number(((sweepsCoinsRef.current ?? sweepsCoins) + addedSC).toFixed(2));
+
+    setGoldCoins(nextGC);
+    goldCoinsRef.current = nextGC;
+    try {
+      localStorage.setItem('dc_casino_gold_coins', String(nextGC));
+    } catch {}
+
+    setSweepsCoins(nextSC);
+    sweepsCoinsRef.current = nextSC;
+    try {
+      localStorage.setItem('dc_casino_sweeps_coins', nextSC.toFixed(2));
+    } catch {}
+
+    // Ensure all purchase/offer modals are closed immediately
+    setLowBalanceOfferOpen(false);
+    setPaymentModalOpen(false);
+    setSelectedStorePackage(null);
+    lastLowBalanceOfferTimeRef.current = Date.now();
+
+    // Auto-adjust bet tiers if current bet was higher than the user's funds
+    if (BET_TIERS_GC[betIndexGC] > nextGC && nextGC >= BET_TIERS_GC[0]) {
+      let fitIdx = BET_TIERS_GC.length - 1;
+      while (fitIdx > 0 && BET_TIERS_GC[fitIdx] > nextGC) fitIdx--;
+      setBetIndexGC(fitIdx);
+    }
+    if (BET_TIERS_SC[betIndexSC] > nextSC && nextSC >= BET_TIERS_SC[0]) {
+      let fitIdx = BET_TIERS_SC.length - 1;
+      while (fitIdx > 0 && BET_TIERS_SC[fitIdx] > nextSC) fitIdx--;
+      setBetIndexSC(fitIdx);
+    }
+
     soundEngine.playWin(true);
     setStatusMessage(
       `🎉 PAYMENT SUCCESS! CREDITED +${addedGC.toLocaleString()} GC & +${addedSC.toFixed(2)} FREE SC TO YOUR TOP BALANCE!`
@@ -837,7 +877,14 @@ export default function App() {
   };
 
   const handleRedeemSuccess = (amountSC) => {
-    setSweepsCoins((prev) => Math.max(0, Number((prev - amountSC).toFixed(2))));
+    setSweepsCoins((prev) => {
+      const next = Math.max(0, Number((prev - amountSC).toFixed(2)));
+      sweepsCoinsRef.current = next;
+      try {
+        localStorage.setItem('dc_casino_sweeps_coins', next.toFixed(2));
+      } catch {}
+      return next;
+    });
     soundEngine.playWin(false);
     setStatusMessage(
       `PRIZE REDEMPTION SUBMITTED! $${amountSC.toFixed(2)} USD SENT TO YOUR ACCOUNT.`
@@ -853,36 +900,109 @@ export default function App() {
         return;
       }
       if (bonusSession || freeSpinsOpen) return;
-      const isSC = currencyMode === 'SC';
-      const activeSpinBet = overrideBet ?? (isSC ? currentBetSC : currentBetGC);
-      const activeLevel = Math.max(1, Math.round(isSC ? activeSpinBet / 0.15 : activeSpinBet / 15));
 
+      let effectiveCurrency = currencyMode;
+      let isSC = effectiveCurrency === 'SC';
+      const liveSC = sweepsCoinsRef.current ?? sweepsCoins;
+      const liveGC = goldCoinsRef.current ?? goldCoins;
+
+      // VIP login enforcement for SC
+      if (isSC && !currentUser) {
+        setCurrencyMode('GC');
+        effectiveCurrency = 'GC';
+        isSC = false;
+        setStatusMessage('GUEST SESSION • PLAYING FOR SOCIAL GOLD COINS (GC).');
+      }
+
+      let activeSpinBet = overrideBet;
+      if (activeSpinBet == null) {
+        activeSpinBet = isSC ? (BET_TIERS_SC[betIndexSC] ?? 0.75) : (BET_TIERS_GC[betIndexGC] ?? 75);
+      }
+
+      // Smart Balance Evaluation & Dynamic Bet Adjuster:
+      // If the player has coins, NEVER block them from spinning!
       if (isSC) {
-        if (!currentUser) {
+        const minSCBet = BET_TIERS_SC[0]; // 0.15 SC
+        if (liveSC >= activeSpinBet) {
+          // Normal: Player has sufficient SC for this bet
+        } else if (liveSC >= minSCBet) {
+          // Player has SC, but current bet is higher than balance -> auto-adjust down to highest affordable tier!
+          let fitIdx = BET_TIERS_SC.length - 1;
+          while (fitIdx > 0 && BET_TIERS_SC[fitIdx] > liveSC) fitIdx--;
+          activeSpinBet = BET_TIERS_SC[fitIdx];
+          setBetIndexSC(fitIdx);
+          setStatusMessage(`BET AUTO-ADJUSTED TO $${activeSpinBet.toFixed(2)} SC TO MATCH YOUR BALANCE!`);
+        } else if (liveGC >= BET_TIERS_GC[0]) {
+          // Out of SC, but has Gold Coins -> seamless switch to GC so player keeps spinning!
           setCurrencyMode('GC');
-          setAuthModalReason('sc_spin');
-          setAuthModalOpen(true);
-          setAutoPlayCount(0);
-          setStatusMessage('VIP LOGIN REQUIRED TO PLAY FOR SWEEPS COINS (SC)!');
-          return;
-        }
-        if (sweepsCoins < activeSpinBet) {
+          effectiveCurrency = 'GC';
+          isSC = false;
+          let fitIdx = BET_TIERS_GC.length - 1;
+          while (fitIdx > 0 && BET_TIERS_GC[fitIdx] > liveGC) fitIdx--;
+          activeSpinBet = BET_TIERS_GC[fitIdx];
+          setBetIndexGC(fitIdx);
+          setStatusMessage(`LOW SWEEPS COINS • SWITCHED TO GOLD COINS (${activeSpinBet.toLocaleString()} GC) TO KEEP SPINNING!`);
+        } else {
+          // Truly empty in both SC and GC (< 0.15 SC and < 15 GC)
           setStatusMessage('INSUFFICIENT SWEEPS COINS! GET FREE SC WITH STORE BUNDLES OR SWITCH TO GOLD COINS!');
           setAutoPlayCount(0);
           setLowBalanceOfferOpen(true);
           lastLowBalanceOfferTimeRef.current = Date.now();
           return;
         }
-        setSweepsCoins((prev) => Math.max(0, Number((prev - activeSpinBet).toFixed(2))));
-      } else {
-        if (goldCoins < activeSpinBet) {
+      }
+
+      if (!isSC) {
+        const minGCBet = BET_TIERS_GC[0]; // 15 GC
+        if (liveGC >= activeSpinBet) {
+          // Normal: Player has sufficient GC for this bet
+        } else if (liveGC >= minGCBet) {
+          // Player has GC, but current bet is higher than balance -> auto-adjust down to highest affordable tier!
+          let fitIdx = BET_TIERS_GC.length - 1;
+          while (fitIdx > 0 && BET_TIERS_GC[fitIdx] > liveGC) fitIdx--;
+          activeSpinBet = BET_TIERS_GC[fitIdx];
+          setBetIndexGC(fitIdx);
+          setStatusMessage(`BET AUTO-ADJUSTED TO ${activeSpinBet.toLocaleString()} GC TO MATCH YOUR BALANCE!`);
+        } else if (currentUser && liveSC >= BET_TIERS_SC[0]) {
+          // Out of GC, but has Sweeps Coins -> seamless switch to SC so player keeps spinning!
+          setCurrencyMode('SC');
+          effectiveCurrency = 'SC';
+          isSC = true;
+          let fitIdx = BET_TIERS_SC.length - 1;
+          while (fitIdx > 0 && BET_TIERS_SC[fitIdx] > liveSC) fitIdx--;
+          activeSpinBet = BET_TIERS_SC[fitIdx];
+          setBetIndexSC(fitIdx);
+          setStatusMessage(`LOW GOLD COINS • SWITCHED TO SWEEPS COINS ($${activeSpinBet.toFixed(2)} SC) TO KEEP SPINNING!`);
+        } else {
+          // Truly empty in both GC and SC (< 15 GC and < 0.15 SC)
           setStatusMessage(THEME_COPY.insufficientCoinsTicker);
           setAutoPlayCount(0);
           setLowBalanceOfferOpen(true);
           lastLowBalanceOfferTimeRef.current = Date.now();
           return;
         }
-        setGoldCoins((prev) => prev - activeSpinBet);
+      }
+
+      const activeLevel = Math.max(1, Math.round(isSC ? activeSpinBet / 0.15 : activeSpinBet / 15));
+
+      if (isSC) {
+        setSweepsCoins((prev) => {
+          const next = Math.max(0, Number((prev - activeSpinBet).toFixed(2)));
+          sweepsCoinsRef.current = next;
+          try {
+            localStorage.setItem('dc_casino_sweeps_coins', next.toFixed(2));
+          } catch {}
+          return next;
+        });
+      } else {
+        setGoldCoins((prev) => {
+          const next = Math.max(0, prev - activeSpinBet);
+          goldCoinsRef.current = next;
+          try {
+            localStorage.setItem('dc_casino_gold_coins', String(next));
+          } catch {}
+          return next;
+        });
       }
 
       setLastWinCoins(0);
@@ -997,6 +1117,9 @@ export default function App() {
       currencyMode,
       currentBetGC,
       currentBetSC,
+      betIndexGC,
+      betIndexSC,
+      currentUser,
       turboFlow,
     ]
   );
@@ -1063,14 +1186,22 @@ export default function App() {
   const handleMaxBet = () => {
     if (isSpinning) return;
     soundEngine.playButtonClick(740);
-    if (currencyMode === 'SC') {
-      const maxIdx = BET_TIERS_SC.length - 1;
-      setBetIndexSC(maxIdx);
-      triggerSpin(null, BET_TIERS_SC[maxIdx]);
+    const isSC = currencyMode === 'SC';
+    const liveBal = isSC ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins);
+    const tiers = isSC ? BET_TIERS_SC : BET_TIERS_GC;
+
+    // Find highest affordable bet up to the maximum tier
+    let targetIdx = tiers.length - 1;
+    while (targetIdx > 0 && tiers[targetIdx] > liveBal) {
+      targetIdx--;
+    }
+
+    if (isSC) {
+      setBetIndexSC(targetIdx);
+      triggerSpin(null, tiers[targetIdx]);
     } else {
-      const maxIdx = BET_TIERS_GC.length - 1;
-      setBetIndexGC(maxIdx);
-      triggerSpin(null, BET_TIERS_GC[maxIdx]);
+      setBetIndexGC(targetIdx);
+      triggerSpin(null, tiers[targetIdx]);
     }
   };
 
@@ -1322,10 +1453,20 @@ export default function App() {
             onClick={() => {
               soundEngine.playButtonClick();
               if (currencyMode === 'SC') {
-                setSweepsCoins(SWEEPSTAKES_CONFIG.defaultSweepsCoins);
+                const defSC = SWEEPSTAKES_CONFIG.defaultSweepsCoins;
+                setSweepsCoins(defSC);
+                sweepsCoinsRef.current = defSC;
+                try {
+                  localStorage.setItem('dc_casino_sweeps_coins', defSC.toFixed(2));
+                } catch {}
                 setStatusMessage('RESET SWEEPS COINS TO 10.00 SC ($10.00 USD)!');
               } else {
-                setGoldCoins(SWEEPSTAKES_CONFIG.defaultGoldCoins);
+                const defGC = SWEEPSTAKES_CONFIG.defaultGoldCoins;
+                setGoldCoins(defGC);
+                goldCoinsRef.current = defGC;
+                try {
+                  localStorage.setItem('dc_casino_gold_coins', String(defGC));
+                } catch {}
                 setStatusMessage(THEME_COPY.resetBankrollTicker);
               }
             }}
@@ -1705,10 +1846,20 @@ export default function App() {
               onClick={() => {
                 soundEngine.playButtonClick();
                 if (currencyMode === 'SC') {
-                  setSweepsCoins(SWEEPSTAKES_CONFIG.defaultSweepsCoins);
+                  const defSC = SWEEPSTAKES_CONFIG.defaultSweepsCoins;
+                  setSweepsCoins(defSC);
+                  sweepsCoinsRef.current = defSC;
+                  try {
+                    localStorage.setItem('dc_casino_sweeps_coins', defSC.toFixed(2));
+                  } catch {}
                   setStatusMessage('RESET SWEEPS COINS TO 10.00 SC ($10.00 USD)!');
                 } else {
-                  setGoldCoins(SWEEPSTAKES_CONFIG.defaultGoldCoins);
+                  const defGC = SWEEPSTAKES_CONFIG.defaultGoldCoins;
+                  setGoldCoins(defGC);
+                  goldCoinsRef.current = defGC;
+                  try {
+                    localStorage.setItem('dc_casino_gold_coins', String(defGC));
+                  } catch {}
                   setStatusMessage(THEME_COPY.resetBankrollTicker);
                 }
               }}
@@ -2299,19 +2450,24 @@ export default function App() {
       {/* Non-Disruptive Smart Low Balance Offer / Rescue Modal */}
       <LowBalanceOfferModal
         isOpen={lowBalanceOfferOpen}
-        onClose={() => setLowBalanceOfferOpen(false)}
+        onClose={() => {
+          setLowBalanceOfferOpen(false);
+          lastLowBalanceOfferTimeRef.current = Date.now();
+        }}
         currencyMode={currencyMode}
-        balance={currencyMode === 'SC' ? sweepsCoins : goldCoins}
+        balance={currencyMode === 'SC' ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins)}
         onSelectPackage={(pkg) => {
           setLowBalanceOfferOpen(false);
           setSelectedStorePackage(pkg);
           setPaymentModalTab('store');
           setPaymentModalOpen(true);
+          lastLowBalanceOfferTimeRef.current = Date.now();
         }}
         onOpenStore={() => {
           setLowBalanceOfferOpen(false);
           setPaymentModalTab('store');
           setPaymentModalOpen(true);
+          lastLowBalanceOfferTimeRef.current = Date.now();
         }}
       />
 
@@ -2321,6 +2477,8 @@ export default function App() {
         onClose={() => {
           setPaymentModalOpen(false);
           setSelectedStorePackage(null);
+          setLowBalanceOfferOpen(false);
+          lastLowBalanceOfferTimeRef.current = Date.now();
         }}
         initialTab={paymentModalTab}
         initialPackage={selectedStorePackage}
