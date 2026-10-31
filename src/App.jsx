@@ -658,20 +658,26 @@ export default function App() {
       }
 
       // Guardian Selective Animation & Persistent Charge Build-Up Engine:
-      // Characters do NOT move on every win; only on rare select combinations (high relics, 4/5-of-a-kind, expanding wilds, big wins, scatters).
+      // Characters do NOT move on every win; only on rare select combinations (sacred awakening relics, high relics, 4/5-of-a-kind, expanding wilds, big wins, scatters).
       const allWinCells = Array.from(winCoordSet).map((k) => k.split(',').map(Number));
       const hasExpandingWild = pending?.nextExpanded && pending.nextExpanded.some((e) => e === true);
+      const hasLotusMatch = wins.some((w) => w.symbol?.id === 'bastet_lotus');
+      const hasScepterMatch = wins.some((w) => w.symbol?.id === 'anubis_scepter');
+      const hasGuardianAwakener = hasLotusMatch || hasScepterMatch;
       const hasHighMatch = wins.some(
         (w) =>
           w.matchCount >= 4 ||
           (w.matchCount >= 3 &&
             (w.symbol?.isTopHigh ||
+              w.symbol?.isGuardianAwakener ||
+              w.symbol?.id === 'bastet_lotus' ||
+              w.symbol?.id === 'anubis_scepter' ||
               w.symbol?.id === 'eye' ||
               w.symbol?.id === 'scarab' ||
               w.symbol?.id === 'ankh' ||
               w.symbol?.id === 'necklace'))
       );
-      const isSelectCombination = isBig || bonusCount >= 2 || hasExpandingWild || hasHighMatch;
+      const isSelectCombination = isBig || bonusCount >= 2 || hasExpandingWild || hasHighMatch || hasGuardianAwakener;
       const currentCharge = guardianChargeLevelRef.current ?? guardianChargeLevel;
 
       if (bonusCount >= 3 || (currentCharge >= 4 && isSelectCombination)) {
@@ -726,7 +732,17 @@ export default function App() {
         updateGuardianCharge(nextLvl);
 
         let statusText = '';
-        if (nextLvl === 1) {
+        if (hasLotusMatch && hasScepterMatch) {
+          soundEngine.playThunderStrike();
+          setTimeout(() => soundEngine.playSolarFireball(), 150);
+          statusText = `🌸⚡ DUAL SACRED RELICS CONVERGE! BASTET'S LOTUS & ANUBIS'S SCEPTER SURGE (STAGE ${nextLvl})!`;
+        } else if (hasLotusMatch) {
+          soundEngine.playSolarFireball();
+          statusText = `🌸 BASTET'S SACRED SOLAR LOTUS BLOOMS! QUEEN BASTET AWAKENS AND POWERS UP (STAGE ${nextLvl})!`;
+        } else if (hasScepterMatch) {
+          soundEngine.playThunderStrike();
+          statusText = `⚡ ANUBIS'S CELESTIAL SCEPTER CRACKLES! THE LORD OF LIGHTNING AWAKENS AND CHARGES (STAGE ${nextLvl})!`;
+        } else if (nextLvl === 1) {
           soundEngine.playAnubisExpand();
           statusText = '⚡ THE ANCIENT GUARDIANS AWAKEN! FROM STONE STATUES TO LIVING ENTITIES!';
         } else if (nextLvl === 2) {

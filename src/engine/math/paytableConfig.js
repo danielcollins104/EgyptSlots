@@ -21,6 +21,24 @@ export const MATH_PAYTABLE = {
     payoutsSC: { 3: 38, 4: 105, 5: 360 },
   },
 
+  // GUARDIAN AWAKENING SACRED HIGH SYMBOLS
+  bastet_lotus: {
+    name: "Bastet's Sacred Solar Lotus",
+    tier: 'high',
+    isGuardianAwakener: true,
+    awakensGuardian: 'bastet',
+    payouts: { 3: 32, 4: 95, 5: 300 },
+    payoutsSC: { 3: 32, 4: 95, 5: 300 },
+  },
+  anubis_scepter: {
+    name: "Anubis's Celestial Jackal Scepter",
+    tier: 'high',
+    isGuardianAwakener: true,
+    awakensGuardian: 'anubis',
+    payouts: { 3: 32, 4: 95, 5: 300 },
+    payoutsSC: { 3: 32, 4: 95, 5: 300 },
+  },
+
   // HIGH TIER SYMBOLS
   eye: {
     name: 'Crimson Ruby Eye of Horus',

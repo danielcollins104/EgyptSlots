@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react(), securityApiPlugin()],
   server: {
     port: 5173,
-    host: true
+    host: true,
+    watch: {
+      ignored: ['**/*.zip', '**/commercial_assets/**', '**/dist/**']
+    }
   }
 });
