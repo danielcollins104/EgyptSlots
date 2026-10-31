@@ -198,6 +198,28 @@ export default function App() {
   const [lowBalanceOfferOpen, setLowBalanceOfferOpen] = useState(false);
   const lastLowBalanceOfferTimeRef = useRef(0);
 
+  // Daily Login Reward & Faucet State
+  const [canClaimDaily, setCanClaimDaily] = useState(() => authService.canClaimDailyReward(currentUser?.id));
+
+  useEffect(() => {
+    setCanClaimDaily(authService.canClaimDailyReward(currentUser?.id));
+  }, [currentUser]);
+
+  const handleClaimDailyBonus = () => {
+    const res = authService.claimDailyReward(currentUser?.id);
+    if (res.success) {
+      setGoldCoins(res.goldCoins);
+      setSweepsCoins(res.sweepsCoins);
+      goldCoinsRef.current = res.goldCoins;
+      sweepsCoinsRef.current = res.sweepsCoins;
+      setCanClaimDaily(false);
+      setStatusMessage('DAILY BONUS CLAIMED! +5,000 GC & +0.50 FREE SC ADDED TO YOUR VAULT!');
+      soundEngine.playWinCelebration(false);
+    } else {
+      setStatusMessage('DAILY BONUS ALREADY CLAIMED TODAY. PLEASE CHECK BACK TOMORROW!');
+    }
+  };
+
   // Bottom UI State (Unified Bet Selector across 15 Fixed Paylines)
   const [betIndexGC, setBetIndexGC] = useState(4); // Default 75 GC (5 per line)
   const [betIndexSC, setBetIndexSC] = useState(4); // Default 0.75 SC (0.05 per line)
@@ -815,10 +837,18 @@ export default function App() {
       }, 750);
     } else {
       // Flow-Safe Low-Balance / Rescue Refill Check:
-      // Triggered only if player is running critically low, idle, not in bonus/free spins, and not spamming.
+      // Triggered if player's SC or GC runs critically low/out after a spin completes.
       const nowTimestamp = Date.now();
+      const isSC = currencyMode === 'SC';
+      const bal = isSC ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins);
+      const isDepleted = isSC ? bal < 0.15 : bal < 15;
+      const isCriticallyLow = isSC ? bal <= 0.50 : bal <= 50;
+
+      // When depleted, prompt after 1200ms with a 30s cooldown; when low, 60s cooldown
+      const cooldownMs = isDepleted ? 30000 : 60000;
       if (
-        nowTimestamp - lastLowBalanceOfferTimeRef.current > 120000 &&
+        (isDepleted || isCriticallyLow) &&
+        nowTimestamp - lastLowBalanceOfferTimeRef.current > cooldownMs &&
         !isHoldingSpinRef.current
       ) {
         setTimeout(() => {
@@ -828,15 +858,13 @@ export default function App() {
             !bonusSession &&
             !isHoldingSpinRef.current
           ) {
-            const isSC = currencyMode === 'SC';
-            const bal = isSC ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins);
-            const threshold = isSC ? 0.50 : 50;
-            if (bal <= threshold) {
+            const currentLiveBal = isSC ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins);
+            if (currentLiveBal <= (isSC ? 0.50 : 50)) {
               setLowBalanceOfferOpen(true);
               lastLowBalanceOfferTimeRef.current = Date.now();
             }
           }
-        }, 1800);
+        }, 1200);
       }
     }
   }, [evaluateGridWins, currencyMode, turboFlow, flowStreak, sweepsCoins, goldCoins, freeSpinsOpen, bonusSession]);
@@ -1025,20 +1053,12 @@ export default function App() {
           activeSpinBet = BET_TIERS_SC[fitIdx];
           setBetIndexSC(fitIdx);
           setStatusMessage(`BET AUTO-ADJUSTED TO $${activeSpinBet.toFixed(2)} SC TO MATCH YOUR BALANCE!`);
-        } else if (liveGC >= BET_TIERS_GC[0]) {
-          // Out of SC, but has Gold Coins -> seamless switch to GC so player keeps spinning!
-          setCurrencyMode('GC');
-          effectiveCurrency = 'GC';
-          isSC = false;
-          let fitIdx = BET_TIERS_GC.length - 1;
-          while (fitIdx > 0 && BET_TIERS_GC[fitIdx] > liveGC) fitIdx--;
-          activeSpinBet = BET_TIERS_GC[fitIdx];
-          setBetIndexGC(fitIdx);
-          setStatusMessage(`LOW SWEEPS COINS • SWITCHED TO GOLD COINS (${activeSpinBet.toLocaleString()} GC) TO KEEP SPINNING!`);
         } else {
-          // Truly empty in both SC and GC (< 0.15 SC and < 15 GC)
-          setStatusMessage('INSUFFICIENT SWEEPS COINS! GET FREE SC WITH STORE BUNDLES OR SWITCH TO GOLD COINS!');
+          // Player is OUT of Sweeps Coins (< 0.15 SC)
+          // Open the Refill modal immediately with 1-click Gold Coin bundles (+ Free SC)
           setAutoPlayCount(0);
+          soundEngine.playButtonClick(420);
+          setStatusMessage('OUT OF SWEEPS COINS! REFILL GOLD COINS TO CLAIM FREE BONUS SC, OR SWITCH TO SOCIAL PLAY.');
           setLowBalanceOfferOpen(true);
           lastLowBalanceOfferTimeRef.current = Date.now();
           return;
@@ -1056,20 +1076,11 @@ export default function App() {
           activeSpinBet = BET_TIERS_GC[fitIdx];
           setBetIndexGC(fitIdx);
           setStatusMessage(`BET AUTO-ADJUSTED TO ${activeSpinBet.toLocaleString()} GC TO MATCH YOUR BALANCE!`);
-        } else if (currentUser && liveSC >= BET_TIERS_SC[0]) {
-          // Out of GC, but has Sweeps Coins -> seamless switch to SC so player keeps spinning!
-          setCurrencyMode('SC');
-          effectiveCurrency = 'SC';
-          isSC = true;
-          let fitIdx = BET_TIERS_SC.length - 1;
-          while (fitIdx > 0 && BET_TIERS_SC[fitIdx] > liveSC) fitIdx--;
-          activeSpinBet = BET_TIERS_SC[fitIdx];
-          setBetIndexSC(fitIdx);
-          setStatusMessage(`LOW GOLD COINS • SWITCHED TO SWEEPS COINS ($${activeSpinBet.toFixed(2)} SC) TO KEEP SPINNING!`);
         } else {
-          // Truly empty in both GC and SC (< 15 GC and < 0.15 SC)
-          setStatusMessage(THEME_COPY.insufficientCoinsTicker);
+          // Out of Gold Coins (< 15 GC)
           setAutoPlayCount(0);
+          soundEngine.playButtonClick(420);
+          setStatusMessage('OUT OF GOLD COINS! REFILL IN STORE TO KEEP PLAYING OR SWITCH TO SWEEPS COINS.');
           setLowBalanceOfferOpen(true);
           lastLowBalanceOfferTimeRef.current = Date.now();
           return;
@@ -1388,9 +1399,17 @@ export default function App() {
                   return;
                 }
                 setCurrencyMode('SC');
-                setStatusMessage(
-                  'SWITCHED TO SWEEPS COINS (SC) • REDEEMABLE FOR REAL CASH PRIZES ($1.00 USD / 1 SC)!'
-                );
+                if (sweepsCoins < 0.15) {
+                  setStatusMessage(
+                    'OUT OF SWEEPS COINS! REFILL GOLD COINS TO CLAIM FREE BONUS SC.'
+                  );
+                  setLowBalanceOfferOpen(true);
+                  lastLowBalanceOfferTimeRef.current = Date.now();
+                } else {
+                  setStatusMessage(
+                    'SWITCHED TO SWEEPS COINS (SC) • REDEEMABLE FOR REAL CASH PRIZES ($1.00 USD / 1 SC)!'
+                  );
+                }
               }}
             >
               <div className="mode-btn-content">
@@ -1408,7 +1427,7 @@ export default function App() {
 
           <div className="sweepstakes-action-btns">
             <button
-              className="dc-pay-btn buy-gc-btn"
+              className={`dc-pay-btn buy-gc-btn ${currencyMode === 'SC' && sweepsCoins < 0.15 ? 'urgent-refill-pulse' : ''}`}
               onClick={() => {
                 soundEngine.playButtonClick(700);
                 setPaymentModalTab('store');
@@ -2589,6 +2608,15 @@ export default function App() {
         }}
         currencyMode={currencyMode}
         balance={currencyMode === 'SC' ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins)}
+        goldCoins={goldCoinsRef.current ?? goldCoins}
+        onSwitchToGC={() => {
+          setCurrencyMode('GC');
+          setLowBalanceOfferOpen(false);
+          setStatusMessage('SWITCHED TO SOCIAL GOLD COINS (GC) • PURE CASINO SOCIAL FUN!');
+          lastLowBalanceOfferTimeRef.current = Date.now();
+        }}
+        canClaimDaily={canClaimDaily}
+        onClaimDailyBonus={handleClaimDailyBonus}
         onSelectPackage={(pkg) => {
           setLowBalanceOfferOpen(false);
           setSelectedStorePackage(pkg);
@@ -2642,6 +2670,48 @@ export default function App() {
           setStatusMessage(`VIP VERIFIED! WELCOME ${user.name.toUpperCase()} — SC UNLOCKED!`);
         }}
       />
+
+      {/* Out of Sweeps Coins Floating Action Reminder Bar */}
+      {currencyMode === 'SC' && sweepsCoins < 0.15 && !showSplash && !paymentModalOpen && !lowBalanceOfferOpen && (
+        <aside className="out-of-sc-floating-bar" role="alert">
+          <div className="out-of-sc-content">
+            <div className="out-of-sc-icon-group">
+              <Sparkles size={16} className="sparkle-gold" />
+              <span className="out-of-sc-title">OUT OF SWEEPS COINS</span>
+            </div>
+            <span className="out-of-sc-sub">
+              Get Gold Coins to receive FREE promotional Sweeps Coins ($1 USD / 1 SC)!
+            </span>
+          </div>
+          <div className="out-of-sc-btn-group">
+            <button
+              type="button"
+              className="out-of-sc-buy-btn"
+              onClick={() => {
+                soundEngine.playButtonClick(640);
+                setPaymentModalTab('store');
+                setPaymentModalOpen(true);
+              }}
+            >
+              <Coins size={14} />
+              <span>REFILL COINS</span>
+            </button>
+            {goldCoins >= 15 && (
+              <button
+                type="button"
+                className="out-of-sc-switch-btn"
+                onClick={() => {
+                  soundEngine.playButtonClick(500);
+                  setCurrencyMode('GC');
+                  setStatusMessage('SWITCHED TO SOCIAL GOLD COINS (GC) • PURE FUN CASINO PLAY!');
+                }}
+              >
+                <span>PLAY FREE (GC)</span>
+              </button>
+            )}
+          </div>
+        </aside>
+      )}
 
       {/* Mobile-First Ergonomic Thumb Control Dock (Active on Mobile Phones < 680px) */}
       <nav className="mobile-floating-control-dock">

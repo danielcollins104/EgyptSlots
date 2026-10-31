@@ -145,6 +145,38 @@ export const authService = {
     } catch {}
   },
 
+  // Check if player is eligible for daily login reward (24hr cooldown)
+  canClaimDailyReward(userId) {
+    const data = this.getUserData(userId);
+    if (!data || !data.lastDailyClaimAt) return true;
+    const elapsed = Date.now() - new Date(data.lastDailyClaimAt).getTime();
+    return elapsed >= 24 * 60 * 60 * 1000;
+  },
+
+  // Claim free daily bonus (5,000 GC + 0.50 FREE SC)
+  claimDailyReward(userId) {
+    if (!this.canClaimDailyReward(userId)) {
+      return { success: false, reason: 'Already claimed in the past 24 hours.' };
+    }
+    const data = this.getUserData(userId);
+    const rewardGC = 5000;
+    const rewardSC = 0.50;
+    const updatedGC = (data.goldCoins || 0) + rewardGC;
+    const updatedSC = (data.sweepsCoins || 0) + rewardSC;
+    this.saveUserData(userId, {
+      goldCoins: updatedGC,
+      sweepsCoins: updatedSC,
+      lastDailyClaimAt: new Date().toISOString(),
+    });
+    return {
+      success: true,
+      goldCoins: updatedGC,
+      sweepsCoins: updatedSC,
+      addedGC: rewardGC,
+      addedSC: rewardSC,
+    };
+  },
+
   // Sign in with Google (OAuth / One-Click Credential)
   async loginWithGoogle() {
     // Simulated realistic Google Auth handshake (can plug into real Google Identity Services Client ID)

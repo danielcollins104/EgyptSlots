@@ -8419,6 +8419,223 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Out of SC / Daily Reward Bar on Offer Modal */
+.rescue-daily-claim-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.28) 100%);
+  border: 1.5px solid rgba(52, 211, 153, 0.6);
+  border-radius: 12px;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+}
+
+.daily-claim-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gift-bounce-icon {
+  color: #34d399;
+  animation: pulseFloat 1.2s ease-in-out infinite alternate;
+}
+
+.daily-claim-title {
+  display: block;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.76rem;
+  font-weight: 900;
+  color: #a7f3d0;
+  letter-spacing: 0.05em;
+}
+
+.daily-claim-sub {
+  display: block;
+  font-size: 0.68rem;
+  color: #d1fae5;
+  opacity: 0.85;
+}
+
+.daily-claim-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid #6ee7b7;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 6px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.daily-claim-btn:hover {
+  transform: scale(1.04);
+  filter: brightness(1.15);
+}
+
+.rescue-switch-gc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 480px;
+  padding: 10px 16px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1.5px solid rgba(52, 211, 153, 0.45);
+  border-radius: 10px;
+  color: #6ee7b7;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rescue-switch-gc-btn:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: #34d399;
+  color: #ffffff;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Floating Out of SC Toast Bar */
+.out-of-sc-floating-bar {
+  position: fixed;
+  bottom: calc(var(--mobile-dock-height, 68px) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  width: min(94vw, 580px);
+  background: linear-gradient(90deg, rgba(17, 24, 39, 0.95) 0%, rgba(30, 20, 50, 0.95) 100%);
+  border: 2px solid #ffd700;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.5);
+  border-radius: 14px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  animation: floatBarSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+@keyframes floatBarSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.out-of-sc-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.out-of-sc-icon-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.out-of-sc-title {
+  font-family: var(--font-royal, 'Cinzel Decorative', serif);
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #ffd700;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+}
+
+.out-of-sc-sub {
+  font-size: 0.65rem;
+  color: #cbd5e1;
+  max-width: 320px;
+  line-height: 1.25;
+}
+
+.out-of-sc-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.out-of-sc-buy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid #ffd700;
+  background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+  color: #0c0414;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.75rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.6);
+  transition: transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.out-of-sc-buy-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.9);
+}
+
+.out-of-sc-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.out-of-sc-switch-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Header Pulsing Attention for Refill Button */
+.dc-pay-btn.urgent-refill-pulse {
+  animation: urgentRefillGlow 1.6s infinite ease-in-out;
+  border-color: #ffd700 !important;
+}
+
+@keyframes urgentRefillGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.4), inset 0 0 8px rgba(255, 215, 0, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(255, 215, 0, 0.9), inset 0 0 14px rgba(255, 215, 0, 0.4);
+    transform: scale(1.03);
+  }
+}
+
 /* ============================================================================
    16. CUSTOM PURCHASE BUILDER & HIGH ROLLER VAULT STYLING
    ============================================================================ */
