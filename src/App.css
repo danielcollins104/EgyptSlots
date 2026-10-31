@@ -1646,6 +1646,198 @@ body {
   100% { opacity: 0.9; transform: scale(1.02) rotate(-1deg); }
 }
 
+/* =========================================================================
+   GUARDIAN MARTIAL ARTS TRANSITION SYSTEM
+   Dynamic Shaolin / Wushu / Krav / Dragon Stance transitions between levels
+   ========================================================================= */
+
+/* Common Active Martial Arts Layer */
+.anubis-guardian-column.guardian-martial-active {
+  z-index: 12 !important;
+}
+
+/* Stance 1: Iron Body Awaken & Horse Stance (Ma Bu) */
+.anubis-guardian-column.left-col.guardian-martial-iron-awaken .anubis-guardian-figure {
+  animation: martialIronAwakenLeft 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.anubis-guardian-column.right-col.guardian-martial-iron-awaken .anubis-guardian-figure {
+  animation: martialIronAwakenRight 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes martialIronAwakenLeft {
+  0% { transform: scale(1) translateY(0); filter: brightness(0.6) contrast(0.9); }
+  25% { transform: scale(0.96) translateY(-12px) rotate(-1.5deg); filter: brightness(1.4) drop-shadow(0 0 35px #00f0ff); }
+  55% { transform: scale(1.14) translateY(10px) rotate(1deg); filter: brightness(1.2) drop-shadow(0 0 50px #00f0ff); }
+  75% { transform: scale(1.08) translateY(2px) rotate(0deg); }
+  100% { transform: scale(1.05) translateY(-4px); }
+}
+
+@keyframes martialIronAwakenRight {
+  0% { transform: scale(1) translateY(0); filter: brightness(0.6) contrast(0.9); }
+  25% { transform: scale(0.96) translateY(-12px) rotate(1.5deg); filter: brightness(1.4) drop-shadow(0 0 35px #fbbf24); }
+  55% { transform: scale(1.14) translateY(10px) rotate(-1deg); filter: brightness(1.2) drop-shadow(0 0 50px #fbbf24); }
+  75% { transform: scale(1.08) translateY(2px) rotate(0deg); }
+  100% { transform: scale(1.05) translateY(-4px); }
+}
+
+/* Stance 2: Dragon Stance & Tiger Palm Qi Focus */
+.anubis-guardian-column.left-col.guardian-martial-dragon-palm .anubis-guardian-figure {
+  animation: martialDragonPalmLeft 1.2s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+.anubis-guardian-column.right-col.guardian-martial-dragon-palm .anubis-guardian-figure {
+  animation: martialDragonPalmRight 1.2s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+@keyframes martialDragonPalmLeft {
+  0% { transform: scale(1.05) translateY(-4px); }
+  30% { transform: scale(0.98) translateX(-18px) translateY(-6px) rotate(-3deg); filter: drop-shadow(0 0 25px #00f0ff); }
+  55% { transform: scale(1.18) translateX(24px) translateY(-14px) rotate(2deg); filter: drop-shadow(0 0 60px #00f0ff) drop-shadow(0 0 90px #ffffff); }
+  80% { transform: scale(1.12) translateX(12px) translateY(-10px) rotate(0.5deg); }
+  100% { transform: scale(1.1) translateX(0) translateY(-8px); }
+}
+
+@keyframes martialDragonPalmRight {
+  0% { transform: scale(1.05) translateY(-4px); }
+  30% { transform: scale(0.98) translateX(18px) translateY(-6px) rotate(3deg); filter: drop-shadow(0 0 25px #fbbf24); }
+  55% { transform: scale(1.18) translateX(-24px) translateY(-14px) rotate(-2deg); filter: drop-shadow(0 0 60px #fbbf24) drop-shadow(0 0 90px #ffffff); }
+  80% { transform: scale(1.12) translateX(-12px) translateY(-10px) rotate(-0.5deg); }
+  100% { transform: scale(1.1) translateX(0) translateY(-8px); }
+}
+
+/* Stance 3: Shaolin Staff Flourish & Spinning Crescent Sweep */
+.anubis-guardian-column.left-col.guardian-martial-shaolin-flourish .anubis-guardian-figure {
+  animation: martialShaolinFlourishLeft 1.3s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+}
+.anubis-guardian-column.right-col.guardian-martial-shaolin-flourish .anubis-guardian-figure {
+  animation: martialShaolinFlourishRight 1.3s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+}
+
+@keyframes martialShaolinFlourishLeft {
+  0% { transform: scale(1.1) translateY(-8px) rotate(0deg); }
+  25% { transform: scale(1.22) translateY(-26px) rotate(-14deg); filter: drop-shadow(0 0 50px #00f0ff); }
+  50% { transform: scale(1.16) translateY(-18px) rotate(12deg); filter: drop-shadow(0 0 70px #38bdf8); }
+  75% { transform: scale(1.2) translateY(8px) rotate(-2deg); filter: drop-shadow(0 0 85px #00f0ff); }
+  100% { transform: scale(1.16) translateY(-16px) rotate(0deg); }
+}
+
+@keyframes martialShaolinFlourishRight {
+  0% { transform: scale(1.1) translateY(-8px) rotate(0deg); }
+  25% { transform: scale(1.22) translateY(-26px) rotate(14deg); filter: drop-shadow(0 0 50px #fbbf24); }
+  50% { transform: scale(1.16) translateY(-18px) rotate(-12deg); filter: drop-shadow(0 0 70px #ef4444); }
+  75% { transform: scale(1.2) translateY(8px) rotate(2deg); filter: drop-shadow(0 0 85px #fbbf24); }
+  100% { transform: scale(1.16) translateY(-16px) rotate(0deg); }
+}
+
+/* Stance 4: Grand Master Apex Kai Stance & Ground Shockwave */
+.anubis-guardian-column.left-col.guardian-martial-apex-kai .anubis-guardian-figure {
+  animation: martialApexKaiLeft 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.anubis-guardian-column.right-col.guardian-martial-apex-kai .anubis-guardian-figure {
+  animation: martialApexKaiRight 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes martialApexKaiLeft {
+  0% { transform: scale(1.16) translateY(-16px); }
+  20% { transform: scale(1.05) translateY(12px) rotate(2deg); filter: drop-shadow(0 0 30px #00f0ff); }
+  45% { transform: scale(1.32) translateY(-32px) rotate(-2deg); filter: drop-shadow(0 0 95px #00f0ff) drop-shadow(0 0 140px #ffffff); }
+  65% { transform: scale(1.28) translateY(-24px) rotate(1deg); filter: drop-shadow(0 0 110px #38bdf8); }
+  85% { transform: scale(1.25) translateY(-20px) rotate(-0.5deg); }
+  100% { transform: scale(1.24) translateY(-22px) rotate(0deg); }
+}
+
+@keyframes martialApexKaiRight {
+  0% { transform: scale(1.16) translateY(-16px); }
+  20% { transform: scale(1.05) translateY(12px) rotate(-2deg); filter: drop-shadow(0 0 30px #fbbf24); }
+  45% { transform: scale(1.32) translateY(-32px) rotate(2deg); filter: drop-shadow(0 0 95px #fbbf24) drop-shadow(0 0 140px #ffffff); }
+  65% { transform: scale(1.28) translateY(-24px) rotate(-1deg); filter: drop-shadow(0 0 110px #ef4444); }
+  85% { transform: scale(1.25) translateY(-20px) rotate(0.5deg); }
+  100% { transform: scale(1.24) translateY(-22px) rotate(0deg); }
+}
+
+/* Martial Arts Expanding Chi Shockwave Ring */
+.guardian-martial-shockwave {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  transform: translate(-50%, 50%) scale(0.2);
+  width: 220px;
+  height: 90px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 240, 255, 0.95);
+  box-shadow: 0 0 35px rgba(0, 240, 255, 0.8), inset 0 0 25px rgba(0, 240, 255, 0.6);
+  pointer-events: none;
+  animation: martialShockwaveExpand 1.1s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+  z-index: 5;
+}
+
+.right-col .guardian-martial-shockwave {
+  border-color: rgba(251, 191, 36, 0.95);
+  box-shadow: 0 0 35px rgba(251, 191, 36, 0.8), inset 0 0 25px rgba(239, 68, 68, 0.6);
+}
+
+@keyframes martialShockwaveExpand {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 50%) scale(0.2);
+  }
+  60% {
+    opacity: 0.85;
+    transform: translate(-50%, 50%) scale(1.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 50%) scale(2.6);
+  }
+}
+
+/* Floating Martial Arts Stance Badge */
+.guardian-martial-badge {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.95));
+  border: 1px solid rgba(0, 240, 255, 0.85);
+  color: #00f0ff;
+  font-family: 'Cinzel', serif, sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.5), inset 0 0 10px rgba(0, 240, 255, 0.2);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: martialBadgeFloat 1.2s ease-out forwards;
+  z-index: 20;
+}
+
+.right-col .guardian-martial-badge {
+  border-color: rgba(251, 191, 36, 0.85);
+  color: #fbbf24;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5), inset 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+@keyframes martialBadgeFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -8px) scale(1.05);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -16px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -24px) scale(0.9);
+  }
+}
+
 /* Continuous Alive Idle Hover & Chest Breathing */
 .anubis-guardian-figure {
   position: relative;

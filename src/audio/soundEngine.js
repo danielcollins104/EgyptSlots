@@ -456,6 +456,107 @@ class SoundEngine {
     this.triggerHaptics([30, 25, 60, 35, 120]);
   }
 
+  playMartialSwoosh(intensity = 1.0) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    this.triggerHaptics([18, 25]);
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(420 * intensity, now);
+    filter.Q.setValueAtTime(1.8, now);
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(260 * intensity, now);
+    osc.frequency.exponentialRampToValueAtTime(780 * intensity, now + 0.08);
+    osc.frequency.exponentialRampToValueAtTime(110 * intensity, now + 0.22);
+
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.18 * intensity, now + 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.25);
+  }
+
+  playMartialImpact() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    this.triggerHaptics([35, 45, 60]);
+
+    const now = this.ctx.currentTime;
+    // Solid martial arts strike / palm thud
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(38, now + 0.12);
+
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  playStaffFlourish() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    // Triple rotational whooshes
+    [0, 0.07, 0.14].forEach((offset, idx) => {
+      setTimeout(() => {
+        this.playMartialSwoosh(1.1 + idx * 0.15);
+      }, offset * 1000);
+    });
+    setTimeout(() => {
+      this.playMartialImpact();
+    }, 240);
+  }
+
+  playQiGather() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    this.triggerHaptics([20, 30, 45]);
+
+    const now = this.ctx.currentTime;
+    const freqs = [264, 330, 396, 528];
+    freqs.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      const t = now + idx * 0.035;
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.08, t + 0.28);
+
+      gain.gain.setValueAtTime(0.01, t);
+      gain.gain.linearRampToValueAtTime(0.06, t + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.34);
+    });
+  }
+
   playWinCelebration(tier = 'standard') {
     if (this.muted) return;
     this.init();

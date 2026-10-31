@@ -283,10 +283,43 @@ export default function App() {
   // 5 = Grand Celestial Strike & Wrath of the Gods Bonus Round
   const [guardianChargeLevel, setGuardianChargeLevel] = useState(0);
   const guardianChargeLevelRef = useRef(0);
+  const [guardianMartialMove, setGuardianMartialMove] = useState(null);
+  const martialTimerRef = useRef(null);
+
   const updateGuardianCharge = useCallback((updater) => {
     setGuardianChargeLevel((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      guardianChargeLevelRef.current = next;
+      if (next !== prev) {
+        guardianChargeLevelRef.current = next;
+
+        let move = 'iron-awaken';
+        let badge = '🥋 SHAOLIN HORSE STANCE • IRON BODY';
+        if (next === 2) {
+          move = 'dragon-palm';
+          badge = '⚡ DRAGON STANCE • QI FOCUS';
+          soundEngine.playQiGather?.();
+          setTimeout(() => soundEngine.playMartialImpact?.(), 250);
+        } else if (next === 3) {
+          move = 'shaolin-flourish';
+          badge = '🌀 CRESCENT SWEEP • ORBS SUMMONED';
+          soundEngine.playStaffFlourish?.();
+        } else if (next >= 4) {
+          move = 'apex-kai';
+          badge = '🔥 APEX KAI STANCE • GOD FORCE';
+          soundEngine.playMartialSwoosh?.(1.4);
+          setTimeout(() => soundEngine.playThunderStrike?.(), 220);
+        } else if (next === 1) {
+          move = 'iron-awaken';
+          badge = '🥋 IRON BODY • HORSE STANCE';
+          soundEngine.playMartialImpact?.();
+        }
+
+        setGuardianMartialMove({ move, badge, from: prev, to: next, id: Date.now() });
+        if (martialTimerRef.current) clearTimeout(martialTimerRef.current);
+        martialTimerRef.current = setTimeout(() => {
+          setGuardianMartialMove(null);
+        }, 1500);
+      }
       return next;
     });
   }, []);
@@ -1581,6 +1614,13 @@ export default function App() {
               const nextStage = (guardianChargeLevel + 1) % 6;
               if (nextStage === 5) {
                 setGuardianAction(true);
+                setGuardianMartialMove({
+                  move: 'celestial-strike',
+                  badge: '⚡ GRAND CELESTIAL STRIKE • DRAGON FIST & TIGER CLAW',
+                  from: 4,
+                  to: 5,
+                  id: Date.now(),
+                });
                 setGuardianStrikeEvent({
                   strikes: [
                     { from: 'left', type: 'lightning', delay: 0 },
@@ -1593,6 +1633,7 @@ export default function App() {
                   setCelestialBonusBet(currentBet);
                   setCelestialBonusOpen(true);
                   setGuardianAction(false);
+                  setGuardianMartialMove(null);
                 }, 1400);
               } else {
                 updateGuardianCharge(nextStage);
@@ -2027,6 +2068,13 @@ export default function App() {
                 if (nextStage === 5) {
                   setMobileMenuOpen(false);
                   setGuardianAction(true);
+                  setGuardianMartialMove({
+                    move: 'celestial-strike',
+                    badge: '⚡ GRAND CELESTIAL STRIKE • DRAGON FIST & TIGER CLAW',
+                    from: 4,
+                    to: 5,
+                    id: Date.now(),
+                  });
                   setGuardianStrikeEvent({
                     strikes: [
                       { from: 'left', type: 'lightning', delay: 0 },
@@ -2039,6 +2087,7 @@ export default function App() {
                     setCelestialBonusBet(currentBet);
                     setCelestialBonusOpen(true);
                     setGuardianAction(false);
+                    setGuardianMartialMove(null);
                   }, 1400);
                 } else {
                   updateGuardianCharge(nextStage);
@@ -2152,9 +2201,18 @@ export default function App() {
             guardianChargeLevel === 2 ? 'guardian-charge-eyes-lit' : ''
           } ${guardianChargeLevel === 3 ? 'guardian-charge-orbs-manifest' : ''} ${
             guardianChargeLevel >= 4 ? 'guardian-charge-overcharged' : ''
-          } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''}`}
+          } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''} ${
+            guardianMartialMove ? `guardian-martial-active guardian-martial-${guardianMartialMove.move}` : ''
+          }`}
         >
           <div className="anubis-guardian-figure">
+            {/* Martial Arts Stance Transitions & Chi Shockwave */}
+            {guardianMartialMove && (
+              <>
+                <div className="guardian-martial-shockwave" />
+                <div className="guardian-martial-badge">{guardianMartialMove.badge}</div>
+              </>
+            )}
             {/* Living Aura: Only lit at Stage 2+ */}
             {guardianChargeLevel >= 2 && (
               <div className="guardian-living-aura anubis-living-aura" />
@@ -2669,9 +2727,18 @@ export default function App() {
             guardianChargeLevel === 2 ? 'guardian-charge-eyes-lit' : ''
           } ${guardianChargeLevel === 3 ? 'guardian-charge-orbs-manifest' : ''} ${
             guardianChargeLevel >= 4 ? 'guardian-charge-overcharged' : ''
-          } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''}`}
+          } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''} ${
+            guardianMartialMove ? `guardian-martial-active guardian-martial-${guardianMartialMove.move}` : ''
+          }`}
         >
           <div className="anubis-guardian-figure bastet-figure">
+            {/* Martial Arts Stance Transitions & Chi Shockwave */}
+            {guardianMartialMove && (
+              <>
+                <div className="guardian-martial-shockwave" />
+                <div className="guardian-martial-badge">{guardianMartialMove.badge}</div>
+              </>
+            )}
             {/* Living Aura: Only lit at Stage 2+ */}
             {guardianChargeLevel >= 2 && (
               <div className="guardian-living-aura bastet-living-aura" />
