@@ -57,6 +57,7 @@ import WinCelebrationSplash from './components/WinCelebrationSplash';
 import PaytableModal from './components/PaytableModal';
 import BonusGameModal from './components/BonusGameModal';
 import FreeSpinsScreen from './components/FreeSpinsScreen';
+import CelestialOverloadBonusModal from './components/CelestialOverloadBonusModal';
 import PsdGoldNumber from './components/PsdGoldNumber';
 import NeonKeyedImage from './components/NeonKeyedImage';
 import DcLogoPlaque from './components/DcLogoPlaque';
@@ -267,12 +268,19 @@ export default function App() {
   const [paytableOpen, setPaytableOpen] = useState(false);
   const [bonusMeter, setBonusMeter] = useState(4);
   const [bonusSession, setBonusSession] = useState(null);
+  const [celestialBonusOpen, setCelestialBonusOpen] = useState(false);
+  const [celestialBonusBet, setCelestialBonusBet] = useState(15);
   const [freeSpinsOpen, setFreeSpinsOpen] = useState(false);
   const [freeSpinsCount, setFreeSpinsCount] = useState(10);
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
-  // Dynamic Guardian Illumination & Strike System:
-  // 0 = idle/watcher, 1 = ember surge, 2 = perched battle surge, 3 = apex overcharge (ready for grand strike)
+  // Dynamic 5-Tier Guardian Progressive Escalation System:
+  // 0 = Dormant Stone Statue (Still, Cold Granite, No Movement, No Glow)
+  // 1 = Alive Living Entity (Color Restored, Living Breathing Starts, but NO Eyes Lit, NO Orbs)
+  // 2 = Eyes of the Gods & Divine Corona Glow
+  // 3 = Celestial Energy Orbs & Flames Manifest (Plasma & Solar Sunfire)
+  // 4 = Incandescent Apex Overcharge (Maximum Scale, Blinding Glow, Crackling Lightning)
+  // 5 = Grand Celestial Strike & Wrath of the Gods Bonus Round
   const [guardianChargeLevel, setGuardianChargeLevel] = useState(0);
   const guardianChargeLevelRef = useRef(0);
   const updateGuardianCharge = useCallback((updater) => {
@@ -419,9 +427,9 @@ export default function App() {
 
   // Auto-duck ambient music during Big Wins, Free Spins, or 3D Bonus rounds
   useEffect(() => {
-    const isSpecialActive = bigWinAmount > 0 || Boolean(bonusSession) || freeSpinsOpen;
+    const isSpecialActive = bigWinAmount > 0 || Boolean(bonusSession) || freeSpinsOpen || celestialBonusOpen;
     ambientMusicEngine.duck(isSpecialActive);
-  }, [bigWinAmount, bonusSession, freeSpinsOpen]);
+  }, [bigWinAmount, bonusSession, freeSpinsOpen, celestialBonusOpen]);
 
   // Periodic Guardian eye blink (if configured on the left or right guardian)
   useEffect(() => {
@@ -576,14 +584,10 @@ export default function App() {
     });
 
     if (scattersLanded >= 2 && colIdx < COLS - 1) {
-      // 2 Scatters on board during active spin -> GUARDIANS PERCH UP, FULLY CHARGED WITH FIRE & LIGHTNING!
-      updateGuardianCharge((prev) => Math.max(prev, 2));
+      // 2 Scatters landed: anticipation riser audio cue
       soundEngine.playAnticipationRiser();
-    } else if (scattersLanded === 1 || highMatchingCount >= 2) {
-      // Alert level illumination: eyes glow, gentle aura surge
-      updateGuardianCharge((prev) => Math.max(prev, 1));
     }
-  }, [updateGuardianCharge]);
+  }, []);
 
   const handleSpinComplete = useCallback(() => {
     isSpinningRef.current = false;
@@ -670,10 +674,11 @@ export default function App() {
       const isSelectCombination = isBig || bonusCount >= 2 || hasExpandingWild || hasHighMatch;
       const currentCharge = guardianChargeLevelRef.current ?? guardianChargeLevel;
 
-      if (bonusCount >= 3 || (currentCharge >= 3 && isSelectCombination)) {
+      if (bonusCount >= 3 || (currentCharge >= 4 && isSelectCombination)) {
         // =========================================================================
-        // THE GRAND HOPED-FOR EVENT: DUAL CELESTIAL STRIKE + GRAND BONUS ROUND!
-        // Anubis and Bastet unleash their ultimate lightning & fire barrage!
+        // STAGE 5 (GRAND CLIMAX): DUAL CELESTIAL STRIKE + WRATH OF THE GODS BONUS ROUND!
+        // Anubis and Bastet unleash their ultimate lightning & fire barrage directly
+        // at the winning combination, unlocking the special Celestial Overload Bonus!
         // =========================================================================
         setGuardianAction(true);
         const leftTargets = allWinCells.filter((c) => c[0] <= 2);
@@ -701,52 +706,50 @@ export default function App() {
         setTimeout(() => soundEngine.playBonusTrigger(), 450);
 
         setStatusMessage(
-          `⚡ GRAND CELESTIAL STRIKE UNLEASHED! ANUBIS & BASTET BLESS THE REELS WITH THE GRAND MYTHIC BONUS ROUND!`
+          `⚡ GRAND CELESTIAL STRIKE UNLEASHED! ANUBIS & BASTET BLAST THE COMBINATION WITH LIGHTNING & SOLAR FIRE!`
         );
 
-        // Unleash the Grand Bonus Round after the epic strike!
+        // Unleash the Grand Celestial Overload Bonus Round after the strike!
         setTimeout(() => {
-          setBonusSession({
-            triggerReason: 'GRAND CELESTIAL STRIKE',
-            initialPicks: 5,
-            wheelSpins: 2,
-            startingMultiplier: 3, // Elevated 3x multiplier for the Grand Hoped-For Event!
-            scatterWinCoins: finalScatterWin || 0,
-            defaultGame: 'vault',
-          });
-          // Now discharge back to calm Level 0
-          updateGuardianCharge(0);
+          setCelestialBonusBet(spinBet);
+          setCelestialBonusOpen(true);
           setGuardianAction(false);
-        }, 1800);
+        }, 1600);
       } else if (isSelectCombination) {
         // =========================================================================
-        // SELECT COMBINATION HIT: GUARDIANS ESCALATE IN POWER (BIGGER & MORE FIERY)
-        // They animate, grow larger, and build up persistent charge for next spins!
+        // 5-STAGE PROGRESSIVE ESCALATION (0 -> 1 -> 2 -> 3 -> 4)
         // =========================================================================
         setGuardianAction(true);
         setTimeout(() => setGuardianAction(false), 1600);
 
-        const nextLvl = Math.min(3, currentCharge + 1);
+        const nextLvl = Math.min(4, currentCharge + 1);
         updateGuardianCharge(nextLvl);
-        soundEngine.playAnticipationRiser();
+
+        let statusText = '';
+        if (nextLvl === 1) {
+          soundEngine.playAnubisExpand();
+          statusText = '⚡ THE ANCIENT GUARDIANS AWAKEN! FROM STONE STATUES TO LIVING ENTITIES!';
+        } else if (nextLvl === 2) {
+          soundEngine.playAnticipationRiser();
+          statusText = '⚡ EYES OF THE GODS IGNITE! DIVINE CONDUIT PULSES WITH SACRED LIGHT!';
+        } else if (nextLvl === 3) {
+          soundEngine.playSolarFireball();
+          statusText = '⚡ CELESTIAL ORBS CONJURED! ANUBIS SUMMONS PLASMA • BASTET SUMMONS SOLAR FIRE!';
+        } else {
+          soundEngine.playAnticipationRiser();
+          statusText = '⚡ APEX OVERCHARGE REACHED! GUARDIANS BLINDING WITH RAW DIVINE FURY — READY TO UNLEASH!';
+        }
 
         const firstWin = wins[0];
-        const statusPrefix =
-          nextLvl === 1
-            ? '⚡ THE GODS AWAKEN • GUARDIANS CHARGED TO LEVEL 1 (EMBER STAGE)'
-            : nextLvl === 2
-            ? '🔥 BATTLE POSTURE ACTIVE • GUARDIANS PERCHED AT LEVEL 2 (BLAZING SURGE)'
-            : '⚡ APEX OVERCHARGE REACHED • GUARDIANS READY FOR GRAND CELESTIAL STRIKE';
-
         if (isBig) {
           setStatusMessage(
-            `${statusPrefix}! ${THEME_COPY.megaWinTickerPrefix} ${
+            `${statusText} ${THEME_COPY.megaWinTickerPrefix} ${
               isSC ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD PRIZE)` : `${finalWin.toLocaleString()} GC`
             }!`
           );
         } else {
           setStatusMessage(
-            `${statusPrefix}! ${wins.length} PAYLINE${wins.length > 1 ? 'S' : ''} (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
+            `${statusText} ${wins.length} PAYLINE${wins.length > 1 ? 'S' : ''} (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
               isSC ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)` : `${finalWin.toLocaleString()} GC`
             }!`
           );
@@ -1556,6 +1559,62 @@ export default function App() {
           </button>
 
           <button
+            className="dc-action-btn special-guardian-cycle"
+            onClick={() => {
+              soundEngine.playButtonClick(660);
+              const nextStage = (guardianChargeLevel + 1) % 6;
+              if (nextStage === 5) {
+                setGuardianAction(true);
+                setGuardianStrikeEvent({
+                  strikes: [
+                    { from: 'left', type: 'lightning', delay: 0 },
+                    { from: 'right', type: 'fire', delay: 150 },
+                  ],
+                });
+                soundEngine.playThunderStrike();
+                setTimeout(() => soundEngine.playSolarFireball(), 160);
+                setTimeout(() => {
+                  setCelestialBonusBet(currentBet);
+                  setCelestialBonusOpen(true);
+                  setGuardianAction(false);
+                }, 1400);
+              } else {
+                updateGuardianCharge(nextStage);
+                if (nextStage === 0) {
+                  setStatusMessage('⚡ GUARDIANS STAGE 0: DORMANT STONE STATUES (STILL & SILENT)');
+                } else if (nextStage === 1) {
+                  soundEngine.playAnubisExpand();
+                  setStatusMessage('⚡ GUARDIANS STAGE 1: AWAKENED FROM STONE TO LIVING ENTITIES!');
+                } else if (nextStage === 2) {
+                  soundEngine.playAnticipationRiser();
+                  setStatusMessage('⚡ GUARDIANS STAGE 2: EYES OF THE GODS IGNITE WITH DIVINE GLOW!');
+                } else if (nextStage === 3) {
+                  soundEngine.playSolarFireball();
+                  setStatusMessage('⚡ GUARDIANS STAGE 3: PLASMA & SOLAR FIRE ORBS CONJURED!');
+                } else if (nextStage === 4) {
+                  soundEngine.playAnticipationRiser();
+                  setStatusMessage('⚡ GUARDIANS STAGE 4: APEX OVERCHARGE — BLINDING DIVINE POWER!');
+                }
+              }
+            }}
+            title="Cycle & test the 5 Guardian Escalation Stages (0: Stone, 1: Alive, 2: Eyes, 3: Orbs, 4: Apex, 5: Strike & Bonus)"
+          >
+            <Zap size={15} />
+            <span>
+              Stage:{' '}
+              {guardianChargeLevel === 0
+                ? '0: Stone'
+                : guardianChargeLevel === 1
+                ? '1: Alive'
+                : guardianChargeLevel === 2
+                ? '2: Eyes'
+                : guardianChargeLevel === 3
+                ? '3: Orbs'
+                : '4: Apex'}
+            </span>
+          </button>
+
+          <button
             className="dc-action-btn active-mode"
             onClick={() => {
               soundEngine.playButtonClick();
@@ -1945,6 +2004,65 @@ export default function App() {
             </button>
 
             <button
+              className="mobile-drawer-card guardian-stage-card"
+              onClick={() => {
+                soundEngine.playButtonClick(660);
+                const nextStage = (guardianChargeLevel + 1) % 6;
+                if (nextStage === 5) {
+                  setMobileMenuOpen(false);
+                  setGuardianAction(true);
+                  setGuardianStrikeEvent({
+                    strikes: [
+                      { from: 'left', type: 'lightning', delay: 0 },
+                      { from: 'right', type: 'fire', delay: 150 },
+                    ],
+                  });
+                  soundEngine.playThunderStrike();
+                  setTimeout(() => soundEngine.playSolarFireball(), 160);
+                  setTimeout(() => {
+                    setCelestialBonusBet(currentBet);
+                    setCelestialBonusOpen(true);
+                    setGuardianAction(false);
+                  }, 1400);
+                } else {
+                  updateGuardianCharge(nextStage);
+                  if (nextStage === 0) {
+                    setStatusMessage('⚡ GUARDIANS STAGE 0: DORMANT STONE STATUES (STILL & SILENT)');
+                  } else if (nextStage === 1) {
+                    soundEngine.playAnubisExpand();
+                    setStatusMessage('⚡ GUARDIANS STAGE 1: AWAKENED FROM STONE TO LIVING ENTITIES!');
+                  } else if (nextStage === 2) {
+                    soundEngine.playAnticipationRiser();
+                    setStatusMessage('⚡ GUARDIANS STAGE 2: EYES OF THE GODS IGNITE WITH DIVINE GLOW!');
+                  } else if (nextStage === 3) {
+                    soundEngine.playSolarFireball();
+                    setStatusMessage('⚡ GUARDIANS STAGE 3: PLASMA & SOLAR FIRE ORBS CONJURED!');
+                  } else if (nextStage === 4) {
+                    soundEngine.playAnticipationRiser();
+                    setStatusMessage('⚡ GUARDIANS STAGE 4: APEX OVERCHARGE — BLINDING DIVINE POWER!');
+                  }
+                }
+              }}
+            >
+              <Zap size={20} className="card-icon" color="#00e5ff" />
+              <div className="card-txt">
+                <strong>
+                  Guardian Stage:{' '}
+                  {guardianChargeLevel === 0
+                    ? '0 (Stone)'
+                    : guardianChargeLevel === 1
+                    ? '1 (Alive)'
+                    : guardianChargeLevel === 2
+                    ? '2 (Eyes)'
+                    : guardianChargeLevel === 3
+                    ? '3 (Orbs)'
+                    : '4 (Apex)'}
+                </strong>
+                <small>Tap to advance / test strike</small>
+              </div>
+            </button>
+
+            <button
               className="mobile-drawer-card theme-card"
               onClick={() => {
                 soundEngine.playButtonClick();
@@ -2012,24 +2130,36 @@ export default function App() {
         <aside
           className={`anubis-guardian-column left-col ${
             guardianAction ? 'anubis-action-surge' : ''
-          } ${guardianChargeLevel === 1 ? 'guardian-charge-alert' : ''} ${
-            guardianChargeLevel === 2 ? 'guardian-charge-perched' : ''
-          } ${guardianChargeLevel >= 3 ? 'guardian-charge-overcharged' : ''} ${
-            guardianStrikeEvent ? 'guardian-charge-strike' : ''
-          }`}
+          } guardian-charge-stage-${guardianChargeLevel} ${
+            guardianChargeLevel === 0 ? 'guardian-charge-stone-statue' : ''
+          } ${guardianChargeLevel === 1 ? 'guardian-charge-alive' : ''} ${
+            guardianChargeLevel === 2 ? 'guardian-charge-eyes-lit' : ''
+          } ${guardianChargeLevel === 3 ? 'guardian-charge-orbs-manifest' : ''} ${
+            guardianChargeLevel >= 4 ? 'guardian-charge-overcharged' : ''
+          } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''}`}
         >
           <div className="anubis-guardian-figure">
-            <div className="guardian-living-aura anubis-living-aura" />
-            <div
-              className={`guardian-divine-eyes anubis-divine-eyes ${
-                guardianBlinking ? 'blinking' : ''
-              }`}
-            />
-            <div className="guardian-power-orb anubis-power-orb" />
+            {/* Living Aura: Only lit at Stage 2+ */}
             {guardianChargeLevel >= 2 && (
+              <div className="guardian-living-aura anubis-living-aura" />
+            )}
+            {/* Divine Eyes: Only lit at Stage 2+ */}
+            {guardianChargeLevel >= 2 && (
+              <div
+                className={`guardian-divine-eyes anubis-divine-eyes ${
+                  guardianBlinking ? 'blinking' : ''
+                }`}
+              />
+            )}
+            {/* Celestial Power Orb: Only manifests at Stage 3+ */}
+            {guardianChargeLevel >= 3 && (
+              <div className="guardian-power-orb anubis-power-orb" />
+            )}
+            {/* Blinding Crackling Lightning Aura: Only manifests at Stage 4+ */}
+            {guardianChargeLevel >= 4 && (
               <div className="guardian-charged-crackling-aura" />
             )}
-            {GUARDIANS.left.auraImage && (
+            {guardianChargeLevel >= 2 && GUARDIANS.left.auraImage && (
               <img
                 src={GUARDIANS.left.auraImage}
                 alt=""
@@ -2037,7 +2167,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianChargeLevel >= 3 && GUARDIANS.left.apexBodyImage ? (
+            {guardianChargeLevel >= 4 && GUARDIANS.left.apexBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.left.apexBodyImage}
                 alt={GUARDIANS.left.name}
@@ -2045,7 +2175,7 @@ export default function App() {
                 threshold={26}
                 feather={44}
               />
-            ) : guardianChargeLevel >= 2 && GUARDIANS.left.chargedBodyImage ? (
+            ) : guardianChargeLevel === 3 && GUARDIANS.left.chargedBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.left.chargedBodyImage}
                 alt={GUARDIANS.left.name}
@@ -2069,7 +2199,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianBlinking && GUARDIANS.left.eyesClosedImage && (
+            {guardianBlinking && guardianChargeLevel >= 1 && GUARDIANS.left.eyesClosedImage && (
               <img
                 src={GUARDIANS.left.eyesClosedImage}
                 alt=""
@@ -2077,7 +2207,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {GUARDIANS.left.handFxImage && (
+            {guardianChargeLevel >= 3 && GUARDIANS.left.handFxImage && (
               <img
                 src={GUARDIANS.left.handFxImage}
                 alt=""
@@ -2094,8 +2224,28 @@ export default function App() {
               draggable={false}
             />
             <div className="guardian-plaque-txt">
-              <span>{GUARDIANS.left.plaqueTop}</span>
-              <strong>{GUARDIANS.left.plaqueBottom}</strong>
+              <span>
+                {guardianChargeLevel === 0
+                  ? 'ANCIENT STATUE'
+                  : guardianChargeLevel === 1
+                  ? 'LIVING ENTITY'
+                  : guardianChargeLevel === 2
+                  ? 'EYES OF ANUBIS'
+                  : guardianChargeLevel === 3
+                  ? 'PLASMA SUMMONER'
+                  : 'APEX OVERCHARGE'}
+              </span>
+              <strong>
+                {guardianChargeLevel === 0
+                  ? 'DORMANT'
+                  : guardianChargeLevel === 1
+                  ? 'ALIVE'
+                  : guardianChargeLevel === 2
+                  ? 'DIVINE GLOW'
+                  : guardianChargeLevel === 3
+                  ? 'PLASMA ORB'
+                  : 'READY TO STRIKE'}
+              </strong>
             </div>
           </div>
           <div className="guardian-floor-runes" />
@@ -2498,24 +2648,36 @@ export default function App() {
         <aside
           className={`anubis-guardian-column right-col ${
             guardianAction ? 'anubis-action-surge' : ''
-          } ${guardianChargeLevel === 1 ? 'guardian-charge-alert' : ''} ${
-            guardianChargeLevel === 2 ? 'guardian-charge-perched' : ''
-          } ${guardianChargeLevel >= 3 ? 'guardian-charge-overcharged' : ''} ${
-            guardianStrikeEvent ? 'guardian-charge-strike' : ''
-          }`}
+          } guardian-charge-stage-${guardianChargeLevel} ${
+            guardianChargeLevel === 0 ? 'guardian-charge-stone-statue' : ''
+          } ${guardianChargeLevel === 1 ? 'guardian-charge-alive' : ''} ${
+            guardianChargeLevel === 2 ? 'guardian-charge-eyes-lit' : ''
+          } ${guardianChargeLevel === 3 ? 'guardian-charge-orbs-manifest' : ''} ${
+            guardianChargeLevel >= 4 ? 'guardian-charge-overcharged' : ''
+          } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''}`}
         >
           <div className="anubis-guardian-figure bastet-figure">
-            <div className="guardian-living-aura bastet-living-aura" />
-            <div
-              className={`guardian-divine-eyes bastet-divine-eyes ${
-                guardianBlinking ? 'blinking' : ''
-              }`}
-            />
-            <div className="guardian-power-orb bastet-power-orb" />
+            {/* Living Aura: Only lit at Stage 2+ */}
             {guardianChargeLevel >= 2 && (
+              <div className="guardian-living-aura bastet-living-aura" />
+            )}
+            {/* Divine Eyes: Only lit at Stage 2+ */}
+            {guardianChargeLevel >= 2 && (
+              <div
+                className={`guardian-divine-eyes bastet-divine-eyes ${
+                  guardianBlinking ? 'blinking' : ''
+                }`}
+              />
+            )}
+            {/* Celestial Power Orb: Only manifests at Stage 3+ */}
+            {guardianChargeLevel >= 3 && (
+              <div className="guardian-power-orb bastet-power-orb" />
+            )}
+            {/* Blinding Solar Fire & Crackling Aura: Only manifests at Stage 4+ */}
+            {guardianChargeLevel >= 4 && (
               <div className="guardian-charged-crackling-aura bastet-charged-crackling-aura" />
             )}
-            {GUARDIANS.right.auraImage && (
+            {guardianChargeLevel >= 2 && GUARDIANS.right.auraImage && (
               <img
                 src={GUARDIANS.right.auraImage}
                 alt=""
@@ -2523,7 +2685,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianChargeLevel >= 3 && GUARDIANS.right.apexBodyImage ? (
+            {guardianChargeLevel >= 4 && GUARDIANS.right.apexBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.right.apexBodyImage}
                 alt={GUARDIANS.right.name}
@@ -2531,7 +2693,7 @@ export default function App() {
                 threshold={26}
                 feather={44}
               />
-            ) : guardianChargeLevel >= 2 && GUARDIANS.right.chargedBodyImage ? (
+            ) : guardianChargeLevel === 3 && GUARDIANS.right.chargedBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.right.chargedBodyImage}
                 alt={GUARDIANS.right.name}
@@ -2555,7 +2717,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianBlinking && GUARDIANS.right.eyesClosedImage && (
+            {guardianBlinking && guardianChargeLevel >= 1 && GUARDIANS.right.eyesClosedImage && (
               <img
                 src={GUARDIANS.right.eyesClosedImage}
                 alt=""
@@ -2563,7 +2725,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {GUARDIANS.right.handFxImage && (
+            {guardianChargeLevel >= 3 && GUARDIANS.right.handFxImage && (
               <img
                 src={GUARDIANS.right.handFxImage}
                 alt=""
@@ -2580,8 +2742,28 @@ export default function App() {
               draggable={false}
             />
             <div className="guardian-plaque-txt">
-              <span>{GUARDIANS.right.plaqueTop}</span>
-              <strong>{GUARDIANS.right.plaqueBottom}</strong>
+              <span>
+                {guardianChargeLevel === 0
+                  ? 'ANCIENT STATUE'
+                  : guardianChargeLevel === 1
+                  ? 'LIVING ENTITY'
+                  : guardianChargeLevel === 2
+                  ? 'EYES OF BASTET'
+                  : guardianChargeLevel === 3
+                  ? 'SOLAR SUMMONER'
+                  : 'APEX OVERCHARGE'}
+              </span>
+              <strong>
+                {guardianChargeLevel === 0
+                  ? 'DORMANT'
+                  : guardianChargeLevel === 1
+                  ? 'ALIVE'
+                  : guardianChargeLevel === 2
+                  ? 'SOLAR GLOW'
+                  : guardianChargeLevel === 3
+                  ? 'SUNFIRE ORB'
+                  : 'READY TO STRIKE'}
+              </strong>
             </div>
           </div>
           <div className="guardian-floor-runes" />
@@ -2601,6 +2783,67 @@ export default function App() {
         coinValue={coinValue}
         currencyMode={currencyMode}
         onCompleteBonus={handleCompleteBonus}
+      />
+
+      {/* 2026 Grand Climax: Wrath of the Gods — Celestial Overload Bonus Round */}
+      <CelestialOverloadBonusModal
+        isOpen={celestialBonusOpen}
+        currentBet={celestialBonusBet}
+        currencyMode={currencyMode}
+        onComplete={(totalWinCoins) => {
+          setCelestialBonusOpen(false);
+          const isSC = currencyMode === 'SC';
+          if (isSC) {
+            const scWin = Number((totalWinCoins / 100).toFixed(2));
+            if (scWin > 0) {
+              setSweepsCoins((prev) => {
+                const next = Number((prev + scWin).toFixed(2));
+                sweepsCoinsRef.current = next;
+                try {
+                  localStorage.setItem('dc_casino_sweeps_coins', next.toFixed(2));
+                } catch {}
+                return next;
+              });
+              recordCurrencyTransaction({
+                type: 'BONUS_WIN',
+                currency: 'SC',
+                amount: scWin,
+                description: 'Wrath of the Gods: Celestial Overload Grand Bonus Round',
+              });
+              setBigWinAmount(scWin);
+              setLastWinCoins(scWin);
+              setStatusMessage(
+                `⚡ CELESTIAL OVERLOAD COMPLETED! WON $${scWin.toFixed(2)} SC ($${scWin.toFixed(2)} USD REAL PRIZE)!`
+              );
+            }
+          } else {
+            if (totalWinCoins > 0) {
+              setGoldCoins((prev) => {
+                const next = prev + totalWinCoins;
+                goldCoinsRef.current = next;
+                try {
+                  localStorage.setItem('dc_casino_gold_coins', String(next));
+                } catch {}
+                return next;
+              });
+              recordCurrencyTransaction({
+                type: 'BONUS_WIN',
+                currency: 'GC',
+                amount: totalWinCoins,
+                description: 'Wrath of the Gods: Celestial Overload Grand Bonus Round',
+              });
+              setBigWinAmount(totalWinCoins);
+              setLastWinCoins(totalWinCoins);
+              setStatusMessage(
+                `⚡ CELESTIAL OVERLOAD COMPLETED! WON ${totalWinCoins.toLocaleString()} TOTAL GOLD COINS!`
+              );
+            }
+          }
+          // Now discharge back to stone statue Stage 0
+          updateGuardianCharge(0);
+          setGuardianAction(false);
+          soundEngine.playSlamStop();
+        }}
       />
 
       {/* Big Win / Mega Win Celebration Pop-Up */}
