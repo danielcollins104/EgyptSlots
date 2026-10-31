@@ -2455,7 +2455,6 @@ export default function App() {
                   onPointerDown={() => { isHoldingSpinRef.current = true; }}
                   onPointerUp={() => { isHoldingSpinRef.current = false; }}
                   onPointerLeave={() => { isHoldingSpinRef.current = false; }}
-                  onMouseEnter={() => soundEngine.playButtonHover()}
                   aria-label={!isAssetsLoaded ? 'Loading Assets' : (isSpinning ? 'Instant Stop' : 'Spin Reels')}
                   title={!isAssetsLoaded ? 'Pre-caching 3D Relic Assets...' : (isSpinning ? 'Instant Stop (Spacebar)' : 'Spin Reels (Hold Spacebar or Click for Continuous Flow)')}
                 >

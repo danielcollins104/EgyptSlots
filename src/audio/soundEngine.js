@@ -9,7 +9,7 @@ class SoundEngine {
     this.muted = false;
     this.ambientGain = null;
     this.ambientOscs = [];
-    this.ambientStarted = false;
+    this.ambientStarted = true; // Disabled: prevent continuous synthetic drone
     this.lastTickMs = 0;
   }
 
@@ -23,42 +23,38 @@ class SoundEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
-    if (!this.ambientStarted) {
-      this.startAmbientDrone();
-    }
+  }
+
+  stopAmbientDrone() {
+    try {
+      if (this.ambientOscs && this.ambientOscs.length > 0) {
+        this.ambientOscs.forEach((osc) => {
+          try {
+            osc.stop();
+            osc.disconnect();
+          } catch (_) {}
+        });
+        this.ambientOscs = [];
+      }
+      if (this.ambientGain) {
+        try {
+          this.ambientGain.disconnect();
+        } catch (_) {}
+        this.ambientGain = null;
+      }
+    } catch (_) {}
   }
 
   startAmbientDrone() {
-    if (this.ambientStarted || !this.ctx) return;
-    try {
-      this.ambientStarted = true;
-      this.ambientGain = this.ctx.createGain();
-      this.ambientGain.gain.setValueAtTime(this.muted ? 0 : 0.035, this.ctx.currentTime);
-      this.ambientGain.connect(this.ctx.destination);
-
-      // Lowpass filter for smooth, warm Egyptian temple meditative drone
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(360, this.ctx.currentTime);
-      filter.connect(this.ambientGain);
-
-      // 432Hz Solfeggio meditative harmonic series: 108Hz, 216Hz, 324Hz, 432Hz
-      const droneFreqs = [108.0, 216.0, 324.0, 432.0];
-      droneFreqs.forEach((freq, i) => {
-        const osc = this.ctx.createOscillator();
-        osc.type = i === 0 ? 'triangle' : 'sine';
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        osc.connect(filter);
-        osc.start();
-        this.ambientOscs.push(osc);
-      });
-    } catch (_) {}
+    // Disabled: Continuous synthetic sine drone caused acoustic feedback/hum.
+    // Rich, atmospheric casino music is properly provided by ambientMusicEngine.js
+    this.stopAmbientDrone();
   }
 
   setMuted(muted) {
     this.muted = muted;
-    if (this.ambientGain && this.ctx) {
-      this.ambientGain.gain.setTargetAtTime(muted ? 0 : 0.035, this.ctx.currentTime, 0.2);
+    if (muted) {
+      this.stopAmbientDrone();
     }
   }
 
@@ -80,40 +76,34 @@ class SoundEngine {
     this.triggerHaptics([14]);
 
     const now = this.ctx.currentTime;
+    
+    // Warm, organic tactile wood/felt UI tap (zero harshness, zero ear fatigue)
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(pitch, now);
-    osc.frequency.exponentialRampToValueAtTime(pitch * 1.4, now + 0.065);
+    const filter = this.ctx.createBiquadFilter();
 
-    gain.gain.setValueAtTime(0.16, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(650, now);
 
-    osc.connect(gain);
+    osc.type = 'sine';
+    const baseFreq = Math.min(600, Math.max(220, pitch * 0.7));
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.65, now + 0.04);
+
+    gain.gain.setValueAtTime(0.065, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(this.ctx.destination);
+
     osc.start(now);
-    osc.stop(now + 0.08);
+    osc.stop(now + 0.05);
   }
 
   playButtonHover() {
-    if (this.muted) return;
-    this.init();
-    if (!this.ctx) return;
-
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1250, now);
-    osc.frequency.exponentialRampToValueAtTime(1550, now + 0.02);
-
-    gain.gain.setValueAtTime(0.025, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
-
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.026);
+    // Silenced to prevent repetitive chirping when cursor traverses UI buttons
+    return;
   }
 
   playSpinStart() {
@@ -121,49 +111,73 @@ class SoundEngine {
     this.init();
     if (!this.ctx) return;
 
-    this.triggerHaptics([24]);
+    this.triggerHaptics([22]);
 
     const now = this.ctx.currentTime;
 
-    // Single authentic, satisfying, premium casino spin button punch:
-    // 1. Crisp tactile physical button snap (micro-transient)
-    const clickOsc = this.ctx.createOscillator();
-    const clickGain = this.ctx.createGain();
-    clickOsc.type = 'triangle';
-    clickOsc.frequency.setValueAtTime(540, now);
-    clickOsc.frequency.exponentialRampToValueAtTime(140, now + 0.022);
-    clickGain.gain.setValueAtTime(0.15, now);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
-    clickOsc.connect(clickGain);
-    clickGain.connect(this.ctx.destination);
-    clickOsc.start(now);
-    clickOsc.stop(now + 0.028);
+    // Authentic, dampened mechanical Vegas spin button punch:
+    // Designed for hypnotic player flow, tactile satisfaction, and zero ear fatigue.
 
-    // 2. Deep solid dampened cabinet thud (tactile body)
+    // 1. Solid dampened cabinet punch (soft low-end solenoid thump)
     const thudOsc = this.ctx.createOscillator();
     const thudGain = this.ctx.createGain();
-    thudOsc.type = 'sine';
-    thudOsc.frequency.setValueAtTime(110, now);
-    thudOsc.frequency.exponentialRampToValueAtTime(38, now + 0.12);
-    thudGain.gain.setValueAtTime(0.20, now);
-    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-    thudOsc.connect(thudGain);
-    thudGain.connect(this.ctx.destination);
-    thudOsc.start(now);
-    thudOsc.stop(now + 0.15);
+    const thudFilter = this.ctx.createBiquadFilter();
 
-    // 3. Smooth, low mechanical reel release whoosh
-    const whooshOsc = this.ctx.createOscillator();
-    const whooshGain = this.ctx.createGain();
-    whooshOsc.type = 'triangle';
-    whooshOsc.frequency.setValueAtTime(75, now);
-    whooshOsc.frequency.linearRampToValueAtTime(140, now + 0.16);
-    whooshGain.gain.setValueAtTime(0.035, now);
-    whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
-    whooshOsc.connect(whooshGain);
-    whooshGain.connect(this.ctx.destination);
-    whooshOsc.start(now);
-    whooshOsc.stop(now + 0.22);
+    thudFilter.type = 'lowpass';
+    thudFilter.frequency.setValueAtTime(160, now);
+
+    thudOsc.type = 'sine';
+    thudOsc.frequency.setValueAtTime(82, now);
+    thudOsc.frequency.exponentialRampToValueAtTime(36, now + 0.08);
+
+    thudGain.gain.setValueAtTime(0.16, now);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+    thudOsc.connect(thudFilter);
+    thudFilter.connect(thudGain);
+    thudGain.connect(this.ctx.destination);
+
+    thudOsc.start(now);
+    thudOsc.stop(now + 0.095);
+
+    // 2. Muffled felt mechanical switch engagement (soft tactile micro-click)
+    const clickOsc = this.ctx.createOscillator();
+    const clickGain = this.ctx.createGain();
+    const clickFilter = this.ctx.createBiquadFilter();
+
+    clickFilter.type = 'bandpass';
+    clickFilter.frequency.setValueAtTime(320, now);
+    clickFilter.Q.setValueAtTime(1.2, now);
+
+    clickOsc.type = 'sine';
+    clickOsc.frequency.setValueAtTime(260, now);
+    clickOsc.frequency.exponentialRampToValueAtTime(110, now + 0.016);
+
+    clickGain.gain.setValueAtTime(0.045, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+
+    clickOsc.connect(clickFilter);
+    clickFilter.connect(clickGain);
+    clickGain.connect(this.ctx.destination);
+
+    clickOsc.start(now);
+    clickOsc.stop(now + 0.022);
+
+    // 3. Subtle sub-bass air cushion release (gentle mechanical breath)
+    const airOsc = this.ctx.createOscillator();
+    const airGain = this.ctx.createGain();
+    airOsc.type = 'sine';
+    airOsc.frequency.setValueAtTime(54, now);
+    airOsc.frequency.exponentialRampToValueAtTime(28, now + 0.06);
+
+    airGain.gain.setValueAtTime(0.05, now);
+    airGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+    airOsc.connect(airGain);
+    airGain.connect(this.ctx.destination);
+
+    airOsc.start(now);
+    airOsc.stop(now + 0.075);
   }
 
   playFlowStreak(streak = 1) {
