@@ -237,8 +237,16 @@ export default function App() {
   const [guardianAction, setGuardianAction] = useState(false);
   const [guardianBlinking, setGuardianBlinking] = useState(false);
   // Dynamic Guardian Illumination & Strike System:
-  // 0 = idle, 1 = alert (early scatters/high pairs), 2 = perched & charged (anticipation/2+ scatters ready to cast), 3 = strike
+  // 0 = idle/watcher, 1 = ember surge, 2 = perched battle surge, 3 = apex overcharge (ready for grand strike)
   const [guardianChargeLevel, setGuardianChargeLevel] = useState(0);
+  const guardianChargeLevelRef = useRef(0);
+  const updateGuardianCharge = useCallback((updater) => {
+    setGuardianChargeLevel((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      guardianChargeLevelRef.current = next;
+      return next;
+    });
+  }, []);
   const [guardianStrikeEvent, setGuardianStrikeEvent] = useState(null);
   const landedSymbolsByColRef = useRef([null, null, null, null, null]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -534,13 +542,13 @@ export default function App() {
 
     if (scattersLanded >= 2 && colIdx < COLS - 1) {
       // 2 Scatters on board during active spin -> GUARDIANS PERCH UP, FULLY CHARGED WITH FIRE & LIGHTNING!
-      setGuardianChargeLevel(2);
+      updateGuardianCharge((prev) => Math.max(prev, 2));
       soundEngine.playAnticipationRiser();
     } else if (scattersLanded === 1 || highMatchingCount >= 2) {
       // Alert level illumination: eyes glow, gentle aura surge
-      setGuardianChargeLevel((prev) => Math.max(prev, 1));
+      updateGuardianCharge((prev) => Math.max(prev, 1));
     }
-  }, []);
+  }, [updateGuardianCharge]);
 
   const handleSpinComplete = useCallback(() => {
     isSpinningRef.current = false;
@@ -610,48 +618,32 @@ export default function App() {
         setWinSplashAmount(finalWin); // WinCelebrationSplash handles display and sound once
       }
 
-      // Guardian Projectile Strike Engine:
+      // Guardian Selective Animation & Persistent Charge Build-Up Engine:
+      // Characters do NOT move on every win; only on rare select combinations (high relics, 4/5-of-a-kind, expanding wilds, big wins, scatters).
       const allWinCells = Array.from(winCoordSet).map((k) => k.split(',').map(Number));
+      const hasExpandingWild = pending?.nextExpanded && pending.nextExpanded.some((e) => e === true);
+      const hasHighMatch = wins.some(
+        (w) =>
+          w.matchCount >= 4 ||
+          (w.matchCount >= 3 &&
+            (w.symbol?.isTopHigh ||
+              w.symbol?.id === 'eye' ||
+              w.symbol?.id === 'scarab' ||
+              w.symbol?.id === 'ankh' ||
+              w.symbol?.id === 'necklace'))
+      );
+      const isSelectCombination = isBig || bonusCount >= 2 || hasExpandingWild || hasHighMatch;
+      const currentCharge = guardianChargeLevelRef.current ?? guardianChargeLevel;
 
-      if (bonusCount >= 3) {
-        // Scatter Bonus: Both guardians throw violent lightning and solar fire bolts at the reels!
-        setGuardianChargeLevel(3);
-        const scatterCells =
-          outcome.scatterPositions && outcome.scatterPositions.length > 0
-            ? outcome.scatterPositions.map((p) => [p.col, p.row])
-            : [[1, 1], [3, 1]];
-        setGuardianStrikeEvent({
-          strikes: [
-            {
-              from: 'left',
-              type: 'lightning',
-              targetCells: scatterCells.slice(0, 2),
-              delay: 0,
-            },
-            {
-              from: 'right',
-              type: 'fire',
-              targetCells: scatterCells.slice(2),
-              delay: 140,
-            },
-          ],
-        });
-        soundEngine.playThunderStrike();
-        setTimeout(() => soundEngine.playSolarFireball(), 160);
-        setTimeout(() => setGuardianChargeLevel(0), 2400);
-
-        setStatusMessage(
-          `3D BONUS UNLOCKED! ${bonusCount}× ${getBonusSymbol().name} PAID ${
-            isSC
-              ? `${formatCoinValue(finalScatterWin)} SC ($${formatCoinValue(finalScatterWin)} USD)`
-              : `${finalScatterWin.toLocaleString()} GC`
-          } + BONUS FEATURE!`
-        );
-      } else if (isBig || wins.some((w) => w.matchCount >= 4)) {
-        // Big Win or 4+ of a kind: Guardian casts projectile strike directly into the winning line!
-        setGuardianChargeLevel(3);
+      if (bonusCount >= 3 || (currentCharge >= 3 && isSelectCombination)) {
+        // =========================================================================
+        // THE GRAND HOPED-FOR EVENT: DUAL CELESTIAL STRIKE + GRAND BONUS ROUND!
+        // Anubis and Bastet unleash their ultimate lightning & fire barrage!
+        // =========================================================================
+        setGuardianAction(true);
         const leftTargets = allWinCells.filter((c) => c[0] <= 2);
         const rightTargets = allWinCells.filter((c) => c[0] >= 2);
+
         setGuardianStrikeEvent({
           strikes: [
             {
@@ -664,80 +656,90 @@ export default function App() {
               from: 'right',
               type: 'fire',
               targetCells: rightTargets.length > 0 ? rightTargets : allWinCells,
-              delay: 130,
+              delay: 150,
             },
           ],
         });
+
         soundEngine.playThunderStrike();
-        setTimeout(() => soundEngine.playSolarFireball(), 150);
-        setTimeout(() => setGuardianChargeLevel(0), 2000);
+        setTimeout(() => soundEngine.playSolarFireball(), 160);
+        setTimeout(() => soundEngine.playBonusTrigger(), 450);
+
+        setStatusMessage(
+          `⚡ GRAND CELESTIAL STRIKE UNLEASHED! ANUBIS & BASTET BLESS THE REELS WITH THE GRAND MYTHIC BONUS ROUND!`
+        );
+
+        // Unleash the Grand Bonus Round after the epic strike!
+        setTimeout(() => {
+          setBonusSession({
+            triggerReason: 'GRAND CELESTIAL STRIKE',
+            initialPicks: 5,
+            wheelSpins: 2,
+            startingMultiplier: 3, // Elevated 3x multiplier for the Grand Hoped-For Event!
+            scatterWinCoins: finalScatterWin || 0,
+            defaultGame: 'vault',
+          });
+          // Now discharge back to calm Level 0
+          updateGuardianCharge(0);
+          setGuardianAction(false);
+        }, 1800);
+      } else if (isSelectCombination) {
+        // =========================================================================
+        // SELECT COMBINATION HIT: GUARDIANS ESCALATE IN POWER (BIGGER & MORE FIERY)
+        // They animate, grow larger, and build up persistent charge for next spins!
+        // =========================================================================
+        setGuardianAction(true);
+        setTimeout(() => setGuardianAction(false), 1600);
+
+        const nextLvl = Math.min(3, currentCharge + 1);
+        updateGuardianCharge(nextLvl);
+        soundEngine.playAnticipationRiser();
+
+        const firstWin = wins[0];
+        const statusPrefix =
+          nextLvl === 1
+            ? '⚡ THE GODS AWAKEN • GUARDIANS CHARGED TO LEVEL 1 (EMBER STAGE)'
+            : nextLvl === 2
+            ? '🔥 BATTLE POSTURE ACTIVE • GUARDIANS PERCHED AT LEVEL 2 (BLAZING SURGE)'
+            : '⚡ APEX OVERCHARGE REACHED • GUARDIANS READY FOR GRAND CELESTIAL STRIKE';
 
         if (isBig) {
-          setBigWinAmount(finalWin);
           setStatusMessage(
-            `${THEME_COPY.megaWinTickerPrefix} ${
-              isSC
-                ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD PRIZE)`
-                : `${finalWin.toLocaleString()} GC`
-            } AT ${CASINO_BRAND.casinoFullTitle}!`
+            `${statusPrefix}! ${THEME_COPY.megaWinTickerPrefix} ${
+              isSC ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD PRIZE)` : `${finalWin.toLocaleString()} GC`
+            }!`
           );
         } else {
-          const firstWin = wins[0];
           setStatusMessage(
-            `VERIFIED WIN! ${wins.length} PAYLINE${
-              wins.length > 1 ? 'S' : ''
-            } (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
-              isSC
-                ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)`
-                : `${finalWin.toLocaleString()} GC`
+            `${statusPrefix}! ${wins.length} PAYLINE${wins.length > 1 ? 'S' : ''} (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
+              isSC ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)` : `${finalWin.toLocaleString()} GC`
             }!`
           );
         }
       } else {
-        // ANY Regular Win: The corresponding guardian attacks the winning symbols with elemental power!
+        // =========================================================================
+        // REGULAR LOW WIN (3 Royal Symbols): GUARDIANS REMAIN CALM & DIGNIFIED
+        // They do NOT move or attack on ordinary wins, preserving their current charge!
+        // =========================================================================
+        setGuardianAction(false);
         const firstWin = wins[0];
-        const avgCol =
-          allWinCells.reduce((acc, c) => acc + c[0], 0) / (allWinCells.length || 1);
-        const isRightBastet = avgCol >= 2.2;
-        setGuardianChargeLevel(3);
-        if (isRightBastet) {
-          setGuardianStrikeEvent({
-            from: 'right',
-            type: 'fire',
-            targetCells: allWinCells,
-          });
-          soundEngine.playSolarFireball();
-        } else {
-          setGuardianStrikeEvent({
-            from: 'left',
-            type: 'lightning',
-            targetCells: allWinCells,
-          });
-          soundEngine.playThunderStrike();
-        }
-        setTimeout(() => setGuardianChargeLevel(0), 1600);
         setStatusMessage(
-          `VERIFIED WIN! ${wins.length} PAYLINE${
-            wins.length > 1 ? 'S' : ''
-          } (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
-            isSC
-              ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)`
-              : `${finalWin.toLocaleString()} GC`
+          `VERIFIED WIN! ${wins.length} PAYLINE${wins.length > 1 ? 'S' : ''} (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
+            isSC ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)` : `${finalWin.toLocaleString()} GC`
           }!`
         );
       }
     } else {
-      // Do not display losses; bet was already subtracted from total at spin start
+      // Losses: Bet subtracted at spin start
       setWinSplashAmount(0);
       if (nearMiss?.isNearMiss) {
-        // Near miss keeps character perched up & crackling with blue flame & amber lightning to hold suspense!
-        setGuardianChargeLevel(2);
-        setTimeout(() => {
-          setGuardianChargeLevel((lvl) => (lvl === 2 ? 0 : lvl));
-        }, 3200);
-        setStatusMessage(`⚡ NEAR-MISS! ${nearMiss.description}`);
+        // Near miss: 2 scatters landed! Perch up to Level 2 to build suspense, preserving charge!
+        updateGuardianCharge((prev) => Math.max(prev, 2));
+        soundEngine.playAnticipationRiser();
+        setStatusMessage(`⚡ NEAR-MISS! ${nearMiss.description} • GUARDIANS PERCHED IN SUSPENSE!`);
       } else {
-        setGuardianChargeLevel(0);
+        // On regular spin with no win: do NOT wipe out their hard-earned charge!
+        // Maintain their living presence.
         setStatusMessage(`${CASINO_BRAND.casinoFullTitle} • ${CASINO_BRAND.edition}`);
       }
     }
@@ -1084,8 +1086,7 @@ export default function App() {
       setWinningLines([]);
       setWinningCells(new Set());
       setBigWinAmount(0);
-      // If characters were charged from a near-miss/scatters, maintain alert combat posture into the spin!
-      setGuardianChargeLevel((lvl) => (lvl >= 2 ? 1 : 0));
+      // Preserve persistent guardian charge level across spins as they build up to the Grand Celestial Strike!
       setGuardianStrikeEvent(null);
       landedSymbolsByColRef.current = [null, null, null, null, null];
       isSpinningRef.current = true;
@@ -1955,7 +1956,9 @@ export default function App() {
             guardianAction ? 'anubis-action-surge' : ''
           } ${guardianChargeLevel === 1 ? 'guardian-charge-alert' : ''} ${
             guardianChargeLevel === 2 ? 'guardian-charge-perched' : ''
-          } ${guardianChargeLevel >= 3 ? 'guardian-charge-strike' : ''}`}
+          } ${guardianChargeLevel >= 3 ? 'guardian-charge-overcharged' : ''} ${
+            guardianStrikeEvent ? 'guardian-charge-strike' : ''
+          }`}
         >
           <div className="anubis-guardian-figure">
             <div className="guardian-living-aura anubis-living-aura" />
@@ -1976,7 +1979,15 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianChargeLevel >= 2 && GUARDIANS.left.chargedBodyImage ? (
+            {guardianChargeLevel >= 3 && GUARDIANS.left.apexBodyImage ? (
+              <NeonKeyedImage
+                src={GUARDIANS.left.apexBodyImage}
+                alt={GUARDIANS.left.name}
+                className="guardian-body-img neon-char-filter guardian-apex-overcharged"
+                threshold={26}
+                feather={44}
+              />
+            ) : guardianChargeLevel >= 2 && GUARDIANS.left.chargedBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.left.chargedBodyImage}
                 alt={GUARDIANS.left.name}
@@ -2425,7 +2436,9 @@ export default function App() {
             guardianAction ? 'anubis-action-surge' : ''
           } ${guardianChargeLevel === 1 ? 'guardian-charge-alert' : ''} ${
             guardianChargeLevel === 2 ? 'guardian-charge-perched' : ''
-          } ${guardianChargeLevel >= 3 ? 'guardian-charge-strike' : ''}`}
+          } ${guardianChargeLevel >= 3 ? 'guardian-charge-overcharged' : ''} ${
+            guardianStrikeEvent ? 'guardian-charge-strike' : ''
+          }`}
         >
           <div className="anubis-guardian-figure bastet-figure">
             <div className="guardian-living-aura bastet-living-aura" />
@@ -2446,7 +2459,15 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianChargeLevel >= 2 && GUARDIANS.right.chargedBodyImage ? (
+            {guardianChargeLevel >= 3 && GUARDIANS.right.apexBodyImage ? (
+              <NeonKeyedImage
+                src={GUARDIANS.right.apexBodyImage}
+                alt={GUARDIANS.right.name}
+                className="guardian-body-img bastet-guardian-img guardian-apex-overcharged"
+                threshold={26}
+                feather={44}
+              />
+            ) : guardianChargeLevel >= 2 && GUARDIANS.right.chargedBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.right.chargedBodyImage}
                 alt={GUARDIANS.right.name}
