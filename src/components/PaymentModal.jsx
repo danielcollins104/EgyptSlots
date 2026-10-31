@@ -111,7 +111,7 @@ export default function PaymentModal({
         {/* Top Hero Banner with Generated Vault Artwork */}
         <div className="payment-vault-hero-banner">
           <img
-            src="/assets/vault_store_banner.jpg"
+            src="/assets/vault_store_banner.webp"
             alt="DC Enterprises Royal Vault"
             className="vault-hero-bg-img"
           />

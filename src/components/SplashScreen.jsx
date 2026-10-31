@@ -1,12 +1,26 @@
-import React, { useState } from 'react';
-import { Play, Sparkles, Gift, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Play, Sparkles, Gift, ShieldCheck, Loader2 } from 'lucide-react';
 import { THEME_ASSETS, SPLASH_CONFIG } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
+import { assetPreloader } from '../services/assetPreloader';
 
 export default function SplashScreen({ onEnterCasino }) {
   const [exiting, setExiting] = useState(false);
+  const [preloadState, setPreloadState] = useState(() => assetPreloader.getState());
+
+  useEffect(() => {
+    const unsubscribe = assetPreloader.subscribe((state) => {
+      setPreloadState(state);
+    });
+    return unsubscribe;
+  }, []);
+
+  const isReady = preloadState.isComplete;
 
   const handleEnter = () => {
+    // Prevent entry until 100% of critical assets are loaded
+    if (!isReady) return;
+
     // 1. Request true browser fullscreen on the direct user gesture (hiding Chrome/Android address bar and tabs)
     try {
       const docEl = document.documentElement;
@@ -44,12 +58,12 @@ export default function SplashScreen({ onEnterCasino }) {
   return (
     <div
       className={`ad-creative-splash-root ${exiting ? 'splash-exit' : ''}`}
-      onClick={handleEnter}
+      onClick={isReady ? handleEnter : undefined}
       role="button"
       tabIndex={0}
-      aria-label="Click anywhere to enter casino"
+      aria-label={isReady ? "Click anywhere to enter casino" : "Loading assets, please wait"}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') handleEnter();
+        if (isReady && (e.key === 'Enter' || e.key === ' ')) handleEnter();
       }}
     >
       {/* Ambient Blurred Backdrop */}
@@ -88,7 +102,7 @@ export default function SplashScreen({ onEnterCasino }) {
         <div className="ad-splash-bottom-deck">
           <aside
             className="ad-side-callout left-callout"
-            onClick={handleEnter}
+            onClick={isReady ? handleEnter : undefined}
             role="button"
             tabIndex={0}
             aria-label="Welcome Bonus Perk"
@@ -101,28 +115,68 @@ export default function SplashScreen({ onEnterCasino }) {
             <div className="callout-fine-print">{SPLASH_CONFIG.leftCalloutFine}</div>
           </aside>
 
-          {/* Sleek Bottom Enter CTA */}
+          {/* Sleek Bottom Enter CTA with Integrated Asset Loading Progress */}
           <div className="ad-hero-cta-bar">
+            {/* Visual Gold & Sapphire Progress Bar */}
+            <div className={`splash-preloader-panel ${isReady ? 'preloader-ready' : 'preloader-loading'}`}>
+              <div className="splash-preloader-header">
+                <span className="splash-preloader-stage">
+                  {!isReady ? (
+                    <>
+                      <Loader2 size={13} className="preloader-spinner-icon" />
+                      {preloadState.stage}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={13} className="preloader-sparkle-gold" />
+                      ALL 3D ASSETS LOADED
+                    </>
+                  )}
+                </span>
+                <span className="splash-preloader-pct">{preloadState.percent}%</span>
+              </div>
+              <div className="splash-preloader-track" role="progressbar" aria-valuenow={preloadState.percent} aria-valuemin="0" aria-valuemax="100">
+                <div
+                  className="splash-preloader-fill"
+                  style={{ width: `${preloadState.percent}%` }}
+                >
+                  <div className="splash-preloader-shimmer" />
+                </div>
+              </div>
+            </div>
+
             <button
               type="button"
-              className="ad-enter-casino-btn"
-              onClick={handleEnter}
-              autoFocus
-              aria-label="Enter Casino"
+              className={`ad-enter-casino-btn ${isReady ? 'ready-pulse' : 'loading-locked'}`}
+              onClick={isReady ? handleEnter : undefined}
+              disabled={!isReady}
+              autoFocus={isReady}
+              aria-label={isReady ? 'Enter Casino' : `Loading Game Assets (${preloadState.percent}%)`}
             >
               <span className="cta-shimmer-layer" />
-              <Sparkles size={20} className="cta-sparkle-icon" />
-              <span className="cta-enter-text">ENTER CASINO</span>
-              <div className="cta-play-badge">
-                <Play size={18} fill="#090114" color="#090114" />
-              </div>
+              {isReady ? (
+                <>
+                  <Sparkles size={20} className="cta-sparkle-icon" />
+                  <span className="cta-enter-text">ENTER CASINO</span>
+                  <div className="cta-play-badge">
+                    <Play size={18} fill="#090114" color="#090114" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Loader2 size={20} className="cta-loading-spinner" />
+                  <span className="cta-enter-text">LOADING... {preloadState.percent}%</span>
+                </>
+              )}
             </button>
-            <span className="cta-tap-hint">TAP ANYWHERE TO PLAY</span>
+            <span className="cta-tap-hint">
+              {isReady ? 'TAP ANYWHERE TO PLAY' : 'PRE-CACHING 3D RELIC REELS FOR INSTANT SPINS'}
+            </span>
           </div>
 
           <aside
             className="ad-side-callout right-callout"
-            onClick={handleEnter}
+            onClick={isReady ? handleEnter : undefined}
             role="button"
             tabIndex={0}
             aria-label="Certified RTP Perk"

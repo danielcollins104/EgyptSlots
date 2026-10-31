@@ -73,6 +73,7 @@ import PhaserReelEngine from './engine/PhaserReelEngine';
 import { slotMathEngine } from './engine/math/SlotMathEngine.js';
 import { spinPhysicalReels } from './engine/math/ReelStripModel.js';
 import { slotEventBus } from './engine/math/EventBus.js';
+import { assetPreloader } from './services/assetPreloader';
 import './App.css';
 
 const COLS = 5;
@@ -118,6 +119,18 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [muted, setMuted] = useState(false);
   const [neonThemeIdx, setNeonThemeIdx] = useState(0);
+
+  // Asset Preloading & Instant Spin Lock Telemetry
+  const [isAssetsLoaded, setIsAssetsLoaded] = useState(() => assetPreloader.isComplete);
+  const [isHighResBgLoaded, setIsHighResBgLoaded] = useState(() => assetPreloader.highResLoaded);
+
+  useEffect(() => {
+    const unsubscribe = assetPreloader.subscribe((state) => {
+      if (state.isComplete) setIsAssetsLoaded(true);
+      if (state.highResLoaded) setIsHighResBgLoaded(true);
+    });
+    return unsubscribe;
+  }, []);
 
   // Player Authentication & VIP Verification for Sweeps Coins (SC)
   const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
@@ -967,6 +980,12 @@ export default function App() {
 
   const triggerSpin = useCallback(
     (forcedMode = null, overrideBet = null) => {
+      // PRELOAD GUARD: Player cannot spin until 100% of game assets are pre-cached
+      if (!isAssetsLoaded) {
+        setStatusMessage('PRE-CACHING 3D RELICS & ASSETS... PLEASE WAIT.');
+        return;
+      }
+
       // QUICK STOP / SLAM STOP: If reels are already spinning, immediately complete the spin
       if (isSpinningRef.current) {
         triggerCabinetImpact('slam');
@@ -1195,6 +1214,7 @@ export default function App() {
       betIndexSC,
       currentUser,
       turboFlow,
+      isAssetsLoaded,
     ]
   );
 
@@ -1202,19 +1222,19 @@ export default function App() {
 
   // Autoplay handler
   useEffect(() => {
-    if (autoPlayCount > 0 && !isSpinning && bigWinAmount === 0 && !bonusSession && !freeSpinsOpen) {
+    if (autoPlayCount > 0 && !isSpinning && bigWinAmount === 0 && !bonusSession && !freeSpinsOpen && isAssetsLoaded) {
       const timer = setTimeout(() => {
         setAutoPlayCount((prev) => Math.max(0, prev - 1));
         triggerSpin();
       }, turboFlow ? 450 : 900);
       return () => clearTimeout(timer);
     }
-  }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, freeSpinsOpen, triggerSpin, turboFlow]);
+  }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, freeSpinsOpen, triggerSpin, turboFlow, isAssetsLoaded]);
 
   // Spacebar continuous hold-to-spin and instant tap-to-spin
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (e.code === 'Space' && !showSplash && !paytableOpen && !bonusSession && !freeSpinsOpen) {
+      if (e.code === 'Space' && !showSplash && !paytableOpen && !bonusSession && !freeSpinsOpen && isAssetsLoaded) {
         e.preventDefault();
         if (e.repeat) return; // Prevent browser repeat events
         isHoldingSpinRef.current = true;
@@ -1293,9 +1313,13 @@ export default function App() {
       {/* Welcome Screen */}
       {showSplash && <SplashScreen onEnterCasino={() => setShowSplash(false)} />}
 
-      {/* Main Stage Background */}
+      {/* Progressive Stage Background: Instant Low-Res Placeholder + High-Res WebP */}
       <div
-        className="temple-background neon-temple-bg"
+        className="temple-background-lowres"
+        style={{ backgroundImage: `url('${THEME_ASSETS.mainBackgroundLowRes || '/assets/background/background_lowres.jpg'}')` }}
+      />
+      <div
+        className={`temple-background neon-temple-bg ${isHighResBgLoaded ? 'loaded' : 'loading'}`}
         style={{ backgroundImage: `url('${THEME_ASSETS.mainBackground}')` }}
       />
 
@@ -2241,14 +2265,15 @@ export default function App() {
                 </button>
 
                 <button
-                  className={`psd-spin-button ${isSpinning ? 'spinning' : ''}`}
+                  className={`psd-spin-button ${isSpinning ? 'spinning' : ''} ${!isAssetsLoaded ? 'assets-loading' : ''}`}
                   onClick={() => triggerSpin()}
+                  disabled={!isAssetsLoaded}
                   onPointerDown={() => { isHoldingSpinRef.current = true; }}
                   onPointerUp={() => { isHoldingSpinRef.current = false; }}
                   onPointerLeave={() => { isHoldingSpinRef.current = false; }}
                   onMouseEnter={() => soundEngine.playButtonHover()}
-                  aria-label={isSpinning ? 'Instant Stop' : 'Spin Reels'}
-                  title={isSpinning ? 'Instant Stop (Spacebar)' : 'Spin Reels (Hold Spacebar or Click for Continuous Flow)'}
+                  aria-label={!isAssetsLoaded ? 'Loading Assets' : (isSpinning ? 'Instant Stop' : 'Spin Reels')}
+                  title={!isAssetsLoaded ? 'Pre-caching 3D Relic Assets...' : (isSpinning ? 'Instant Stop (Spacebar)' : 'Spin Reels (Hold Spacebar or Click for Continuous Flow)')}
                 >
                   <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
                   <img
@@ -2646,13 +2671,14 @@ export default function App() {
         </div>
 
         <button
-          className={`mobile-dock-spin-btn ${isSpinning ? 'spinning' : ''}`}
+          className={`mobile-dock-spin-btn ${isSpinning ? 'spinning' : ''} ${!isAssetsLoaded ? 'assets-loading' : ''}`}
           onClick={() => triggerSpin()}
+          disabled={!isAssetsLoaded}
           onPointerDown={() => { isHoldingSpinRef.current = true; }}
           onPointerUp={() => { isHoldingSpinRef.current = false; }}
           onPointerLeave={() => { isHoldingSpinRef.current = false; }}
-          aria-label={isSpinning ? 'Instant Stop' : 'Spin Reels'}
-          title={isSpinning ? 'Instant Stop' : 'Spin Reels (Hold for Continuous Flow)'}
+          aria-label={!isAssetsLoaded ? 'Loading Assets' : (isSpinning ? 'Instant Stop' : 'Spin Reels')}
+          title={!isAssetsLoaded ? 'Pre-caching 3D Relic Assets...' : (isSpinning ? 'Instant Stop' : 'Spin Reels (Hold for Continuous Flow)')}
         >
           <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
           <RotateCw size={26} className={`dock-spin-icon ${isSpinning ? 'dock-spin-animated' : ''}`} />

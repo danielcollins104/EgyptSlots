@@ -11,7 +11,7 @@ export default function DcLogoPlaque({ className = '', textOverride = null }) {
   return (
     <div className={`dc-cabinet-logo-container ${className}`}>
       <NeonKeyedImage
-        src="/assets/neon/dc_enterprises_wide_logo.jpg"
+        src="/assets/neon/dc_enterprises_wide_logo.webp"
         alt={textOverride || 'DC ENTERPRISES'}
         className="dc-cabinet-logo-emblem dc-cabinet-logo-wide-emblem"
         threshold={26}
