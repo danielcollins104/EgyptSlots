@@ -1425,6 +1425,21 @@ export default function App() {
             </button>
           </div>
 
+          {/* Quick Buy Button for Landscape Mobile Screens */}
+          <button
+            type="button"
+            className={`landscape-quick-buy-btn ${currencyMode === 'SC' && sweepsCoins < 0.15 ? 'urgent-refill-pulse' : ''}`}
+            onClick={() => {
+              soundEngine.playButtonClick(700);
+              setPaymentModalTab('store');
+              setPaymentModalOpen(true);
+            }}
+            title="Buy Gold Coins bundles & claim Free Bonus Sweeps Coins"
+          >
+            <ShoppingCart size={13} />
+            <span>+ BUY</span>
+          </button>
+
           <div className="sweepstakes-action-btns">
             <button
               className={`dc-pay-btn buy-gc-btn ${currencyMode === 'SC' && sweepsCoins < 0.15 ? 'urgent-refill-pulse' : ''}`}
@@ -2361,10 +2376,15 @@ export default function App() {
                     className="psd-label-img neon-label-glow"
                     draggable={false}
                   />
-                  <div className="psd-stat-value coins-number">
-                    {currencyMode === 'SC'
-                      ? `$${formatCoinValue(sweepsCoins)}`
-                      : goldCoins.toLocaleString()}
+                  <div className="psd-coins-row">
+                    <div className="psd-stat-value coins-number">
+                      {currencyMode === 'SC'
+                        ? `$${formatCoinValue(sweepsCoins)}`
+                        : goldCoins.toLocaleString()}
+                    </div>
+                    <span className={`psd-curr-badge ${currencyMode.toLowerCase()}-badge`}>
+                      {currencyMode}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -2713,80 +2733,150 @@ export default function App() {
         </aside>
       )}
 
-      {/* Mobile-First Ergonomic Thumb Control Dock (Active on Mobile Phones < 680px) */}
-      <nav className="mobile-floating-control-dock">
-        <div className="mobile-dock-bet-group">
-          <button
-            className="mobile-dock-btn"
-            onClick={() => handleBetChange(-1)}
-            disabled={isSpinning || currentBetIdx <= 0}
-            aria-label="Decrease Bet"
+      {/* Mobile-First Ergonomic Command Center & Balance Dock (Active on Mobile Phones < 680px) */}
+      <nav className="mobile-floating-control-dock" aria-label="Mobile Controls">
+        {/* Tier 1: Prominent Mobile Balance Display & Quick Refill Button */}
+        <div className="mobile-dock-top-hud">
+          <div
+            className={`mobile-dock-bal-card ${currencyMode.toLowerCase()}-mode-bal`}
+            onClick={() => {
+              soundEngine.playButtonClick(currencyMode === 'GC' ? 880 : 660);
+              if (currencyMode === 'GC') {
+                if (!currentUser) {
+                  setAuthModalReason('sc_toggle');
+                  setAuthModalOpen(true);
+                  return;
+                }
+                setCurrencyMode('SC');
+                if (sweepsCoins < 0.15) {
+                  setStatusMessage('OUT OF SWEEPS COINS! REFILL GOLD COINS TO CLAIM FREE BONUS SC.');
+                  setLowBalanceOfferOpen(true);
+                  lastLowBalanceOfferTimeRef.current = Date.now();
+                } else {
+                  setStatusMessage('SWITCHED TO SWEEPS COINS (SC) • 1 SC = $1.00 USD REAL PRIZES!');
+                }
+              } else {
+                setCurrencyMode('GC');
+                setStatusMessage('SWITCHED TO GOLD COINS (GC) • PURE CASINO SOCIAL PLAY!');
+              }
+            }}
+            title="Tap to switch between Gold Coins (GC) and Sweeps Coins (SC)"
+            role="button"
+            tabIndex={0}
           >
-            -
-          </button>
-          <div className="mobile-dock-bet-info">
-            <span className="mobile-dock-label">BET</span>
-            <span className="mobile-dock-val">
-              {currencyMode === 'SC' ? `$${formatCoinValue(currentBetSC)}` : currentBetGC.toLocaleString()}
-            </span>
+            <div className="mobile-bal-icon-tag">
+              {currencyMode === 'SC' ? (
+                <Gem size={15} className="mobile-bal-gem-icon" />
+              ) : (
+                <Coins size={15} className="mobile-bal-coin-icon" />
+              )}
+              <span className="mobile-bal-currency-name">
+                {currencyMode === 'SC' ? 'SWEEPS COINS' : 'GOLD COINS'}
+              </span>
+            </div>
+            <div className="mobile-bal-value-display">
+              <span className="mobile-bal-number">
+                {currencyMode === 'SC' ? `$${sweepsCoins.toFixed(2)}` : goldCoins.toLocaleString()}
+              </span>
+              <span className="mobile-bal-badge">{currencyMode}</span>
+              <span className="mobile-bal-switch-hint">⇄ SWITCH</span>
+            </div>
           </div>
+
           <button
-            className="mobile-dock-btn"
-            onClick={() => handleBetChange(1)}
-            disabled={isSpinning || currentBetIdx >= activeBetTiers.length - 1}
-            aria-label="Increase Bet"
+            type="button"
+            className={`mobile-dock-buy-btn ${currencyMode === 'SC' && sweepsCoins < 0.15 ? 'urgent-refill-pulse' : ''}`}
+            onClick={() => {
+              soundEngine.playButtonClick(700);
+              setPaymentModalTab('store');
+              setPaymentModalOpen(true);
+            }}
+            title="Get Gold Coins & Free Sweeps Coins Bonus"
+            aria-label="Get Coins"
           >
-            +
+            <ShoppingCart size={14} className="mobile-buy-icon" />
+            <div className="mobile-buy-text-stack">
+              <span className="mobile-buy-main">GET COINS</span>
+              <span className="mobile-buy-sub">+FREE SC</span>
+            </div>
           </button>
         </div>
 
-        <button
-          className={`mobile-dock-spin-btn ${isSpinning ? 'spinning' : ''} ${!isAssetsLoaded ? 'assets-loading' : ''}`}
-          onClick={() => triggerSpin()}
-          disabled={!isAssetsLoaded}
-          onPointerDown={() => { isHoldingSpinRef.current = true; }}
-          onPointerUp={() => { isHoldingSpinRef.current = false; }}
-          onPointerLeave={() => { isHoldingSpinRef.current = false; }}
-          aria-label={!isAssetsLoaded ? 'Loading Assets' : (isSpinning ? 'Instant Stop' : 'Spin Reels')}
-          title={!isAssetsLoaded ? 'Pre-caching 3D Relic Assets...' : (isSpinning ? 'Instant Stop' : 'Spin Reels (Hold for Continuous Flow)')}
-        >
-          <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
-          <RotateCw size={26} className={`dock-spin-icon ${isSpinning ? 'dock-spin-animated' : ''}`} />
-          <span className="dock-spin-text">{isSpinning ? 'STOP' : 'SPIN'}</span>
-        </button>
-
-        <div className="mobile-dock-right-group">
-          <div className="mobile-dock-win-info">
-            <span className="mobile-dock-label">WIN</span>
-            <span className="mobile-dock-win-val">
-              {lastWinCoins > 0
-                ? currencyMode === 'SC'
-                  ? `$${formatCoinValue(lastWinCoins)}`
-                  : lastWinCoins.toLocaleString()
-                : '0'}
-            </span>
+        {/* Tier 2: Spin, Bet & Win Controls */}
+        <div className="mobile-dock-bottom-controls">
+          <div className="mobile-dock-bet-group">
+            <button
+              className="mobile-dock-btn"
+              onClick={() => handleBetChange(-1)}
+              disabled={isSpinning || currentBetIdx <= 0}
+              aria-label="Decrease Bet"
+            >
+              -
+            </button>
+            <div className="mobile-dock-bet-info">
+              <span className="mobile-dock-label">BET</span>
+              <span className="mobile-dock-val">
+                {currencyMode === 'SC' ? `$${formatCoinValue(currentBetSC)}` : currentBetGC.toLocaleString()}
+              </span>
+            </div>
+            <button
+              className="mobile-dock-btn"
+              onClick={() => handleBetChange(1)}
+              disabled={isSpinning || currentBetIdx >= activeBetTiers.length - 1}
+              aria-label="Increase Bet"
+            >
+              +
+            </button>
           </div>
 
           <button
-            className={`mobile-dock-turbo-btn ${turboFlow ? 'active' : ''}`}
-            onClick={() => {
-              soundEngine.playButtonClick(turboFlow ? 440 : 880);
-              setTurboFlow(!turboFlow);
-            }}
-            aria-label="Toggle Turbo Flow Mode"
-            title="Toggle Turbo Flow Mode"
+            className={`mobile-dock-spin-btn ${isSpinning ? 'spinning' : ''} ${!isAssetsLoaded ? 'assets-loading' : ''}`}
+            onClick={() => triggerSpin()}
+            disabled={!isAssetsLoaded}
+            onPointerDown={() => { isHoldingSpinRef.current = true; }}
+            onPointerUp={() => { isHoldingSpinRef.current = false; }}
+            onPointerLeave={() => { isHoldingSpinRef.current = false; }}
+            aria-label={!isAssetsLoaded ? 'Loading Assets' : (isSpinning ? 'Instant Stop' : 'Spin Reels')}
+            title={!isAssetsLoaded ? 'Pre-caching 3D Relic Assets...' : (isSpinning ? 'Instant Stop' : 'Spin Reels (Hold for Continuous Flow)')}
           >
-            <Zap size={13} />
-            <span>{turboFlow ? 'TURBO' : 'NORM'}</span>
+            <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
+            <RotateCw size={26} className={`dock-spin-icon ${isSpinning ? 'dock-spin-animated' : ''}`} />
+            <span className="dock-spin-text">{isSpinning ? 'STOP' : 'SPIN'}</span>
           </button>
 
-          <button
-            className={`mobile-dock-auto-btn ${autoPlayCount > 0 ? 'active' : ''}`}
-            onClick={handleAutoPlayToggle}
-            aria-label="Toggle Autoplay"
-          >
-            {autoPlayCount > 0 ? `STOP (${autoPlayCount})` : 'AUTO'}
-          </button>
+          <div className="mobile-dock-right-group">
+            <div className="mobile-dock-win-info">
+              <span className="mobile-dock-label">WIN</span>
+              <span className="mobile-dock-win-val">
+                {lastWinCoins > 0
+                  ? currencyMode === 'SC'
+                    ? `$${formatCoinValue(lastWinCoins)}`
+                    : lastWinCoins.toLocaleString()
+                  : '0'}
+              </span>
+            </div>
+
+            <button
+              className={`mobile-dock-turbo-btn ${turboFlow ? 'active' : ''}`}
+              onClick={() => {
+                soundEngine.playButtonClick(turboFlow ? 440 : 880);
+                setTurboFlow(!turboFlow);
+              }}
+              aria-label="Toggle Turbo Flow Mode"
+              title="Toggle Turbo Flow Mode"
+            >
+              <Zap size={13} />
+              <span>{turboFlow ? 'TURBO' : 'NORM'}</span>
+            </button>
+
+            <button
+              className={`mobile-dock-auto-btn ${autoPlayCount > 0 ? 'active' : ''}`}
+              onClick={handleAutoPlayToggle}
+              aria-label="Toggle Autoplay"
+            >
+              {autoPlayCount > 0 ? `STOP (${autoPlayCount})` : 'AUTO'}
+            </button>
+          </div>
         </div>
       </nav>
     </div>

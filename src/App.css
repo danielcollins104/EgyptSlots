@@ -7015,8 +7015,40 @@ body {
   display: none;
 }
 
+.landscape-quick-buy-btn {
+  display: none;
+}
+
+.psd-coins-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.psd-curr-badge {
+  font-family: var(--font-display);
+  font-size: 0.54rem;
+  font-weight: 900;
+  padding: 0 3px;
+  border-radius: 3px;
+  line-height: 1.2;
+}
+
+.psd-curr-badge.gc-badge {
+  background: rgba(255, 215, 0, 0.25);
+  color: #fde047;
+  border: 1px solid rgba(255, 215, 0, 0.5);
+}
+
+.psd-curr-badge.sc-badge {
+  background: rgba(0, 229, 255, 0.25);
+  color: #00ffff;
+  border: 1px solid rgba(0, 229, 255, 0.5);
+}
+
 @media (max-width: 680px) and (orientation: portrait) {
-  /* Activate Mobile Bottom Dock on Phones */
+  /* Activate Mobile Bottom Command Center on Phones */
   .mobile-floating-control-dock {
     position: fixed;
     bottom: 0;
@@ -7024,14 +7056,14 @@ body {
     right: 0;
     z-index: 80;
     display: flex;
-    align-items: center;
+    flex-direction: column;
     justify-content: space-between;
-    height: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
-    max-height: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
-    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px)) !important;
-    background: linear-gradient(180deg, rgba(16, 8, 30, 0.95) 0%, rgba(6, 2, 14, 0.99) 100%);
+    height: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px)) !important;
+    background: linear-gradient(180deg, rgba(16, 8, 30, 0.98) 0%, rgba(6, 2, 14, 0.99) 100%);
     border-top: 2px solid #ffd700;
-    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.9), 0 0 16px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.95), 0 0 20px rgba(255, 215, 0, 0.35);
     backdrop-filter: blur(14px);
     gap: 4px;
     box-sizing: border-box !important;
@@ -7043,8 +7075,188 @@ body {
     height: 100dvh !important;
     max-height: 100dvh !important;
     overflow: hidden !important;
-    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(98px + env(safe-area-inset-bottom, 0px)) !important;
     box-sizing: border-box !important;
+  }
+
+  /* Tier 1: Prominent Mobile Balance Card & Quick Refill Button */
+  .mobile-dock-top-hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    height: 36px;
+    box-sizing: border-box;
+  }
+
+  .mobile-dock-bal-card {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    background: linear-gradient(135deg, rgba(28, 14, 52, 0.95) 0%, rgba(12, 6, 24, 0.98) 100%);
+    border: 1.5px solid rgba(255, 215, 0, 0.6);
+    border-radius: 8px;
+    padding: 2px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    box-shadow: inset 0 1px 3px rgba(255, 215, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .mobile-dock-bal-card:active {
+    transform: scale(0.98);
+  }
+
+  .mobile-dock-bal-card.sc-mode-bal {
+    border-color: rgba(0, 229, 255, 0.7);
+    box-shadow: inset 0 1px 3px rgba(0, 229, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 229, 255, 0.25);
+  }
+
+  .mobile-bal-icon-tag {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .mobile-bal-coin-icon {
+    color: #ffd700;
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.8));
+  }
+
+  .mobile-bal-gem-icon {
+    color: #00e5ff;
+    filter: drop-shadow(0 0 5px rgba(0, 229, 255, 0.8));
+  }
+
+  .mobile-bal-currency-name {
+    font-family: var(--font-display);
+    font-size: 0.60rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .mobile-bal-value-display {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .mobile-bal-number {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.7), 0 1px 2px #000;
+    white-space: nowrap;
+  }
+
+  .sc-mode-bal .mobile-bal-number {
+    color: #00ffff;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.8), 0 1px 2px #000;
+  }
+
+  .mobile-bal-badge {
+    font-family: var(--font-display);
+    font-size: 0.58rem;
+    font-weight: 900;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: rgba(255, 215, 0, 0.2);
+    color: #ffd700;
+    border: 1px solid rgba(255, 215, 0, 0.4);
+  }
+
+  .sc-mode-bal .mobile-bal-badge {
+    background: rgba(0, 229, 255, 0.2);
+    color: #00e5ff;
+    border: 1px solid rgba(0, 229, 255, 0.4);
+  }
+
+  .mobile-bal-switch-hint {
+    font-family: var(--font-display);
+    font-size: 0.50rem;
+    font-weight: 800;
+    color: #c084fc;
+    letter-spacing: 0.03em;
+    background: rgba(192, 132, 252, 0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(192, 132, 252, 0.3);
+    white-space: nowrap;
+  }
+
+  /* Quick Refill Button on Dock */
+  .mobile-dock-buy-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+    border: 1.5px solid #fef08a;
+    border-radius: 8px;
+    padding: 3px 8px;
+    box-shadow: 0 2px 10px rgba(245, 158, 11, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+    color: #000;
+    height: 34px;
+    flex-shrink: 0;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.15s ease, filter 0.15s ease;
+  }
+
+  .mobile-dock-buy-btn:active {
+    transform: scale(0.96);
+  }
+
+  .mobile-buy-icon {
+    color: #000;
+    filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.4));
+  }
+
+  .mobile-buy-text-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.05;
+  }
+
+  .mobile-buy-main {
+    font-family: var(--font-display);
+    font-size: 0.66rem;
+    font-weight: 900;
+    color: #000;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .mobile-buy-sub {
+    font-size: 0.52rem;
+    font-weight: 900;
+    color: #14532d;
+    background: #86efac;
+    border-radius: 2px;
+    padding: 0 2px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Tier 2: Spin, Bet & Win Controls */
+  .mobile-dock-bottom-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 48px;
+    gap: 4px;
+    box-sizing: border-box;
   }
 
   /* Compact Phone Topbar: Prevent truncation/cutting off of elements */
@@ -7095,7 +7307,7 @@ body {
     display: none !important;
   }
 
-  /* Hide raw store buttons in mobile topbar (accessible in 1 tap in VIP Menu drawer) so nothing gets cut off */
+  /* Hide raw store buttons in mobile portrait topbar (prominently accessible right in the mobile dock & VIP Menu drawer) */
   .dc-sweepstakes-control-center {
     flex-shrink: 0 !important;
     gap: 3px !important;
@@ -7105,16 +7317,24 @@ body {
     display: none !important;
   }
 
+  .landscape-quick-buy-btn {
+    display: none !important;
+  }
+
   .sweepstakes-mode-switch-box {
     padding: 2px !important;
     border-radius: 12px !important;
-    gap: 2px !important;
+    gap: 3px !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    border: 1px solid rgba(255, 215, 0, 0.4) !important;
   }
 
   .mode-switch-btn {
-    padding: 2px 5px !important;
-    font-size: 0.60rem !important;
+    padding: 2px 6px !important;
+    font-size: 0.62rem !important;
     min-width: unset !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
   }
 
   .mode-switch-btn .mode-name {
@@ -7122,7 +7342,37 @@ body {
   }
 
   .mode-switch-btn .mode-bal-val {
-    font-size: 0.64rem !important;
+    font-size: 0.70rem !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+  }
+
+  .mode-switch-btn.active {
+    background: rgba(255, 215, 0, 0.2) !important;
+    border: 1px solid #ffd700 !important;
+  }
+
+  .mode-switch-btn.active .mode-bal-val {
+    color: #ffd700 !important;
+    font-size: 0.76rem !important;
+    font-weight: 900 !important;
+    text-shadow: 0 0 6px rgba(255, 215, 0, 0.7) !important;
+  }
+
+  .mode-switch-btn.sc-mode.active {
+    background: rgba(0, 229, 255, 0.2) !important;
+    border: 1px solid #00e5ff !important;
+  }
+
+  .mode-switch-btn.sc-mode.active .mode-bal-val {
+    color: #00ffff !important;
+    font-size: 0.76rem !important;
+    font-weight: 900 !important;
+    text-shadow: 0 0 6px rgba(0, 229, 255, 0.8) !important;
+  }
+
+  .mode-switch-btn:not(.active) {
+    opacity: 0.65 !important;
   }
 
   .mode-switch-btn .mode-prize-tag {
@@ -7628,23 +7878,79 @@ body {
     display: none !important;
   }
 
+  /* Show compact quick buy button in landscape */
+  .landscape-quick-buy-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #000 !important;
+    font-family: var(--font-display) !important;
+    font-size: 0.68rem !important;
+    font-weight: 900 !important;
+    padding: 2px 8px !important;
+    height: 24px !important;
+    border-radius: 6px !important;
+    border: 1px solid #fef08a !important;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5) !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+  }
+
+  .landscape-quick-buy-btn:active {
+    transform: scale(0.96) !important;
+  }
+
   .sweepstakes-mode-switch-box {
-    padding: 1px 3px !important;
+    padding: 1px 4px !important;
     border-radius: 10px !important;
-    gap: 2px !important;
+    gap: 3px !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+    border: 1px solid rgba(255, 215, 0, 0.4) !important;
   }
 
   .mode-switch-btn {
-    padding: 2px 5px !important;
-    font-size: 0.60rem !important;
+    padding: 2px 7px !important;
+    font-size: 0.62rem !important;
+    border-radius: 8px !important;
+  }
+
+  .mode-switch-btn.active {
+    background: rgba(255, 215, 0, 0.22) !important;
+    border: 1.5px solid #ffd700 !important;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.45) !important;
+  }
+
+  .mode-switch-btn.sc-mode.active {
+    background: rgba(0, 229, 255, 0.22) !important;
+    border: 1.5px solid #00e5ff !important;
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.5) !important;
   }
 
   .mode-switch-btn .mode-name {
-    font-size: 0.48rem !important;
+    font-size: 0.50rem !important;
+    letter-spacing: 0.04em !important;
   }
 
   .mode-switch-btn .mode-bal-val {
-    font-size: 0.64rem !important;
+    font-size: 0.78rem !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .mode-switch-btn.active .mode-bal-val {
+    color: #ffd700 !important;
+    text-shadow: 0 0 6px rgba(255, 215, 0, 0.7) !important;
+  }
+
+  .mode-switch-btn.sc-mode.active .mode-bal-val {
+    color: #00ffff !important;
+    text-shadow: 0 0 6px rgba(0, 229, 255, 0.8) !important;
+  }
+
+  .mode-switch-btn:not(.active) {
+    opacity: 0.7 !important;
   }
 
   .mode-switch-btn .mode-prize-tag {
@@ -7729,6 +8035,11 @@ body {
     height: 16% !important;
     display: grid !important;
     z-index: 25 !important;
+  }
+
+  .psd-stat-value.coins-number {
+    font-size: clamp(0.72rem, 1.8vw, 1.15rem) !important;
+    white-space: nowrap !important;
   }
 
   .psd-spin-button {
