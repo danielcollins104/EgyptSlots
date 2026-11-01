@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import PsdGoldNumber from './PsdGoldNumber';
 import { soundEngine } from '../audio/soundEngine';
-import { Sparkles, Trophy, Gem, Crown } from 'lucide-react';
+import { Sparkles, Trophy, Gem, Crown, Flame, Zap, Award } from 'lucide-react';
 
 export default function WinCelebrationSplash({
   winAmount = 0,
@@ -19,21 +19,41 @@ export default function WinCelebrationSplash({
   const isSC = currencyMode === 'SC';
   const ratio = betAmount > 0 ? winAmount / betAmount : 1;
 
-  let tier = 'standard';
-  let tierTitle = 'WINNER!';
-  let tierSub = 'VERIFIED PAYLINE WIN';
+  let tier = 'micro';
+  let tierTitle = 'MICRO WIN!';
+  let tierSub = 'QUICK HIT!';
   let tierColor = '#f59e0b';
 
-  if (ratio >= 8) {
+  if (ratio >= 35) {
+    tier = 'ultra';
+    tierTitle = 'ULTRA WIN!';
+    tierSub = 'GODLY TREASURE AWAKENED!';
+    tierColor = '#c084fc';
+  } else if (ratio >= 18) {
     tier = 'mega';
     tierTitle = 'MEGA WIN!';
     tierSub = 'COLOSSAL EGYPTIAN TREASURE!';
     tierColor = '#ffd700';
-  } else if (ratio >= 3) {
-    tier = 'nice';
-    tierTitle = 'SUPER WIN!';
-    tierSub = 'SPECTACULAR HIT!';
+  } else if (ratio >= 8) {
+    tier = 'big';
+    tierTitle = 'BIG WIN!';
+    tierSub = 'TEMPLE VAULT UNLOCKED!';
     tierColor = '#fbbf24';
+  } else if (ratio >= 4) {
+    tier = 'super';
+    tierTitle = 'SUPER WIN!';
+    tierSub = 'SACRED GOLD HARVEST!';
+    tierColor = '#00e5ff';
+  } else if (ratio >= 1.5) {
+    tier = 'mini';
+    tierTitle = 'MINI WIN!';
+    tierSub = 'EGYPTIAN BOUNTY!';
+    tierColor = '#10b981';
+  } else {
+    tier = 'micro';
+    tierTitle = 'MICRO WIN!';
+    tierSub = 'QUICK HIT!';
+    tierColor = '#d97706';
   }
 
   useEffect(() => {
@@ -56,9 +76,15 @@ export default function WinCelebrationSplash({
       soundEngine.playWinCelebration(tier);
     } catch (_) {}
 
-    // Roll up counter animation (tuned for flow state: snappier on standard hits, majestic on mega hits)
+    // Roll up counter animation (tuned for flow state: snappier on micro/mini hits, grand on mega/ultra hits)
     const startTime = performance.now();
-    const duration = Math.min(1200, Math.max(360, ratio * 130));
+    const duration =
+      tier === 'ultra' ? 1600 :
+      tier === 'mega' ? 1200 :
+      tier === 'big' ? 900 :
+      tier === 'super' ? 650 :
+      tier === 'mini' ? 450 : 280;
+
     let lastRendered = -1;
     let animId;
 
@@ -85,8 +111,14 @@ export default function WinCelebrationSplash({
 
     animId = requestAnimationFrame(animateRoll);
 
-    // Auto dismiss after duration + hold: brief on minor wins to maintain flow rhythm
-    const autoDismissMs = ratio >= 8 ? 2200 : ratio >= 3 ? 1600 : 1200;
+    // Auto dismiss after duration + hold: brief on micro/mini wins to maintain flow rhythm
+    const autoDismissMs =
+      tier === 'ultra' ? 3200 :
+      tier === 'mega' ? 2600 :
+      tier === 'big' ? 2100 :
+      tier === 'super' ? 1600 :
+      tier === 'mini' ? 1200 : 900;
+
     const timer = setTimeout(() => {
       setVisible(false);
       if (onCloseRef.current) {
@@ -102,6 +134,13 @@ export default function WinCelebrationSplash({
 
   if (!visible || !winAmount || winAmount <= 0) return null;
 
+  const coinCount =
+    tier === 'ultra' ? 16 :
+    tier === 'mega' ? 12 :
+    tier === 'big' ? 10 :
+    tier === 'super' ? 8 :
+    tier === 'mini' ? 6 : 4;
+
   return (
     <div
       className={`win-splash-overlay tier-${tier}`}
@@ -111,26 +150,28 @@ export default function WinCelebrationSplash({
       }}
       title="Click to collect and continue"
     >
-      {/* Radiant rotating sunburst rays */}
-      <img
-        src="/assets/psd/fx_rays.png"
-        alt=""
-        className="win-splash-rays"
-        draggable={false}
-      />
+      {/* Radiant rotating sunburst rays (scaled according to tier) */}
+      {tier !== 'micro' && (
+        <img
+          src="/assets/psd/fx_rays.png"
+          alt=""
+          className={`win-splash-rays rays-${tier}`}
+          draggable={false}
+        />
+      )}
 
       {/* Sparkling fireworks overlay */}
       <img
         src="/assets/psd/fx_sparks.png"
         alt=""
-        className="win-splash-sparks"
+        className={`win-splash-sparks sparks-${tier}`}
         draggable={false}
       />
 
       {/* Floating Gold Coin Sparks */}
       <div className="win-splash-coins-particle-wrap">
-        {Array.from({ length: 8 }, (_, i) => (
-          <span key={i} className={`splash-coin splash-coin-${i + 1}`}>
+        {Array.from({ length: coinCount }, (_, i) => (
+          <span key={i} className={`splash-coin splash-coin-${(i % 8) + 1} tier-coin-${tier}`}>
             🪙
           </span>
         ))}
@@ -146,14 +187,20 @@ export default function WinCelebrationSplash({
           draggable={false}
         />
 
-        {/* Top Floating Crown / Crest */}
+        {/* Top Floating Crown / Crest / Emblem */}
         <div className="win-splash-crest">
-          {tier === 'mega' ? (
+          {tier === 'ultra' ? (
+            <Flame size={28} className="crest-icon purple-glow" />
+          ) : tier === 'mega' ? (
             <Crown size={28} className="crest-icon gold-glow" />
-          ) : tier === 'nice' ? (
-            <Trophy size={26} className="crest-icon cyan-glow" />
+          ) : tier === 'big' ? (
+            <Trophy size={26} className="crest-icon amber-glow" />
+          ) : tier === 'super' ? (
+            <Gem size={24} className="crest-icon cyan-glow" />
+          ) : tier === 'mini' ? (
+            <Award size={22} className="crest-icon emerald-glow" />
           ) : (
-            <Gem size={24} className="crest-icon amber-glow" />
+            <Sparkles size={20} className="crest-icon copper-glow" />
           )}
         </div>
 
@@ -169,7 +216,7 @@ export default function WinCelebrationSplash({
           <div className="win-splash-digits">
             <PsdGoldNumber
               value={isSC ? displayAmount.toFixed(2) : displayAmount}
-              height={58}
+              height={tier === 'micro' ? 44 : tier === 'mini' ? 50 : 58}
               gap={-3}
             />
           </div>

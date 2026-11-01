@@ -7,7 +7,7 @@ import { soundEngine } from '../audio/soundEngine';
  * High-performance 60fps interactive HTML5 canvas particle celebration
  * Renders cascading 3D tumbling gold coins, golden fireworks, and radiant lapis sparkles
  */
-function MegaWinParticleCanvas() {
+function MegaWinParticleCanvas({ tier = 'mega' }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -27,14 +27,21 @@ function MegaWinParticleCanvas() {
     };
     window.addEventListener('resize', handleResize);
 
-    // Initialize 3D tumbling coins
-    const COIN_COUNT = Math.min(48, Math.floor(width / 24));
+    // Initialize 3D tumbling coins tuned for win tier
+    const isUltra = tier === 'ultra' || tier === 'colossal';
+    const isBig = tier === 'big';
+    const COIN_COUNT = isUltra
+      ? Math.min(64, Math.floor(width / 18))
+      : isBig
+      ? Math.min(32, Math.floor(width / 28))
+      : Math.min(48, Math.floor(width / 24));
+
     const coins = Array.from({ length: COIN_COUNT }, () => ({
       x: Math.random() * width,
       y: Math.random() * -height - 20,
-      radius: 12 + Math.random() * 10,
-      vy: 2.8 + Math.random() * 3.6,
-      vx: (Math.random() - 0.5) * 1.6,
+      radius: (isUltra ? 14 : 12) + Math.random() * (isUltra ? 12 : 10),
+      vy: (isUltra ? 3.4 : 2.8) + Math.random() * (isUltra ? 4.2 : 3.6),
+      vx: (Math.random() - 0.5) * (isUltra ? 2.2 : 1.6),
       angle: Math.random() * Math.PI * 2,
       spinSpeed: 0.05 + Math.random() * 0.07,
       wobble: Math.random() * Math.PI,
@@ -42,20 +49,24 @@ function MegaWinParticleCanvas() {
       alpha: 0.85 + Math.random() * 0.15,
     }));
 
-    // Initialize radiant celebration sparklers
-    const SPARK_COUNT = Math.min(60, Math.floor(width / 18));
+    // Initialize radiant celebration sparklers with tier-specific palettes
+    const SPARK_COUNT = isUltra ? Math.min(90, Math.floor(width / 14)) : Math.min(60, Math.floor(width / 18));
+    const palette = isUltra
+      ? ['#c084fc', '#a855f7', '#00e5ff', '#ffd700', '#ff6b00', '#ffffff', '#38bdf8']
+      : isBig
+      ? ['#fde047', '#ffd700', '#f59e0b', '#fbbf24', '#ffffff']
+      : ['#fde047', '#ffd700', '#f59e0b', '#38bdf8', '#fb7185', '#ffffff'];
+
     const sparks = Array.from({ length: SPARK_COUNT }, () => {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 1.5 + Math.random() * 5.5;
+      const speed = 1.5 + Math.random() * (isUltra ? 7.5 : 5.5);
       return {
         x: width / 2,
         y: height * 0.42,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed - 1.2,
-        size: 2 + Math.random() * 3.5,
-        color: ['#fde047', '#ffd700', '#f59e0b', '#38bdf8', '#fb7185'][
-          Math.floor(Math.random() * 5)
-        ],
+        size: 2 + Math.random() * (isUltra ? 4.5 : 3.5),
+        color: palette[Math.floor(Math.random() * palette.length)],
         alpha: 1,
         life: 0.4 + Math.random() * 0.6,
         decay: 0.008 + Math.random() * 0.012,
@@ -64,8 +75,8 @@ function MegaWinParticleCanvas() {
 
     // Expanding shockwaves
     const shockwaves = [
-      { r: 20, maxR: Math.min(width, height) * 0.55, alpha: 0.8, speed: 4 },
-      { r: 10, maxR: Math.min(width, height) * 0.45, alpha: 0.7, speed: 3.2 },
+      { r: 20, maxR: Math.min(width, height) * 0.55, alpha: 0.8, speed: isUltra ? 6 : 4 },
+      { r: 10, maxR: Math.min(width, height) * 0.45, alpha: 0.7, speed: isUltra ? 4.8 : 3.2 },
     ];
 
     let lastTime = performance.now();
@@ -200,18 +211,39 @@ export default function BigWinPopup({
   winCoins,
   coinValue = 1.0,
   currencyMode = 'GC',
+  betAmount = 1,
   onClose,
 }) {
   const [displayCoins, setDisplayCoins] = useState(0);
 
+  const ratio = betAmount > 0 ? winCoins / betAmount : 15;
+  let tier = 'big';
+  let ribbonTitle = '★ BIG WIN UNLOCKED ★';
+  let bannerSub = 'SACRED TEMPLE VAULT OPENED!';
+
+  if (ratio >= 35) {
+    tier = 'ultra';
+    ribbonTitle = '★ COLOSSAL ULTRA WIN ★';
+    bannerSub = 'THE GODS BESTOW INFINITE GLORY!';
+  } else if (ratio >= 18) {
+    tier = 'mega';
+    ribbonTitle = '★ MEGA WIN JACKPOT ★';
+    bannerSub = 'COLOSSAL EGYPTIAN TREASURE!';
+  } else {
+    tier = 'big';
+    ribbonTitle = '★ BIG WIN UNLOCKED ★';
+    bannerSub = 'SACRED TEMPLE VAULT OPENED!';
+  }
+
   useEffect(() => {
     if (!winCoins || winCoins <= 0) return;
     try {
+      soundEngine.playWinCelebration(tier);
       soundEngine.playWin(true);
     } catch (_) {}
 
     let frameId;
-    const duration = 2400;
+    const duration = tier === 'ultra' ? 3000 : tier === 'mega' ? 2400 : 1800;
     const start = performance.now();
     let lastRenderedVal = -1;
     let lastTickTime = 0;
@@ -245,7 +277,7 @@ export default function BigWinPopup({
 
     frameId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frameId);
-  }, [winCoins, currencyMode]);
+  }, [winCoins, currencyMode, tier]);
 
   if (!winCoins || winCoins <= 0) return null;
 
@@ -255,46 +287,48 @@ export default function BigWinPopup({
     CASINO_BRAND.megaWinNeonImage || '/assets/neon/mega_win_royal_gold.png';
 
   return (
-    <div className="bigwin-overlay" onClick={onClose}>
+    <div className={`bigwin-overlay bigwin-tier-${tier}`} onClick={onClose}>
       {/* 60fps dynamic coin shower and golden fireworks canvas */}
-      <MegaWinParticleCanvas />
+      <MegaWinParticleCanvas tier={tier} />
 
       {/* Atmospheric ambient lighting textures */}
       <img
         src="/assets/psd/fx_rays.png"
         alt=""
-        className="bigwin-fx-rays"
+        className={`bigwin-fx-rays rays-${tier}`}
         draggable={false}
       />
       <img
         src="/assets/psd/fx_pattern.png"
         alt=""
-        className="bigwin-fx-pattern"
+        className={`bigwin-fx-pattern pattern-${tier}`}
         draggable={false}
       />
       <img
         src="/assets/psd/fx_sparks.png"
         alt=""
-        className="bigwin-fx-sparks"
+        className={`bigwin-fx-sparks sparks-${tier}`}
         draggable={false}
       />
 
-      <div className="bigwin-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="bigwin-casino-ribbon">
+      <div className={`bigwin-modal tier-${tier}`} onClick={(e) => e.stopPropagation()}>
+        <div className={`bigwin-casino-ribbon ribbon-${tier}`}>
           <span className="ribbon-star">★</span>
-          <span>{THEME_COPY.bigWinRibbon}</span>
+          <span>{ribbonTitle}</span>
           <span className="ribbon-star">★</span>
         </div>
 
         {/* Egyptian 3D Royal Gold & Lapis Winged Crest */}
-        <div className="bigwin-neon-banner-wrap">
+        <div className={`bigwin-neon-banner-wrap banner-${tier}`}>
           <img
             src={crestImage}
-            alt="MEGA WIN"
-            className="bigwin-neon-mega-img"
+            alt={tier === 'ultra' ? 'ULTRA WIN' : tier === 'mega' ? 'MEGA WIN' : 'BIG WIN'}
+            className={`bigwin-neon-mega-img crest-${tier}`}
             draggable={false}
           />
         </div>
+
+        <div className="bigwin-tier-subtitle">{bannerSub}</div>
 
         <div className="bigwin-numbers-stage">
           <div className="neon-psd-digits">
@@ -307,7 +341,7 @@ export default function BigWinPopup({
         </div>
 
         <button
-          className="bigwin-collect-btn"
+          className={`bigwin-collect-btn collect-${tier}`}
           onClick={() => {
             soundEngine.playButtonClick(640);
             onClose();

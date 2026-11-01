@@ -2963,6 +2963,70 @@ body {
   z-index: 4;
 }
 
+.bigwin-casino-ribbon.ribbon-ultra {
+  background: linear-gradient(90deg, #3b0764 0%, #7e22ce 28%, #a855f7 50%, #7e22ce 72%, #3b0764 100%);
+  border-color: #e879f9;
+  color: #ffffff;
+  text-shadow: 0 0 14px #e879f9, 0 2px 4px #000;
+  box-shadow: 0 0 35px rgba(232, 121, 249, 0.9), inset 0 0 16px rgba(255, 255, 255, 0.5);
+}
+
+.bigwin-casino-ribbon.ribbon-mega {
+  background: linear-gradient(90deg, #1c0309 0%, #7f1d1d 28%, #b91c1c 50%, #7f1d1d 72%, #1c0309 100%);
+  border-color: #ffd700;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.85), inset 0 0 14px rgba(254, 240, 138, 0.4);
+}
+
+.bigwin-casino-ribbon.ribbon-big {
+  background: linear-gradient(90deg, #1a0f02 0%, #92400e 28%, #d97706 50%, #92400e 72%, #1a0f02 100%);
+  border-color: #fbbf24;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.75), inset 0 0 10px rgba(254, 240, 138, 0.3);
+}
+
+.bigwin-tier-subtitle {
+  font-family: var(--font-royal);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #fde047;
+  text-shadow: 0 0 10px rgba(253, 224, 71, 0.7);
+  margin-top: 4px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  z-index: 4;
+}
+
+.bigwin-neon-mega-img.crest-ultra {
+  filter: drop-shadow(0 0 24px #a855f7) drop-shadow(0 0 36px #00e5ff) brightness(1.2);
+  animation: ultraCrestPulse 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes ultraCrestPulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 20px #a855f7) drop-shadow(0 0 30px #00e5ff) brightness(1.1); }
+  100% { transform: scale(1.04); filter: drop-shadow(0 0 32px #e879f9) drop-shadow(0 0 44px #38bdf8) brightness(1.3); }
+}
+
+.bigwin-neon-mega-img.crest-mega {
+  filter: drop-shadow(0 0 20px #ffd700) drop-shadow(0 0 30px #f59e0b);
+}
+
+.bigwin-neon-mega-img.crest-big {
+  filter: drop-shadow(0 0 16px #fbbf24);
+}
+
+.bigwin-collect-btn.collect-ultra {
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f59e0b 100%);
+  box-shadow: 0 8px 28px rgba(168, 85, 247, 0.7);
+}
+
+.bigwin-collect-btn.collect-mega {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #b91c1c 100%);
+}
+
+.bigwin-collect-btn.collect-big {
+  background: linear-gradient(135deg, #eab308 0%, #d97706 50%, #b45309 100%);
+}
+
 .ribbon-star {
   color: #fde047;
   font-size: 1rem;
@@ -5423,6 +5487,22 @@ body {
   }
 }
 
+.tier-ultra .win-splash-plaque {
+  border-color: #c084fc;
+  background: radial-gradient(circle at center, rgba(65, 12, 78, 0.98) 0%, rgba(18, 4, 24, 0.99) 100%);
+  box-shadow:
+    0 0 60px rgba(192, 132, 252, 0.9),
+    0 0 30px rgba(0, 229, 255, 0.7),
+    inset 0 0 35px rgba(251, 191, 36, 0.5),
+    0 24px 60px rgba(0, 0, 0, 0.98);
+  animation: winSplashPop 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, ultraPlaquePulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes ultraPlaquePulse {
+  0% { transform: scale(1); filter: brightness(1); }
+  100% { transform: scale(1.025); filter: brightness(1.2); }
+}
+
 .tier-mega .win-splash-plaque {
   border-color: #ffd700;
   background: radial-gradient(circle at center, rgba(88, 14, 28, 0.97) 0%, rgba(26, 4, 8, 0.98) 100%);
@@ -5432,12 +5512,93 @@ body {
     0 20px 50px rgba(0, 0, 0, 0.95);
 }
 
+.tier-big .win-splash-plaque {
+  border-color: #fbbf24;
+  background: radial-gradient(circle at center, rgba(46, 32, 8, 0.97) 0%, rgba(18, 12, 2, 0.98) 100%);
+  box-shadow:
+    0 0 45px rgba(251, 191, 36, 0.8),
+    inset 0 0 25px rgba(253, 224, 71, 0.4),
+    0 18px 45px rgba(0, 0, 0, 0.95);
+}
+
+.tier-super .win-splash-plaque,
 .tier-nice .win-splash-plaque {
   border-color: #00e5ff;
+  background: radial-gradient(circle at center, rgba(8, 30, 58, 0.97) 0%, rgba(4, 12, 26, 0.98) 100%);
   box-shadow:
     0 0 40px rgba(0, 229, 255, 0.65),
     inset 0 0 25px rgba(0, 229, 255, 0.3),
     0 18px 45px rgba(0, 0, 0, 0.9);
+}
+
+.tier-mini .win-splash-plaque {
+  border-color: #10b981;
+  background: radial-gradient(circle at center, rgba(6, 36, 24, 0.96) 0%, rgba(3, 16, 10, 0.98) 100%);
+  box-shadow:
+    0 0 32px rgba(16, 185, 129, 0.65),
+    inset 0 0 20px rgba(52, 211, 153, 0.35),
+    0 14px 35px rgba(0, 0, 0, 0.9);
+}
+
+.tier-micro .win-splash-plaque {
+  width: min(78%, 320px);
+  padding: 14px 18px 12px;
+  border-radius: 16px;
+  border-color: #d97706;
+  background: radial-gradient(circle at center, rgba(38, 24, 12, 0.96) 0%, rgba(16, 10, 6, 0.98) 100%);
+  box-shadow:
+    0 0 22px rgba(245, 158, 11, 0.45),
+    inset 0 0 14px rgba(251, 191, 36, 0.2),
+    0 10px 25px rgba(0, 0, 0, 0.85);
+  animation: winSplashMicroPop 0.26s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes winSplashMicroPop {
+  0% { opacity: 0; transform: scale(0.6) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.tier-coin-micro { font-size: 1.1rem; filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.6)); }
+.tier-coin-mini { font-size: 1.35rem; filter: drop-shadow(0 3px 8px rgba(16, 185, 129, 0.7)); }
+.tier-coin-super { font-size: 1.5rem; filter: drop-shadow(0 4px 10px rgba(0, 229, 255, 0.8)); }
+.tier-coin-big { font-size: 1.65rem; filter: drop-shadow(0 4px 12px rgba(251, 191, 36, 0.9)); }
+.tier-coin-mega { font-size: 1.85rem; filter: drop-shadow(0 5px 14px rgba(255, 215, 0, 1)); }
+.tier-coin-ultra { font-size: 2.1rem; filter: drop-shadow(0 6px 18px rgba(192, 132, 252, 1)); }
+
+.win-splash-rays.rays-mini { opacity: 0.6; transform: scale(0.9); }
+.win-splash-rays.rays-super { opacity: 0.8; transform: scale(1.0); }
+.win-splash-rays.rays-big { opacity: 0.9; transform: scale(1.1); filter: brightness(1.15); }
+.win-splash-rays.rays-mega { opacity: 1.0; transform: scale(1.2); filter: brightness(1.3) drop-shadow(0 0 20px #ffd700); }
+.win-splash-rays.rays-ultra { opacity: 1.0; transform: scale(1.3); filter: brightness(1.4) drop-shadow(0 0 30px #c084fc); }
+
+.crest-icon.purple-glow {
+  color: #c084fc;
+  filter: drop-shadow(0 0 10px #c084fc);
+}
+
+.crest-icon.gold-glow {
+  color: #ffd700;
+  filter: drop-shadow(0 0 8px #ffd700);
+}
+
+.crest-icon.cyan-glow {
+  color: #00e5ff;
+  filter: drop-shadow(0 0 8px #00e5ff);
+}
+
+.crest-icon.amber-glow {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 8px #fbbf24);
+}
+
+.crest-icon.emerald-glow {
+  color: #10b981;
+  filter: drop-shadow(0 0 8px #10b981);
+}
+
+.crest-icon.copper-glow {
+  color: #f59e0b;
+  filter: drop-shadow(0 0 8px #f59e0b);
 }
 
 .win-splash-frame-img {

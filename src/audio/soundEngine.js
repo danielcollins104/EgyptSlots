@@ -557,55 +557,81 @@ class SoundEngine {
     });
   }
 
+  playBigWinCelebration(tier = 'big') {
+    this.playWinCelebration(tier);
+  }
+
   playWinCelebration(tier = 'standard') {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
 
-    // Trigger haptics synchronized with win tiers
-    if (tier === 'mega') {
+    // Trigger haptics synchronized with win tiers (micro, mini, super, big, mega, ultra)
+    if (tier === 'ultra' || tier === 'colossal') {
+      this.triggerHaptics([100, 60, 120, 60, 180, 80, 240, 80, 320, 100, 400]);
+    } else if (tier === 'mega') {
       this.triggerHaptics([80, 50, 100, 50, 150, 60, 220, 60, 300]);
     } else if (tier === 'big') {
       this.triggerHaptics([60, 40, 80, 40, 120, 50, 160]);
-    } else if (tier === 'nice') {
+    } else if (tier === 'nice' || tier === 'super') {
       this.triggerHaptics([50, 40, 80, 40, 100]);
+    } else if (tier === 'mini') {
+      this.triggerHaptics([30, 40, 50, 40, 70]);
+    } else if (tier === 'micro') {
+      this.triggerHaptics([25, 35, 45]);
     } else {
       this.triggerHaptics([40, 50, 60]);
     }
 
     const now = this.ctx.currentTime;
-    const frequencies =
-      tier === 'mega'
-        ? [369.99, 440.0, 554.37, 587.33, 739.99, 880.0, 1108.73, 1174.66, 1479.98]
-        : tier === 'big'
-        ? [369.99, 440.0, 554.37, 587.33, 739.99, 880.0, 1174.66]
-        : tier === 'nice'
-        ? [392.0, 493.88, 587.33, 739.99, 880.0]
-        : [440.0, 554.37, 659.25, 880.0];
+    let frequencies;
+    if (tier === 'ultra' || tier === 'colossal') {
+      frequencies = [261.63, 329.63, 392.0, 523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51, 1567.98];
+    } else if (tier === 'mega') {
+      frequencies = [369.99, 440.0, 554.37, 587.33, 739.99, 880.0, 1108.73, 1174.66, 1479.98];
+    } else if (tier === 'big') {
+      frequencies = [369.99, 440.0, 554.37, 587.33, 739.99, 880.0, 1174.66];
+    } else if (tier === 'nice' || tier === 'super') {
+      frequencies = [392.0, 493.88, 587.33, 739.99, 880.0];
+    } else if (tier === 'mini') {
+      frequencies = [523.25, 659.25, 783.99, 1046.5];
+    } else if (tier === 'micro') {
+      frequencies = [880.0, 1174.66];
+    } else {
+      frequencies = [440.0, 554.37, 659.25, 880.0];
+    }
 
+    const stepInterval = tier === 'micro' ? 0.045 : tier === 'mini' ? 0.055 : 0.065;
     frequencies.forEach((freq, i) => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = tier === 'mega' || tier === 'big' ? 'triangle' : 'sine';
-      const t = now + i * 0.065;
+      osc.type = tier === 'ultra' || tier === 'colossal' || tier === 'mega' || tier === 'big' ? 'triangle' : 'sine';
+      const t = now + i * stepInterval;
       osc.frequency.setValueAtTime(freq, t);
 
-      gain.gain.setValueAtTime(0.22, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+      gain.gain.setValueAtTime(tier === 'micro' ? 0.16 : 0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + (tier === 'micro' ? 0.22 : 0.38));
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(t);
-      osc.stop(t + 0.4);
+      osc.stop(t + (tier === 'micro' ? 0.24 : 0.4));
     });
 
     // Rapid coin clink sparkles
-    const clinkCount = tier === 'mega' ? 8 : tier === 'big' ? 5 : 3;
+    let clinkCount = 3;
+    if (tier === 'ultra' || tier === 'colossal') clinkCount = 14;
+    else if (tier === 'mega') clinkCount = 8;
+    else if (tier === 'big') clinkCount = 5;
+    else if (tier === 'nice' || tier === 'super') clinkCount = 4;
+    else if (tier === 'mini') clinkCount = 3;
+    else if (tier === 'micro') clinkCount = 1;
+
     for (let c = 0; c < clinkCount; c++) {
       const cOsc = this.ctx.createOscillator();
       const cGain = this.ctx.createGain();
       cOsc.type = 'sine';
-      const ct = now + 0.1 + c * 0.065;
+      const ct = now + 0.08 + c * 0.06;
       cOsc.frequency.setValueAtTime(1800 + Math.random() * 800, ct);
       cGain.gain.setValueAtTime(0.08, ct);
       cGain.gain.exponentialRampToValueAtTime(0.001, ct + 0.07);

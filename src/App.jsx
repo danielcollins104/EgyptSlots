@@ -673,7 +673,7 @@ export default function App() {
       setWinningLines(wins);
       setWinningCells(winCoordSet);
 
-      const isBig = finalWin >= spinBet * 8 || forcedMode === 'bigwin';
+      const isBig = finalWin >= spinBet * 8 || forcedMode === 'bigwin' || forcedMode === 'megawin' || forcedMode === 'ultrawin';
       setGuardianAction(true);
       setTimeout(() => setGuardianAction(false), 1800);
 
@@ -1202,6 +1202,32 @@ export default function App() {
           [expSym, expSym, expSym],
           [r(7), topHigh, r(5)],
         ];
+      } else if (forcedMode === 'microwin') {
+        const lowSym = regs[regs.length - 1] || topHigh;
+        nextGrid = [
+          [r(1), lowSym, r(3)],
+          [r(2), lowSym, r(4)],
+          [r(3), lowSym, r(5)],
+          [r(4), r(6), r(1)],
+          [r(5), r(7), r(2)],
+        ];
+      } else if (forcedMode === 'miniwin') {
+        const midSym = regs[2] || topHigh;
+        nextGrid = [
+          [r(1), midSym, r(4)],
+          [r(2), midSym, r(5)],
+          [r(3), midSym, r(6)],
+          [r(4), r(7), r(1)],
+          [r(5), r(1), r(2)],
+        ];
+      } else if (forcedMode === 'superwin') {
+        nextGrid = [
+          [r(2), topHigh, r(4)],
+          [r(3), topHigh, r(5)],
+          [r(4), topHigh, r(6)],
+          [r(5), topHigh, r(7)],
+          [r(6), r(1), r(2)],
+        ];
       } else if (forcedMode === 'bigwin') {
         nextGrid = [
           [topHigh, topHigh, r(4)],
@@ -1209,6 +1235,22 @@ export default function App() {
           [wildSym, topHigh, topHigh],
           [topHigh, wildSym, r(6)],
           [topHigh, topHigh, r(7)],
+        ];
+      } else if (forcedMode === 'megawin') {
+        nextGrid = [
+          [topHigh, topHigh, topHigh],
+          [topHigh, wildSym, topHigh],
+          [wildSym, topHigh, wildSym],
+          [topHigh, wildSym, topHigh],
+          [topHigh, topHigh, r(4)],
+        ];
+      } else if (forcedMode === 'ultrawin') {
+        nextGrid = [
+          [wildSym, topHigh, wildSym],
+          [topHigh, wildSym, topHigh],
+          [wildSym, topHigh, wildSym],
+          [topHigh, wildSym, topHigh],
+          [wildSym, topHigh, wildSym],
         ];
       } else if (forcedMode === 'bonus') {
         nextGrid = [
@@ -2046,6 +2088,51 @@ export default function App() {
             </button>
 
             <button
+              className="mobile-drawer-card microwin-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('microwin');
+              }}
+              disabled={isSpinning}
+            >
+              <Sparkles size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Micro Win Hit</strong>
+                <small>Quick Flow Payout</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card miniwin-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('miniwin');
+              }}
+              disabled={isSpinning}
+            >
+              <Trophy size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Mini Win Hit</strong>
+                <small>Emerald Bounty</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card superwin-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('superwin');
+              }}
+              disabled={isSpinning}
+            >
+              <Gem size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Super Win Hit</strong>
+                <small>4-of-a-Kind Lapis</small>
+              </div>
+            </button>
+
+            <button
               className="mobile-drawer-card bigwin-card"
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -2053,10 +2140,40 @@ export default function App() {
               }}
               disabled={isSpinning}
             >
+              <Crown size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Big Win Hit</strong>
+                <small>Temple Vault Payout</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card megawin-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('megawin');
+              }}
+              disabled={isSpinning}
+            >
               <Trophy size={20} className="card-icon" />
               <div className="card-txt">
                 <strong>Mega Win Hit</strong>
                 <small>Full Line Screen Jackpot</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card ultrawin-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('ultrawin');
+              }}
+              disabled={isSpinning}
+            >
+              <Flame size={20} className="card-icon" />
+              <div className="card-txt">
+                <strong>Ultra Colossal Win</strong>
+                <small>Full Screen Celestial Triumph</small>
               </div>
             </button>
 
@@ -2940,11 +3057,12 @@ export default function App() {
         }}
       />
 
-      {/* Big Win / Mega Win Celebration Pop-Up */}
+      {/* Big Win / Mega Win / Ultra Win Celebration Pop-Up */}
       <BigWinPopup
         winCoins={bigWinAmount}
         coinValue={coinValue}
         currencyMode={currencyMode}
+        betAmount={currentBet}
         onClose={() => setBigWinAmount(0)}
       />
 
