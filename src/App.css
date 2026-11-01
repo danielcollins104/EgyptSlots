@@ -8723,6 +8723,117 @@ body {
 }
 
 /* ============================================================================
+   ADAPTIVE MULTI-FORM FACTOR RESPONSIVENESS
+   Comprehensive support for Phones, Foldables, Tablets, Laptops, Desktops, and Auto
+   ============================================================================ */
+
+/* 1. Foldable Unfolded (Inner Screen: Galaxy Z Fold, Pixel Fold, OnePlus Open) */
+@media (min-width: 600px) and (max-width: 980px) and (min-aspect-ratio: 4/5) and (max-aspect-ratio: 5/4) {
+  .casino-app-root {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+  .slot-stage-container {
+    padding: 6px 12px !important;
+    gap: 8px !important;
+  }
+  .anubis-guardian-column {
+    display: flex !important;
+    width: clamp(80px, 10vw, 110px) !important;
+  }
+  .slot-cabinet-wrapper {
+    flex: 1 1 0 !important;
+    max-width: min(94vw, calc((100dvh - 120px) * (2000 / 1350))) !important;
+  }
+  .reel-cabinet-box {
+    aspect-ratio: 2000 / 1350 !important;
+    width: 100% !important;
+  }
+  .mobile-floating-control-dock {
+    display: none !important;
+  }
+}
+
+/* 2. Foldable Folded (Narrow Outer Cover Screen: 21:9 to 24:9) */
+@media (max-width: 440px) and (max-aspect-ratio: 10/21) {
+  .slot-cabinet-wrapper {
+    max-width: 98vw !important;
+    gap: 2px !important;
+  }
+  .mobile-cabinet-topper-jackpots {
+    height: 24px !important;
+    min-height: 22px !important;
+    max-height: 26px !important;
+  }
+  .jackpot-marquee-items {
+    padding: 1px 3px !important;
+  }
+  .jackpot-tier-name {
+    font-size: 0.36rem !important;
+  }
+  .jackpot-tier-amount {
+    font-size: 0.48rem !important;
+  }
+  .mobile-floating-control-dock {
+    height: 56px !important;
+    padding: 4px 8px !important;
+  }
+}
+
+/* 3. Automotive / Android Auto Center Consoles (Ultrawide Landscape: 16:9, 8:3, 24:9) */
+@media (orientation: landscape) and (min-aspect-ratio: 18/9), (orientation: landscape) and (max-height: 520px) and (min-width: 860px) {
+  .casino-app-root {
+    padding: env(safe-area-inset-top, 4px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 4px) env(safe-area-inset-left, 16px) !important;
+  }
+  .dc-casino-topbar {
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 2px 14px !important;
+  }
+  .slot-stage-container {
+    padding: 2px 8px !important;
+    gap: 8px !important;
+  }
+  .anubis-guardian-column {
+    display: flex !important;
+    width: clamp(75px, 9vw, 110px) !important;
+  }
+  .slot-cabinet-wrapper {
+    max-width: min(72vw, calc((100dvh - 96px) * (2000 / 1350))) !important;
+  }
+  .reel-cabinet-box {
+    aspect-ratio: 2000 / 1350 !important;
+    height: auto !important;
+  }
+  /* Automotive Touch Ergonomics: minimum 48dp touch targets */
+  .psd-spin-btn-graphic,
+  .mobile-dock-spin-btn {
+    min-height: 52px !important;
+    min-width: 52px !important;
+  }
+  .dc-action-btn {
+    min-height: 38px !important;
+    padding: 4px 12px !important;
+  }
+}
+
+/* 4. Ultrawide Monitors & Multi-Pane Desktops (21:9 & 32:9) */
+@media (min-width: 1440px) and (min-aspect-ratio: 21/9) {
+  .slot-stage-container {
+    max-width: 2560px !important;
+    margin: 0 auto !important;
+    justify-content: center !important;
+  }
+  .slot-cabinet-wrapper {
+    max-width: min(1440px, calc((100vh - 160px) * (2000 / 1350))) !important;
+  }
+  .anubis-guardian-column {
+    width: clamp(240px, 14vw, 340px) !important;
+  }
+}
+
+/* ============================================================================
    10. PSYCHOLOGICAL FLOW STATE & CADENCE STYLING
    ============================================================================ */
 

@@ -373,14 +373,6 @@ export default function CabinetPillars({ isSpinning = false, hasWin = false, sid
       ctx.restore();
     };
 
-    let animFrame = null;
-    let startTime = performance.now();
-
-    const renderLoop = (now) => {
-      // Periodic subtle light-sweep check
-      animFrame = requestAnimationFrame(renderLoop);
-    };
-
     drawPillar(leftCanvasRef.current, false);
     drawPillar(rightCanvasRef.current, true);
 
@@ -392,7 +384,6 @@ export default function CabinetPillars({ isSpinning = false, hasWin = false, sid
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (animFrame) cancelAnimationFrame(animFrame);
     };
   }, [isSpinning, hasWin]);
 
