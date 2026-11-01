@@ -7770,26 +7770,43 @@ body {
     z-index: 12 !important;
   }
 
-  /* 2026 Progressive Jackpot Marquee: Positioned JUST ABOVE the reels in vertical phone mode */
-  .jackpot-marquee-bar {
-    position: absolute !important;
-    top: 13.4% !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 95% !important;
-    height: 5.8% !important;
-    min-height: 24px !important;
-    max-height: 30px !important;
-    z-index: 15 !important;
+  /* 2026 Progressive Jackpot Marquee Topper: Positioned JUST ABOVE the cabinet in vertical phone mode */
+  .desktop-cabinet-marquee {
+    display: none !important;
   }
 
-  /* EXPAND REEL WINDOW TO 96% WIDTH: Symbols are ~45% larger & situated below the jackpot marquee */
+  .mobile-cabinet-topper-jackpots {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: min(98vw, calc((100dvh - 165px) * (5 / 3.42))) !important;
+    height: 28px !important;
+    min-height: 26px !important;
+    max-height: 32px !important;
+    margin: 0 auto 3px auto !important;
+    z-index: 20 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .mobile-cabinet-topper-jackpots .jackpot-marquee-bar {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 26px !important;
+    max-height: 32px !important;
+  }
+
+  /* EXPAND REEL WINDOW TO 96% WIDTH: Symbols are ~45% larger with 100% visible top tiles */
   .reel-window-viewport {
     position: absolute !important;
     left: 2% !important;
     width: 96% !important;
-    top: 20% !important;
-    height: 78% !important;
+    top: 14% !important;
+    height: 84% !important;
     z-index: 8 !important;
     border-radius: 12px !important;
     box-shadow: inset 0 0 22px rgba(0, 229, 255, 0.35) !important;
@@ -10457,6 +10474,14 @@ body {
 }
 
 /* 3. 2026 Progressive Jackpot Display Marquee */
+.mobile-cabinet-topper-jackpots {
+  display: none;
+}
+
+.desktop-cabinet-marquee {
+  display: contents;
+}
+
 .jackpot-marquee-bar {
   position: absolute;
   top: 17.5%;
@@ -10811,9 +10836,32 @@ body {
 }
 
 @media (max-width: 840px) and (orientation: portrait) {
-  /* Position JUST ABOVE the reels with zero overlap onto tiles */
-  .jackpot-marquee-bar {
-    top: 13.4% !important;
+  /* Position JUST ABOVE the cabinet in vertical portrait mode with zero overlap onto tiles */
+  .desktop-cabinet-marquee {
+    display: none !important;
+  }
+  .mobile-cabinet-topper-jackpots {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: min(98vw, calc((100dvh - 165px) * (5 / 3.42))) !important;
+    height: 28px !important;
+    min-height: 26px !important;
+    max-height: 32px !important;
+    margin: 0 auto 3px auto !important;
+    z-index: 20 !important;
+    flex-shrink: 0 !important;
+  }
+  .mobile-cabinet-topper-jackpots .jackpot-marquee-bar {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 26px !important;
+    max-height: 32px !important;
   }
 }
 

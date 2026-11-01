@@ -2334,6 +2334,16 @@ export default function App() {
             intensity={flowStreak >= 3 ? 1.4 : 1.0}
           />
 
+          {/* Vertical Mobile Topper: Placed JUST ABOVE the cabinet so the top tiles are 100% visible */}
+          <div className="mobile-cabinet-topper-jackpots">
+            <JackpotMarqueeBar
+              currencyMode={currencyMode}
+              currentBet={currentBet}
+              isSpinning={isSpinning}
+              hasWin={winningLines.length > 0}
+            />
+          </div>
+
           <div className={`reel-cabinet-box ${cabinetImpact ? `cabinet-impact-${cabinetImpact}` : ''} ${flowStreak >= 3 ? 'flow-momentum-active' : ''}`}>
             <img
               src={THEME_ASSETS.reelGlowImage}
@@ -2360,13 +2370,15 @@ export default function App() {
               <DcLogoPlaque className="cabinet-dc-logo-img" />
             </div>
 
-            {/* 2026 Progressive Jackpot Display Marquee (Grand, Major, Minor, Mini) */}
-            <JackpotMarqueeBar
-              currencyMode={currencyMode}
-              currentBet={currentBet}
-              isSpinning={isSpinning}
-              hasWin={winningLines.length > 0}
-            />
+            {/* Desktop / Landscape In-Cabinet Progressive Marquee */}
+            <div className="desktop-cabinet-marquee">
+              <JackpotMarqueeBar
+                currencyMode={currencyMode}
+                currentBet={currentBet}
+                isSpinning={isSpinning}
+                hasWin={winningLines.length > 0}
+              />
+            </div>
 
             {/* Reel Cabinet Frame */}
             <img
