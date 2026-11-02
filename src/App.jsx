@@ -280,49 +280,105 @@ export default function App() {
   // 2 = Eyes of the Gods & Divine Corona Glow
   // 3 = Celestial Energy Orbs & Flames Manifest (Plasma & Solar Sunfire)
   // 4 = Incandescent Apex Overcharge (Maximum Scale, Blinding Glow, Crackling Lightning)
-  // 5 = Grand Celestial Strike & Wrath of the Gods Bonus Round
-  const [guardianChargeLevel, setGuardianChargeLevel] = useState(0);
+  // 5 = Grand Celestial Strike Laser
+  const [anubisCharge, setAnubisCharge] = useState(0);
+  const [bastetCharge, setBastetCharge] = useState(0);
+  const anubisChargeRef = useRef(0);
+  const bastetChargeRef = useRef(0);
+  const [anubisPowerUp, setAnubisPowerUp] = useState(null);
+  const [bastetPowerUp, setBastetPowerUp] = useState(null);
+  const anubisTimerRef = useRef(null);
+  const bastetTimerRef = useRef(null);
+
+  const guardianChargeLevel = Math.max(anubisCharge, bastetCharge);
   const guardianChargeLevelRef = useRef(0);
-  const [guardianMartialMove, setGuardianMartialMove] = useState(null);
-  const martialTimerRef = useRef(null);
+  guardianChargeLevelRef.current = guardianChargeLevel;
+
+  const triggerAnubisPowerUp = useCallback((targetLevel) => {
+    const next = Math.max(0, Math.min(4, targetLevel));
+    setAnubisCharge(next);
+    anubisChargeRef.current = next;
+
+    const titles = [
+      'STONE STATUE (DORMANT)',
+      'LIVING ENTITY AWAKENED',
+      'DIVINE EYES IGNITED',
+      'PLASMA ORB MANIFESTED',
+      'APEX OVERCHARGE REACHED',
+    ];
+    const badges = [
+      '🗿 DORMANT STONE',
+      '⚡ ANUBIS AWAKENED • LIFE RESTORED',
+      '⚡ ANUBIS LEVEL 2 • DIVINE EYES',
+      '🌀 ANUBIS LEVEL 3 • PLASMA ORB',
+      '🔥 ANUBIS LEVEL 4 • APEX OVERCHARGE',
+    ];
+
+    if (next === 1) soundEngine.playAnubisExpand?.();
+    else if (next === 2) soundEngine.playAnticipationRiser?.();
+    else if (next === 3) {
+      soundEngine.playQiGather?.();
+      setTimeout(() => soundEngine.playThunderStrike?.(), 200);
+    } else if (next >= 4) {
+      soundEngine.playThunderStrike?.();
+      setTimeout(() => soundEngine.playBonusTrigger?.(), 250);
+    }
+
+    setAnubisPowerUp({ level: next, badge: badges[next], title: titles[next], id: Date.now() });
+    if (anubisTimerRef.current) clearTimeout(anubisTimerRef.current);
+    anubisTimerRef.current = setTimeout(() => {
+      setAnubisPowerUp(null);
+    }, 1500);
+
+    return next;
+  }, []);
+
+  const triggerBastetPowerUp = useCallback((targetLevel) => {
+    const next = Math.max(0, Math.min(4, targetLevel));
+    setBastetCharge(next);
+    bastetChargeRef.current = next;
+
+    const titles = [
+      'STONE STATUE (DORMANT)',
+      'LIVING ENTITY AWAKENED',
+      'SOLAR EYES IGNITED',
+      'SUNFIRE ORB MANIFESTED',
+      'APEX OVERCHARGE REACHED',
+    ];
+    const badges = [
+      '🗿 DORMANT STONE',
+      '🌸 BASTET AWAKENED • LIFE RESTORED',
+      '🌸 BASTET LEVEL 2 • SOLAR EYES',
+      '🌟 BASTET LEVEL 3 • SUNFIRE ORB',
+      '🔥 BASTET LEVEL 4 • APEX OVERCHARGE',
+    ];
+
+    if (next === 1) soundEngine.playAnubisExpand?.();
+    else if (next === 2) soundEngine.playAnticipationRiser?.();
+    else if (next === 3) {
+      soundEngine.playSolarFireball?.();
+    } else if (next >= 4) {
+      soundEngine.playSolarFireball?.();
+      setTimeout(() => soundEngine.playBonusTrigger?.(), 250);
+    }
+
+    setBastetPowerUp({ level: next, badge: badges[next], title: titles[next], id: Date.now() });
+    if (bastetTimerRef.current) clearTimeout(bastetTimerRef.current);
+    bastetTimerRef.current = setTimeout(() => {
+      setBastetPowerUp(null);
+    }, 1500);
+
+    return next;
+  }, []);
 
   const updateGuardianCharge = useCallback((updater) => {
-    setGuardianChargeLevel((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      if (next !== prev) {
-        guardianChargeLevelRef.current = next;
+    const curr = Math.max(anubisChargeRef.current, bastetChargeRef.current);
+    const next = typeof updater === 'function' ? updater(curr) : updater;
+    triggerAnubisPowerUp(next);
+    triggerBastetPowerUp(next);
+  }, [triggerAnubisPowerUp, triggerBastetPowerUp]);
 
-        let move = 'iron-awaken';
-        let badge = '🥋 SHAOLIN HORSE STANCE • IRON BODY';
-        if (next === 2) {
-          move = 'dragon-palm';
-          badge = '⚡ DRAGON STANCE • QI FOCUS';
-          soundEngine.playQiGather?.();
-          setTimeout(() => soundEngine.playMartialImpact?.(), 250);
-        } else if (next === 3) {
-          move = 'shaolin-flourish';
-          badge = '🌀 CRESCENT SWEEP • ORBS SUMMONED';
-          soundEngine.playStaffFlourish?.();
-        } else if (next >= 4) {
-          move = 'apex-kai';
-          badge = '🔥 APEX KAI STANCE • GOD FORCE';
-          soundEngine.playMartialSwoosh?.(1.4);
-          setTimeout(() => soundEngine.playThunderStrike?.(), 220);
-        } else if (next === 1) {
-          move = 'iron-awaken';
-          badge = '🥋 IRON BODY • HORSE STANCE';
-          soundEngine.playMartialImpact?.();
-        }
-
-        setGuardianMartialMove({ move, badge, from: prev, to: next, id: Date.now() });
-        if (martialTimerRef.current) clearTimeout(martialTimerRef.current);
-        martialTimerRef.current = setTimeout(() => {
-          setGuardianMartialMove(null);
-        }, 1500);
-      }
-      return next;
-    });
-  }, []);
+  const [guardianMartialMove, setGuardianMartialMove] = useState(null);
   const [guardianStrikeEvent, setGuardianStrikeEvent] = useState(null);
   const landedSymbolsByColRef = useRef([null, null, null, null, null]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -713,11 +769,9 @@ export default function App() {
       const isSelectCombination = isBig || bonusCount >= 2 || hasExpandingWild || hasHighMatch || hasGuardianAwakener;
       const currentCharge = guardianChargeLevelRef.current ?? guardianChargeLevel;
 
-      if (bonusCount >= 3 || (currentCharge >= 4 && isSelectCombination)) {
+      if (bonusCount >= 3) {
         // =========================================================================
-        // STAGE 5 (GRAND CLIMAX): DUAL CELESTIAL STRIKE + WRATH OF THE GODS BONUS ROUND!
-        // Anubis and Bastet unleash their ultimate lightning & fire barrage directly
-        // at the winning combination, unlocking the special Celestial Overload Bonus!
+        // 3+ SACRED SCATTERS: GRAND CELESTIAL STRIKE + WRATH OF THE GODS BONUS ROUND!
         // =========================================================================
         setGuardianAction(true);
         const leftTargets = allWinCells.filter((c) => c[0] <= 2);
@@ -745,10 +799,10 @@ export default function App() {
         setTimeout(() => soundEngine.playBonusTrigger(), 450);
 
         setStatusMessage(
-          `⚡ GRAND CELESTIAL STRIKE UNLEASHED! ANUBIS & BASTET BLAST THE COMBINATION WITH LIGHTNING & SOLAR FIRE!`
+          `⚡ GRAND CELESTIAL STRIKE UNLEASHED! 3 SCATTERS TRIGGER THE WRATH OF THE GODS BONUS!`
         );
 
-        // Unleash the Grand Celestial Overload Bonus Round after the strike!
+        // Unleash the Grand Celestial Overload Bonus Round
         setTimeout(() => {
           setCelestialBonusBet(spinBet);
           setCelestialBonusOpen(true);
@@ -756,37 +810,40 @@ export default function App() {
         }, 1600);
       } else if (isSelectCombination) {
         // =========================================================================
-        // 5-STAGE PROGRESSIVE ESCALATION (0 -> 1 -> 2 -> 3 -> 4)
+        // INDEPENDENT GUARDIAN PEDESTAL POWER-UPS:
+        // Happens right there on their pedestal without cabinet disruption!
         // =========================================================================
         setGuardianAction(true);
         setTimeout(() => setGuardianAction(false), 1600);
 
-        const nextLvl = Math.min(4, currentCharge + 1);
-        updateGuardianCharge(nextLvl);
-
         let statusText = '';
         if (hasLotusMatch && hasScepterMatch) {
-          soundEngine.playThunderStrike();
-          setTimeout(() => soundEngine.playSolarFireball(), 150);
-          statusText = `🌸⚡ DUAL SACRED RELICS CONVERGE! BASTET'S LOTUS & ANUBIS'S SCEPTER SURGE (STAGE ${nextLvl})!`;
-        } else if (hasLotusMatch) {
-          soundEngine.playSolarFireball();
-          statusText = `🌸 BASTET'S SACRED SOLAR LOTUS BLOOMS! QUEEN BASTET AWAKENS AND POWERS UP (STAGE ${nextLvl})!`;
+          const nextA = triggerAnubisPowerUp(Math.min(4, anubisChargeRef.current + 1));
+          const nextB = triggerBastetPowerUp(Math.min(4, bastetChargeRef.current + 1));
+          statusText = `🌸⚡ DUAL RELICS CONVERGE! ANUBIS (LVL ${nextA}) & BASTET (LVL ${nextB}) POWER UP ON THEIR PEDESTALS!`;
         } else if (hasScepterMatch) {
-          soundEngine.playThunderStrike();
-          statusText = `⚡ ANUBIS'S CELESTIAL SCEPTER CRACKLES! THE LORD OF LIGHTNING AWAKENS AND CHARGES (STAGE ${nextLvl})!`;
-        } else if (nextLvl === 1) {
-          soundEngine.playAnubisExpand();
-          statusText = '⚡ THE ANCIENT GUARDIANS AWAKEN! FROM STONE STATUES TO LIVING ENTITIES!';
-        } else if (nextLvl === 2) {
-          soundEngine.playAnticipationRiser();
-          statusText = '⚡ EYES OF THE GODS IGNITE! DIVINE CONDUIT PULSES WITH SACRED LIGHT!';
-        } else if (nextLvl === 3) {
-          soundEngine.playSolarFireball();
-          statusText = '⚡ CELESTIAL ORBS CONJURED! ANUBIS SUMMONS PLASMA • BASTET SUMMONS SOLAR FIRE!';
+          const nextA = triggerAnubisPowerUp(Math.min(4, anubisChargeRef.current + 1));
+          statusText = `⚡ ANUBIS SCEPTER CRACKLES! LORD ANUBIS POWERS UP ON HIS PEDESTAL (STAGE ${nextA})!`;
+        } else if (hasLotusMatch) {
+          const nextB = triggerBastetPowerUp(Math.min(4, bastetChargeRef.current + 1));
+          statusText = `🌸 BASTET LOTUS BLOOMS! QUEEN BASTET POWERS UP ON HER PEDESTAL (STAGE ${nextB})!`;
         } else {
-          soundEngine.playAnticipationRiser();
-          statusText = '⚡ APEX OVERCHARGE REACHED! GUARDIANS BLINDING WITH RAW DIVINE FURY — READY TO UNLEASH!';
+          // If win is predominantly on left side (reels 0, 1) -> power up Anubis
+          // If win is predominantly on right side (reels 3, 4) -> power up Bastet
+          // If big win or center -> power up both!
+          const hasLeft = allWinCells.some((c) => c[0] <= 1);
+          const hasRight = allWinCells.some((c) => c[0] >= 3);
+          if (isBig || (hasLeft && hasRight)) {
+            const nextA = triggerAnubisPowerUp(Math.min(4, anubisChargeRef.current + 1));
+            const nextB = triggerBastetPowerUp(Math.min(4, bastetChargeRef.current + 1));
+            statusText = `⚡ HIGH TRIUMPH! BOTH GUARDIANS SURGE (ANUBIS LVL ${nextA} • BASTET LVL ${nextB})!`;
+          } else if (hasLeft) {
+            const nextA = triggerAnubisPowerUp(Math.min(4, anubisChargeRef.current + 1));
+            statusText = `⚡ SACRED WESTERN RELICS! ANUBIS POWERS UP ON HIS PEDESTAL (STAGE ${nextA})!`;
+          } else {
+            const nextB = triggerBastetPowerUp(Math.min(4, bastetChargeRef.current + 1));
+            statusText = `🌸 SACRED EASTERN RELICS! BASTET POWERS UP ON HER PEDESTAL (STAGE ${nextB})!`;
+          }
         }
 
         const firstWin = wins[0];
@@ -1711,54 +1768,26 @@ export default function App() {
             className="dc-action-btn special-guardian-cycle"
             onClick={() => {
               soundEngine.playButtonClick(660);
-              const nextStage = (guardianChargeLevel + 1) % 6;
-              if (nextStage === 5) {
-                setGuardianAction(true);
-                setGuardianMartialMove({
-                  move: 'celestial-strike',
-                  badge: '⚡ GRAND CELESTIAL STRIKE • DRAGON FIST & TIGER CLAW',
-                  from: 4,
-                  to: 5,
-                  id: Date.now(),
-                });
-                setGuardianStrikeEvent({
-                  strikes: [
-                    { from: 'left', type: 'lightning', delay: 0 },
-                    { from: 'right', type: 'fire', delay: 150 },
-                  ],
-                });
-                soundEngine.playThunderStrike();
-                setTimeout(() => soundEngine.playSolarFireball(), 160);
-                setTimeout(() => {
-                  setCelestialBonusBet(currentBet);
-                  setCelestialBonusOpen(true);
-                  setGuardianAction(false);
-                  setGuardianMartialMove(null);
-                }, 1400);
-              } else {
-                updateGuardianCharge(nextStage);
-                if (nextStage === 0) {
-                  setStatusMessage('⚡ GUARDIANS STAGE 0: DORMANT STONE STATUES (STILL & SILENT)');
-                } else if (nextStage === 1) {
-                  soundEngine.playAnubisExpand();
-                  setStatusMessage('⚡ GUARDIANS STAGE 1: AWAKENED FROM STONE TO LIVING ENTITIES!');
-                } else if (nextStage === 2) {
-                  soundEngine.playAnticipationRiser();
-                  setStatusMessage('⚡ GUARDIANS STAGE 2: EYES OF THE GODS IGNITE WITH DIVINE GLOW!');
-                } else if (nextStage === 3) {
-                  soundEngine.playSolarFireball();
-                  setStatusMessage('⚡ GUARDIANS STAGE 3: PLASMA & SOLAR FIRE ORBS CONJURED!');
-                } else if (nextStage === 4) {
-                  soundEngine.playAnticipationRiser();
-                  setStatusMessage('⚡ GUARDIANS STAGE 4: APEX OVERCHARGE — BLINDING DIVINE POWER!');
-                }
+              const nextStage = (guardianChargeLevel + 1) % 5;
+              triggerAnubisPowerUp(nextStage);
+              triggerBastetPowerUp(nextStage);
+              if (nextStage === 0) {
+                setStatusMessage('⚡ GUARDIANS LEVEL 0: DORMANT STONE STATUES (RESTING ON PEDESTALS)');
+              } else if (nextStage === 1) {
+                setStatusMessage('⚡ GUARDIANS LEVEL 1: LIVING ENTITIES AWAKENED ON THEIR PEDESTALS!');
+              } else if (nextStage === 2) {
+                setStatusMessage('⚡ GUARDIANS LEVEL 2: DIVINE EYES & AURIC CORONA IGNITED!');
+              } else if (nextStage === 3) {
+                setStatusMessage('⚡ GUARDIANS LEVEL 3: PLASMA & SUNFIRE ORBS CONJURED ON PEDESTALS!');
+              } else if (nextStage === 4) {
+                setStatusMessage('⚡ GUARDIANS LEVEL 4: APEX OVERCHARGE — MAXIMUM DIVINE RADIANCE!');
               }
             }}
-            title="Cycle & test the 5 Guardian Escalation Stages (0: Stone, 1: Alive, 2: Eyes, 3: Orbs, 4: Apex, 5: Strike & Bonus)"
+            title="Cycle & test the 5 Guardian Escalation Stages right on their pedestals (0: Stone, 1: Alive, 2: Eyes, 3: Orbs, 4: Apex)"
           >
             <Zap size={15} />
             <span>
-              Stage:{' '}
+              Pedestal:{' '}
               {guardianChargeLevel === 0
                 ? '0: Stone'
                 : guardianChargeLevel === 1
@@ -2239,55 +2268,26 @@ export default function App() {
               className="mobile-drawer-card guardian-stage-card"
               onClick={() => {
                 soundEngine.playButtonClick(660);
-                const nextStage = (guardianChargeLevel + 1) % 6;
-                if (nextStage === 5) {
-                  setMobileMenuOpen(false);
-                  setGuardianAction(true);
-                  setGuardianMartialMove({
-                    move: 'celestial-strike',
-                    badge: '⚡ GRAND CELESTIAL STRIKE • DRAGON FIST & TIGER CLAW',
-                    from: 4,
-                    to: 5,
-                    id: Date.now(),
-                  });
-                  setGuardianStrikeEvent({
-                    strikes: [
-                      { from: 'left', type: 'lightning', delay: 0 },
-                      { from: 'right', type: 'fire', delay: 150 },
-                    ],
-                  });
-                  soundEngine.playThunderStrike();
-                  setTimeout(() => soundEngine.playSolarFireball(), 160);
-                  setTimeout(() => {
-                    setCelestialBonusBet(currentBet);
-                    setCelestialBonusOpen(true);
-                    setGuardianAction(false);
-                    setGuardianMartialMove(null);
-                  }, 1400);
-                } else {
-                  updateGuardianCharge(nextStage);
-                  if (nextStage === 0) {
-                    setStatusMessage('⚡ GUARDIANS STAGE 0: DORMANT STONE STATUES (STILL & SILENT)');
-                  } else if (nextStage === 1) {
-                    soundEngine.playAnubisExpand();
-                    setStatusMessage('⚡ GUARDIANS STAGE 1: AWAKENED FROM STONE TO LIVING ENTITIES!');
-                  } else if (nextStage === 2) {
-                    soundEngine.playAnticipationRiser();
-                    setStatusMessage('⚡ GUARDIANS STAGE 2: EYES OF THE GODS IGNITE WITH DIVINE GLOW!');
-                  } else if (nextStage === 3) {
-                    soundEngine.playSolarFireball();
-                    setStatusMessage('⚡ GUARDIANS STAGE 3: PLASMA & SOLAR FIRE ORBS CONJURED!');
-                  } else if (nextStage === 4) {
-                    soundEngine.playAnticipationRiser();
-                    setStatusMessage('⚡ GUARDIANS STAGE 4: APEX OVERCHARGE — BLINDING DIVINE POWER!');
-                  }
+                const nextStage = (guardianChargeLevel + 1) % 5;
+                triggerAnubisPowerUp(nextStage);
+                triggerBastetPowerUp(nextStage);
+                if (nextStage === 0) {
+                  setStatusMessage('⚡ GUARDIANS LEVEL 0: DORMANT STONE STATUES (RESTING ON PEDESTALS)');
+                } else if (nextStage === 1) {
+                  setStatusMessage('⚡ GUARDIANS LEVEL 1: LIVING ENTITIES AWAKENED ON THEIR PEDESTALS!');
+                } else if (nextStage === 2) {
+                  setStatusMessage('⚡ GUARDIANS LEVEL 2: DIVINE EYES & AURIC CORONA IGNITED!');
+                } else if (nextStage === 3) {
+                  setStatusMessage('⚡ GUARDIANS LEVEL 3: PLASMA & SUNFIRE ORBS CONJURED ON PEDESTALS!');
+                } else if (nextStage === 4) {
+                  setStatusMessage('⚡ GUARDIANS LEVEL 4: APEX OVERCHARGE — MAXIMUM DIVINE RADIANCE!');
                 }
               }}
             >
               <Zap size={20} className="card-icon" color="#00e5ff" />
               <div className="card-txt">
                 <strong>
-                  Guardian Stage:{' '}
+                  Guardian Pedestal Level:{' '}
                   {guardianChargeLevel === 0
                     ? '0 (Stone)'
                     : guardianChargeLevel === 1
@@ -2298,7 +2298,7 @@ export default function App() {
                     ? '3 (Orbs)'
                     : '4 (Apex)'}
                 </strong>
-                <small>Tap to advance / test strike</small>
+                <small>Power-ups live on their pedestals</small>
               </div>
             </button>
 
@@ -2366,32 +2366,57 @@ export default function App() {
 
       {/* Main Slot Machine Stage: Left Guardian + Center Cabinet + Right Guardian */}
       <main className="slot-stage-container">
-        {/* Left Guardian Character (Configured in `GUARDIANS.left`) */}
+        {/* Left Guardian Character (Anubis on his Pedestal) */}
         <aside
           className={`anubis-guardian-column left-col ${
             guardianAction ? 'anubis-action-surge' : ''
-          } guardian-charge-stage-${guardianChargeLevel} ${
-            guardianChargeLevel === 0 ? 'guardian-charge-stone-statue' : ''
-          } ${guardianChargeLevel === 1 ? 'guardian-charge-alive' : ''} ${
-            guardianChargeLevel === 2 ? 'guardian-charge-eyes-lit' : ''
-          } ${guardianChargeLevel === 3 ? 'guardian-charge-orbs-manifest' : ''} ${
-            guardianChargeLevel >= 4 ? 'guardian-charge-overcharged' : ''
+          } guardian-charge-stage-${anubisCharge} ${
+            anubisCharge === 0 ? 'guardian-charge-stone-statue' : ''
+          } ${anubisCharge === 1 ? 'guardian-charge-alive' : ''} ${
+            anubisCharge === 2 ? 'guardian-charge-eyes-lit' : ''
+          } ${anubisCharge === 3 ? 'guardian-charge-orbs-manifest' : ''} ${
+            anubisCharge >= 4 ? 'guardian-charge-overcharged' : ''
           } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''} ${
-            guardianMartialMove ? `guardian-martial-active guardian-martial-${guardianMartialMove.move}` : ''
+            anubisPowerUp ? 'guardian-pedestal-powerup-surge anubis-powerup-active' : ''
           }`}
+          onClick={() => {
+            const nextLvl = (anubisCharge + 1) % 5;
+            triggerAnubisPowerUp(nextLvl);
+            setStatusMessage(
+              `⚡ ANUBIS POWER-UP: ${
+                nextLvl === 0
+                  ? 'DORMANT STONE'
+                  : nextLvl === 1
+                  ? 'ALIVE'
+                  : nextLvl === 2
+                  ? 'DIVINE EYES'
+                  : nextLvl === 3
+                  ? 'PLASMA ORB'
+                  : 'APEX OVERCHARGE'
+              }!`
+            );
+          }}
+          title="Click to power up Lord Anubis on his pedestal!"
+          style={{ cursor: 'pointer' }}
         >
+          {/* Pedestal Power-Up Vertical Energy Surge Effect */}
+          {anubisPowerUp && (
+            <div className="guardian-pedestal-fx-wrap anubis-fx">
+              <div className="guardian-pedestal-light-pillar" />
+              <div className="guardian-pedestal-shock-ring ring-1" />
+              <div className="guardian-pedestal-shock-ring ring-2" />
+              <div className="guardian-pedestal-badge anubis-badge">
+                <Zap size={14} className="badge-icon" />
+                <span>{anubisPowerUp.badge}</span>
+              </div>
+            </div>
+          )}
+
           <div className="anubis-guardian-figure">
-            {/* Martial Arts Stance Transitions & Chi Shockwave */}
-            {guardianMartialMove && (
-              <>
-                <div className="guardian-martial-shockwave" />
-                <div className="guardian-martial-badge">{guardianMartialMove.badge}</div>
-              </>
-            )}
             {/* Living Aura: Continuous hypnotic ambient pulsation */}
             <div className="guardian-living-aura anubis-living-aura" />
             {/* Divine Eyes: Only lit at Stage 2+ */}
-            {guardianChargeLevel >= 2 && (
+            {anubisCharge >= 2 && (
               <div
                 className={`guardian-divine-eyes anubis-divine-eyes ${
                   guardianBlinking ? 'blinking' : ''
@@ -2399,14 +2424,14 @@ export default function App() {
               />
             )}
             {/* Celestial Power Orb: Only manifests at Stage 3+ */}
-            {guardianChargeLevel >= 3 && (
+            {anubisCharge >= 3 && (
               <div className="guardian-power-orb anubis-power-orb" />
             )}
             {/* Blinding Crackling Lightning Aura: Only manifests at Stage 4+ */}
-            {guardianChargeLevel >= 4 && (
+            {anubisCharge >= 4 && (
               <div className="guardian-charged-crackling-aura" />
             )}
-            {guardianChargeLevel >= 2 && GUARDIANS.left.auraImage && (
+            {anubisCharge >= 2 && GUARDIANS.left.auraImage && (
               <img
                 src={GUARDIANS.left.auraImage}
                 alt=""
@@ -2414,7 +2439,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianChargeLevel >= 4 && GUARDIANS.left.apexBodyImage ? (
+            {anubisCharge >= 4 && GUARDIANS.left.apexBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.left.apexBodyImage}
                 alt={GUARDIANS.left.name}
@@ -2422,7 +2447,7 @@ export default function App() {
                 threshold={26}
                 feather={44}
               />
-            ) : guardianChargeLevel === 3 && GUARDIANS.left.chargedBodyImage ? (
+            ) : anubisCharge === 3 && GUARDIANS.left.chargedBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.left.chargedBodyImage}
                 alt={GUARDIANS.left.name}
@@ -2446,7 +2471,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianBlinking && guardianChargeLevel >= 1 && GUARDIANS.left.eyesClosedImage && (
+            {guardianBlinking && anubisCharge >= 1 && GUARDIANS.left.eyesClosedImage && (
               <img
                 src={GUARDIANS.left.eyesClosedImage}
                 alt=""
@@ -2454,7 +2479,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianChargeLevel >= 3 && GUARDIANS.left.handFxImage && (
+            {anubisCharge >= 3 && GUARDIANS.left.handFxImage && (
               <img
                 src={GUARDIANS.left.handFxImage}
                 alt=""
@@ -2472,24 +2497,24 @@ export default function App() {
             />
             <div className="guardian-plaque-txt">
               <span>
-                {guardianChargeLevel === 0
+                {anubisCharge === 0
                   ? 'ANCIENT STATUE'
-                  : guardianChargeLevel === 1
+                  : anubisCharge === 1
                   ? 'LIVING ENTITY'
-                  : guardianChargeLevel === 2
+                  : anubisCharge === 2
                   ? 'EYES OF ANUBIS'
-                  : guardianChargeLevel === 3
+                  : anubisCharge === 3
                   ? 'PLASMA SUMMONER'
                   : 'APEX OVERCHARGE'}
               </span>
               <strong>
-                {guardianChargeLevel === 0
+                {anubisCharge === 0
                   ? 'DORMANT'
-                  : guardianChargeLevel === 1
+                  : anubisCharge === 1
                   ? 'ALIVE'
-                  : guardianChargeLevel === 2
+                  : anubisCharge === 2
                   ? 'DIVINE GLOW'
-                  : guardianChargeLevel === 3
+                  : anubisCharge === 3
                   ? 'PLASMA ORB'
                   : 'READY TO STRIKE'}
               </strong>
@@ -2902,32 +2927,57 @@ export default function App() {
           </div>
         </section>
 
-        {/* Right Guardian Character (Configured in `GUARDIANS.right`) */}
+        {/* Right Guardian Character (Bastet on her Pedestal) */}
         <aside
           className={`anubis-guardian-column right-col ${
             guardianAction ? 'anubis-action-surge' : ''
-          } guardian-charge-stage-${guardianChargeLevel} ${
-            guardianChargeLevel === 0 ? 'guardian-charge-stone-statue' : ''
-          } ${guardianChargeLevel === 1 ? 'guardian-charge-alive' : ''} ${
-            guardianChargeLevel === 2 ? 'guardian-charge-eyes-lit' : ''
-          } ${guardianChargeLevel === 3 ? 'guardian-charge-orbs-manifest' : ''} ${
-            guardianChargeLevel >= 4 ? 'guardian-charge-overcharged' : ''
+          } guardian-charge-stage-${bastetCharge} ${
+            bastetCharge === 0 ? 'guardian-charge-stone-statue' : ''
+          } ${bastetCharge === 1 ? 'guardian-charge-alive' : ''} ${
+            bastetCharge === 2 ? 'guardian-charge-eyes-lit' : ''
+          } ${bastetCharge === 3 ? 'guardian-charge-orbs-manifest' : ''} ${
+            bastetCharge >= 4 ? 'guardian-charge-overcharged' : ''
           } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''} ${
-            guardianMartialMove ? `guardian-martial-active guardian-martial-${guardianMartialMove.move}` : ''
+            bastetPowerUp ? 'guardian-pedestal-powerup-surge bastet-powerup-active' : ''
           }`}
+          onClick={() => {
+            const nextLvl = (bastetCharge + 1) % 5;
+            triggerBastetPowerUp(nextLvl);
+            setStatusMessage(
+              `🌸 BASTET POWER-UP: ${
+                nextLvl === 0
+                  ? 'DORMANT STONE'
+                  : nextLvl === 1
+                  ? 'ALIVE'
+                  : nextLvl === 2
+                  ? 'SOLAR EYES'
+                  : nextLvl === 3
+                  ? 'SUNFIRE ORB'
+                  : 'APEX OVERCHARGE'
+              }!`
+            );
+          }}
+          title="Click to power up Queen Bastet on her pedestal!"
+          style={{ cursor: 'pointer' }}
         >
+          {/* Pedestal Power-Up Vertical Solar Fire Surge Effect */}
+          {bastetPowerUp && (
+            <div className="guardian-pedestal-fx-wrap bastet-fx">
+              <div className="guardian-pedestal-light-pillar" />
+              <div className="guardian-pedestal-shock-ring ring-1" />
+              <div className="guardian-pedestal-shock-ring ring-2" />
+              <div className="guardian-pedestal-badge bastet-badge">
+                <Flame size={14} className="badge-icon" />
+                <span>{bastetPowerUp.badge}</span>
+              </div>
+            </div>
+          )}
+
           <div className="anubis-guardian-figure bastet-figure">
-            {/* Martial Arts Stance Transitions & Chi Shockwave */}
-            {guardianMartialMove && (
-              <>
-                <div className="guardian-martial-shockwave" />
-                <div className="guardian-martial-badge">{guardianMartialMove.badge}</div>
-              </>
-            )}
             {/* Living Aura: Continuous hypnotic ambient pulsation */}
             <div className="guardian-living-aura bastet-living-aura" />
             {/* Divine Eyes: Only lit at Stage 2+ */}
-            {guardianChargeLevel >= 2 && (
+            {bastetCharge >= 2 && (
               <div
                 className={`guardian-divine-eyes bastet-divine-eyes ${
                   guardianBlinking ? 'blinking' : ''
@@ -2935,14 +2985,14 @@ export default function App() {
               />
             )}
             {/* Celestial Power Orb: Only manifests at Stage 3+ */}
-            {guardianChargeLevel >= 3 && (
+            {bastetCharge >= 3 && (
               <div className="guardian-power-orb bastet-power-orb" />
             )}
             {/* Blinding Solar Fire & Crackling Aura: Only manifests at Stage 4+ */}
-            {guardianChargeLevel >= 4 && (
+            {bastetCharge >= 4 && (
               <div className="guardian-charged-crackling-aura bastet-charged-crackling-aura" />
             )}
-            {guardianChargeLevel >= 2 && GUARDIANS.right.auraImage && (
+            {bastetCharge >= 2 && GUARDIANS.right.auraImage && (
               <img
                 src={GUARDIANS.right.auraImage}
                 alt=""
@@ -2950,7 +3000,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianChargeLevel >= 4 && GUARDIANS.right.apexBodyImage ? (
+            {bastetCharge >= 4 && GUARDIANS.right.apexBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.right.apexBodyImage}
                 alt={GUARDIANS.right.name}
@@ -2958,7 +3008,7 @@ export default function App() {
                 threshold={26}
                 feather={44}
               />
-            ) : guardianChargeLevel === 3 && GUARDIANS.right.chargedBodyImage ? (
+            ) : bastetCharge === 3 && GUARDIANS.right.chargedBodyImage ? (
               <NeonKeyedImage
                 src={GUARDIANS.right.chargedBodyImage}
                 alt={GUARDIANS.right.name}
@@ -2982,7 +3032,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianBlinking && guardianChargeLevel >= 1 && GUARDIANS.right.eyesClosedImage && (
+            {guardianBlinking && bastetCharge >= 1 && GUARDIANS.right.eyesClosedImage && (
               <img
                 src={GUARDIANS.right.eyesClosedImage}
                 alt=""
@@ -2990,7 +3040,7 @@ export default function App() {
                 draggable={false}
               />
             )}
-            {guardianChargeLevel >= 3 && GUARDIANS.right.handFxImage && (
+            {bastetCharge >= 3 && GUARDIANS.right.handFxImage && (
               <img
                 src={GUARDIANS.right.handFxImage}
                 alt=""
@@ -3008,24 +3058,24 @@ export default function App() {
             />
             <div className="guardian-plaque-txt">
               <span>
-                {guardianChargeLevel === 0
+                {bastetCharge === 0
                   ? 'ANCIENT STATUE'
-                  : guardianChargeLevel === 1
+                  : bastetCharge === 1
                   ? 'LIVING ENTITY'
-                  : guardianChargeLevel === 2
+                  : bastetCharge === 2
                   ? 'EYES OF BASTET'
-                  : guardianChargeLevel === 3
+                  : bastetCharge === 3
                   ? 'SOLAR SUMMONER'
                   : 'APEX OVERCHARGE'}
               </span>
               <strong>
-                {guardianChargeLevel === 0
+                {bastetCharge === 0
                   ? 'DORMANT'
-                  : guardianChargeLevel === 1
+                  : bastetCharge === 1
                   ? 'ALIVE'
-                  : guardianChargeLevel === 2
+                  : bastetCharge === 2
                   ? 'SOLAR GLOW'
-                  : guardianChargeLevel === 3
+                  : bastetCharge === 3
                   ? 'SUNFIRE ORB'
                   : 'READY TO STRIKE'}
               </strong>
