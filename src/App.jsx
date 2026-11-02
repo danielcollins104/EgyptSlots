@@ -1096,6 +1096,9 @@ export default function App() {
     }
 
     soundEngine.playWin(true);
+    setFloatingWinText(`+${addedGC.toLocaleString()} GC & +${addedSC.toFixed(2)} FREE SC!`);
+    setFloatingWinKey((k) => k + 1);
+    triggerCabinetImpact('win');
     setStatusMessage(
       `🎉 PAYMENT SUCCESS! CREDITED +${addedGC.toLocaleString()} GC & +${addedSC.toFixed(2)} FREE SC TO YOUR TOP BALANCE!`
     );

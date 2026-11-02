@@ -95,9 +95,10 @@ export default function PaymentModal({
   const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'crypto' | 'klarna' | 'paylater' | 'wallets'
   const [cryptoCoin, setCryptoCoin] = useState('USDT');
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const [showHighRoller, setShowHighRoller] = useState(false);
+  const [showAdvancedStore, setShowAdvancedStore] = useState(false);
   const [customAmountInput, setCustomAmountInput] = useState('250');
   const [checkoutMessage, setCheckoutMessage] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
 
   // Redemption form state
@@ -152,11 +153,15 @@ export default function PaymentModal({
     activeCrypto.symbol === 'BTC' ? 6 : activeCrypto.symbol === 'ETH' ? 4 : 2
   );
 
-  const handleCheckout = () => {
+  const handleCheckout = (overridePkg = null) => {
+    const pkg = overridePkg || selectedPkg;
+    if (!pkg) return;
+
     soundEngine.playButtonClick(700);
+    setIsProcessing(true);
 
     let provider = 'stripe';
-    let providerLabel = 'Card / Stripe';
+    let providerLabel = 'Card / Apple Pay / Google Pay';
     if (paymentMethod === 'crypto') {
       const cryptoSym = String(activeCrypto?.symbol || 'crypto').toLowerCase();
       provider = `crypto_${cryptoSym}`;
@@ -173,31 +178,40 @@ export default function PaymentModal({
     }
 
     // If external Stripe Payment Link exists and card is selected, open link
-    if (paymentMethod === 'card' && selectedPkg?.stripePaymentLink && selectedPkg.stripePaymentLink.startsWith('https://')) {
-      window.open(selectedPkg.stripePaymentLink, '_blank', 'noopener,noreferrer');
+    if (paymentMethod === 'card' && pkg?.stripePaymentLink && pkg.stripePaymentLink.startsWith('https://')) {
+      window.open(pkg.stripePaymentLink, '_blank', 'noopener,noreferrer');
     }
 
     // Record the completed transaction in the local ledger
     paymentService.logTransaction({
       type: 'purchase',
       provider,
-      description: `${selectedPkg.goldCoins.toLocaleString()} GC + ${selectedPkg.freeSweepsCoins.toFixed(2)} Free SC (${providerLabel})`,
-      amountUsd: selectedPkg.priceUsd,
+      description: `${pkg.goldCoins.toLocaleString()} GC + ${pkg.freeSweepsCoins.toFixed(2)} Free SC (${providerLabel})`,
+      amountUsd: pkg.priceUsd,
       status: 'completed',
     });
 
-    // Credit coins immediately to bankroll
-    if (onPurchaseSuccess) {
-      onPurchaseSuccess({
-        goldCoins: selectedPkg.goldCoins,
-        freeSweepsCoins: selectedPkg.freeSweepsCoins,
-        packageId: selectedPkg.id,
-      });
-    }
+    // Provide quick tactile feedback before closing
+    setTimeout(() => {
+      setIsProcessing(false);
+      // Credit coins immediately to bankroll
+      if (onPurchaseSuccess) {
+        onPurchaseSuccess({
+          goldCoins: pkg.goldCoins,
+          freeSweepsCoins: pkg.freeSweepsCoins,
+          packageId: pkg.id,
+        });
+      }
+    }, 280);
 
     setCheckoutMessage(
-      `✓ Successfully processed via ${providerLabel}! Credited +${selectedPkg.goldCoins.toLocaleString()} GC & +${selectedPkg.freeSweepsCoins.toFixed(2)} Free SC to your wallet.`
+      `✓ Successfully processed via ${providerLabel}! Credited +${pkg.goldCoins.toLocaleString()} GC & +${pkg.freeSweepsCoins.toFixed(2)} Free SC to your wallet.`
     );
+  };
+
+  const handleDirectBuy = (pkg) => {
+    setSelectedPkg(pkg);
+    handleCheckout(pkg);
   };
 
   const handleRequestRedemption = (e) => {
@@ -289,27 +303,46 @@ export default function PaymentModal({
             onClick={() => setActiveTab('store')}
           >
             <Coins size={16} />
-            <span>Coin Packages Store</span>
+            <span className="pay-tab-text-full">Coin Packages Store</span>
+            <span className="pay-tab-text-short">Buy Coins</span>
           </button>
           <button
             className={`pay-tab-btn ${activeTab === 'redeem' ? 'active' : ''}`}
             onClick={() => setActiveTab('redeem')}
           >
             <Gem size={16} />
-            <span>Redeem Real Cash Prizes</span>
+            <span className="pay-tab-text-full">Redeem Real Cash Prizes</span>
+            <span className="pay-tab-text-short">Redeem</span>
           </button>
           <button
             className={`pay-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
             <History size={16} />
-            <span>Transaction Ledger</span>
+            <span className="pay-tab-text-full">Transaction Ledger</span>
+            <span className="pay-tab-text-short">History</span>
           </button>
         </div>
 
         {/* TAB 1: COIN PACKAGES STORE */}
         {activeTab === 'store' && (
           <div className="payment-tab-content store-tab">
+            {/* Top High-Conversion Trust Strip */}
+            <div className="store-trust-usp-strip">
+              <div className="trust-usp-item">
+                <Zap size={13} className="usp-icon zap" />
+                <span>Instant Account Delivery</span>
+              </div>
+              <div className="trust-usp-item">
+                <ShieldCheck size={13} className="usp-icon shield" />
+                <span>256-Bit Bank Encryption</span>
+              </div>
+              <div className="trust-usp-item">
+                <Gift size={13} className="usp-icon gift" />
+                <span>FREE SC with Every Pack (1 SC = $1 USD)</span>
+              </div>
+            </div>
+
             {/* Standard Packages Shelf */}
             <div className="store-packages-shelf">
               {SWEEPSTAKES_CONFIG.storePackages.map((pkg) => {
@@ -321,9 +354,9 @@ export default function PaymentModal({
                     onClick={() => handleSelectPackage(pkg)}
                   >
                     {pkg.popular && (
-                      <div className="shelf-badge-popular">MOST POPULAR</div>
+                      <div className="shelf-badge-popular">MOST POPULAR • BEST VALUE</div>
                     )}
-                    {pkg.badge && (
+                    {pkg.badge && !pkg.popular && (
                       <div className="shelf-badge-tag">{pkg.badge}</div>
                     )}
 
@@ -341,154 +374,47 @@ export default function PaymentModal({
                         <span>+{pkg.freeSweepsCoins.toFixed(2)} FREE SC</span>
                       </div>
 
+                      {pkg.savings && (
+                        <div className="shelf-bonus-extra-tag">{pkg.savings}</div>
+                      )}
+
                       <div className="shelf-tagline">{pkg.tagline}</div>
 
-                      {/* Price Button Box */}
-                      <div className={`shelf-price-btn ${isSelected ? 'active' : ''}`}>
-                        <span>${pkg.priceUsd.toFixed(2)}</span>
-                        <span className="shelf-usd-label">USD</span>
-                      </div>
+                      {/* 1-Tap Direct Buy Action Button */}
+                      <button
+                        type="button"
+                        className={`shelf-buy-direct-btn ${isSelected ? 'selected' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDirectBuy(pkg);
+                        }}
+                        title={`Instant 1-Tap Buy for $${pkg.priceUsd.toFixed(2)}`}
+                      >
+                        <Zap size={13} className="zap-instant-icon" />
+                        <span>${pkg.priceUsd.toFixed(2)} • BUY NOW</span>
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Custom Amount Field Builder */}
-            <div className="store-custom-amount-card">
-              <div className="custom-input-left">
-                <div className="custom-label-wrap">
-                  <Flame size={14} className="flame-icon-custom" />
-                  <strong>CUSTOM COIN BUNDLE:</strong>
-                  <span className="custom-hint">Enter any amount ($10 — $100,000+)</span>
-                </div>
-                <div className="custom-field-controls">
-                  <div className="custom-currency-input-wrap">
-                    <span className="currency-prefix">$</span>
-                    <input
-                      type="number"
-                      min="10"
-                      max="100000"
-                      step="10"
-                      value={customAmountInput}
-                      onChange={(e) => setCustomAmountInput(e.target.value)}
-                      className="custom-amount-number-input"
-                      placeholder="Amount"
-                    />
-                    <span className="currency-suffix">USD</span>
-                  </div>
-
-                  {/* Preset quick buttons */}
-                  <div className="custom-preset-chips">
-                    {[250, 500, 1000, 2500].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        className={`preset-chip-btn ${customAmountInput === String(preset) ? 'active' : ''}`}
-                        onClick={() => {
-                          setCustomAmountInput(String(preset));
-                          soundEngine.playButtonClick(480);
-                        }}
-                      >
-                        ${preset}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Live dynamic preview of custom coins */}
-              <div className="custom-preview-right">
-                <div className="custom-preview-stats">
-                  <div className="stat-gc">
-                    <Coins size={14} className="gc-icon-gold" />
-                    <strong>{computedCustomPkg.goldCoins.toLocaleString()} GC</strong>
-                  </div>
-                  <div className="stat-sc">
-                    <Gem size={13} className="sc-icon-gem" />
-                    <strong>+{computedCustomPkg.freeSweepsCoins.toFixed(2)} Free SC</strong>
-                    <span className="custom-bonus-tag">{computedCustomPkg.savings}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className={`custom-select-btn ${selectedPkg?.id === computedCustomPkg.id ? 'selected' : ''}`}
-                  onClick={handleApplyCustomPackage}
-                >
-                  {selectedPkg?.id === computedCustomPkg.id ? '✓ Selected' : 'Select Custom'}
-                </button>
-              </div>
-            </div>
-
-            {/* High Roller Packages Reveal Toggle Link */}
-            <div className="high-roller-toggle-row">
-              <button
-                type="button"
-                className={`high-roller-toggle-link ${showHighRoller ? 'open' : ''}`}
-                onClick={() => {
-                  setShowHighRoller(!showHighRoller);
-                  soundEngine.playButtonClick(480);
-                }}
-              >
-                <Crown size={15} className="crown-icon-hr" />
-                <span>high roller packages ($5,000, $10,000 &amp; $50,000 VIP Vault)</span>
-                {showHighRoller ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
-            </div>
-
-            {/* High Roller VIP Shelf */}
-            {showHighRoller && (
-              <div className="high-roller-shelf">
-                {SWEEPSTAKES_CONFIG.highRollerPackages.map((pkg) => {
-                  const isSelected = selectedPkg?.id === pkg.id;
-                  return (
-                    <div
-                      key={pkg.id}
-                      className={`high-roller-card ${isSelected ? 'selected' : ''} ${pkg.popular ? 'popular' : ''}`}
-                      onClick={() => handleSelectPackage(pkg)}
-                    >
-                      <div className="hr-badge">{pkg.badge}</div>
-
-                      <div className="hr-tier-header">
-                        <Crown size={18} className="hr-crown-gold" />
-                        <h4 className="hr-tier-title">{pkg.tierName}</h4>
-                      </div>
-
-                      <div className="hr-metrics">
-                        <div className="hr-gc-display">
-                          <Coins size={16} className="gc-icon-gold" />
-                          <span>{pkg.goldCoins.toLocaleString()} GC</span>
-                        </div>
-                        <div className="hr-sc-display">
-                          <Gem size={16} className="sc-icon-gem" />
-                          <span>+{pkg.freeSweepsCoins.toLocaleString()} FREE SC</span>
-                        </div>
-                      </div>
-
-                      <p className="hr-tagline">{pkg.tagline}</p>
-
-                      <div className="hr-price-btn-wrap">
-                        <div className={`hr-price-box ${isSelected ? 'active' : ''}`}>
-                          <span>${pkg.priceUsd.toLocaleString()}</span>
-                          <span className="hr-usd">USD</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* PAYMENT METHODS SELECTOR CONSOLE */}
-            <div className="payment-methods-selector-section">
+            {/* STREAMLINED PAYMENT METHODS SELECTOR */}
+            <div className="payment-methods-selector-section simplified">
               <div className="payment-methods-header">
-                <strong>SELECT PAYMENT METHOD:</strong>
-                <span className="secure-badge">
-                  <ShieldCheck size={13} /> 256-bit Encrypted
-                </span>
+                <div className="pm-header-left">
+                  <strong>SELECT PAYMENT METHOD:</strong>
+                  <span className="secure-badge">
+                    <ShieldCheck size={12} /> 256-bit Encrypted
+                  </span>
+                </div>
+                <div className="pm-instant-credit-pill">
+                  <Zap size={12} />
+                  <span>Instant Credit</span>
+                </div>
               </div>
 
-              <div className="payment-method-tabs-row">
+              <div className="payment-method-tabs-row compact-row">
                 <button
                   type="button"
                   className={`pm-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
@@ -498,7 +424,8 @@ export default function PaymentModal({
                   }}
                 >
                   <CreditCard size={15} />
-                  <span>Card / Stripe</span>
+                  <span>Card / Apple Pay / GPay</span>
+                  <span className="pm-chip-instant">RECOMMENDED</span>
                 </button>
 
                 <button
@@ -537,18 +464,6 @@ export default function PaymentModal({
                   <Calendar size={15} />
                   <span>Afterpay / Affirm</span>
                 </button>
-
-                <button
-                  type="button"
-                  className={`pm-tab-btn wallets-tab ${paymentMethod === 'wallets' ? 'active' : ''}`}
-                  onClick={() => {
-                    setPaymentMethod('wallets');
-                    soundEngine.playButtonClick(540);
-                  }}
-                >
-                  <Wallet size={15} />
-                  <span>Apple / Google Pay</span>
-                </button>
               </div>
 
               {/* METHOD 1: CRYPTO DETAILS DRAWER */}
@@ -574,7 +489,6 @@ export default function PaymentModal({
 
                   <div className="crypto-qr-address-grid">
                     <div className="crypto-qr-box">
-                      {/* Stylized geometric QR SVG */}
                       <svg viewBox="0 0 100 100" className="crypto-qr-svg" width="90" height="90">
                         <rect width="100" height="100" fill="#0f172a" rx="8" />
                         <rect x="10" y="10" width="28" height="28" fill="#38bdf8" rx="4" />
@@ -695,16 +609,148 @@ export default function PaymentModal({
               )}
             </div>
 
-            {/* Bottom Checkout Console */}
-            <div className="store-checkout-bar">
+            {/* Collapsible Advanced Options: Custom Bundle & High Roller VIP */}
+            <div className="store-advanced-accordion">
+              <button
+                type="button"
+                className={`store-accordion-trigger ${showAdvancedStore ? 'open' : ''}`}
+                onClick={() => {
+                  setShowAdvancedStore(!showAdvancedStore);
+                  soundEngine.playButtonClick(480);
+                }}
+              >
+                <div className="accordion-trigger-left">
+                  <Crown size={15} className="crown-icon-hr" />
+                  <span>Custom Bundle Builder &amp; VIP High Roller Vault ($5K+)</span>
+                </div>
+                <div className="accordion-trigger-right">
+                  <span className="accordion-pill-tag">Customize</span>
+                  {showAdvancedStore ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+              </button>
+
+              {showAdvancedStore && (
+                <div className="store-accordion-body">
+                  {/* Custom Amount Field Builder */}
+                  <div className="store-custom-amount-card">
+                    <div className="custom-input-left">
+                      <div className="custom-label-wrap">
+                        <Flame size={14} className="flame-icon-custom" />
+                        <strong>CUSTOM COIN BUNDLE:</strong>
+                        <span className="custom-hint">Enter any amount ($10 — $100,000+)</span>
+                      </div>
+                      <div className="custom-field-controls">
+                        <div className="custom-currency-input-wrap">
+                          <span className="currency-prefix">$</span>
+                          <input
+                            type="number"
+                            min="10"
+                            max="100000"
+                            step="10"
+                            value={customAmountInput}
+                            onChange={(e) => setCustomAmountInput(e.target.value)}
+                            className="custom-amount-number-input"
+                            placeholder="Amount"
+                          />
+                          <span className="currency-suffix">USD</span>
+                        </div>
+
+                        {/* Preset quick buttons */}
+                        <div className="custom-preset-chips">
+                          {[250, 500, 1000, 2500].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              className={`preset-chip-btn ${customAmountInput === String(preset) ? 'active' : ''}`}
+                              onClick={() => {
+                                setCustomAmountInput(String(preset));
+                                soundEngine.playButtonClick(480);
+                              }}
+                            >
+                              ${preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live dynamic preview of custom coins */}
+                    <div className="custom-preview-right">
+                      <div className="custom-preview-stats">
+                        <div className="stat-gc">
+                          <Coins size={14} className="gc-icon-gold" />
+                          <strong>{computedCustomPkg.goldCoins.toLocaleString()} GC</strong>
+                        </div>
+                        <div className="stat-sc">
+                          <Gem size={13} className="sc-icon-gem" />
+                          <strong>+{computedCustomPkg.freeSweepsCoins.toFixed(2)} Free SC</strong>
+                          <span className="custom-bonus-tag">{computedCustomPkg.savings}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`custom-select-btn ${selectedPkg?.id === computedCustomPkg.id ? 'selected' : ''}`}
+                        onClick={handleApplyCustomPackage}
+                      >
+                        {selectedPkg?.id === computedCustomPkg.id ? '✓ Selected' : 'Select Custom'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* High Roller VIP Shelf */}
+                  <div className="high-roller-shelf">
+                    {SWEEPSTAKES_CONFIG.highRollerPackages.map((pkg) => {
+                      const isSelected = selectedPkg?.id === pkg.id;
+                      return (
+                        <div
+                          key={pkg.id}
+                          className={`high-roller-card ${isSelected ? 'selected' : ''} ${pkg.popular ? 'popular' : ''}`}
+                          onClick={() => handleSelectPackage(pkg)}
+                        >
+                          <div className="hr-badge">{pkg.badge}</div>
+
+                          <div className="hr-tier-header">
+                            <Crown size={18} className="hr-crown-gold" />
+                            <h4 className="hr-tier-title">{pkg.tierName}</h4>
+                          </div>
+
+                          <div className="hr-metrics">
+                            <div className="hr-gc-display">
+                              <Coins size={16} className="gc-icon-gold" />
+                              <span>{pkg.goldCoins.toLocaleString()} GC</span>
+                            </div>
+                            <div className="hr-sc-display">
+                              <Gem size={16} className="sc-icon-gem" />
+                              <span>+{pkg.freeSweepsCoins.toLocaleString()} FREE SC</span>
+                            </div>
+                          </div>
+
+                          <p className="hr-tagline">{pkg.tagline}</p>
+
+                          <div className="hr-price-btn-wrap">
+                            <div className={`hr-price-box ${isSelected ? 'active' : ''}`}>
+                              <span>${pkg.priceUsd.toLocaleString()}</span>
+                              <span className="hr-usd">USD</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sticky Bottom Checkout Bar (1-Tap Fast Conversion) */}
+            <div className="store-checkout-bar high-conversion">
               {/* Order Summary */}
               <div className="checkout-bar-left">
                 <div className="checkout-selection-pill">
                   <Coins size={16} className="shelf-gc-icon" />
                   <div className="summary-pill-text">
-                    <strong>{selectedPkg.goldCoins.toLocaleString()} GC</strong>
-                    <span className="sc-highlight">+ {selectedPkg.freeSweepsCoins.toFixed(2)} Free SC</span>
-                    <span className="price-tag">(${selectedPkg.priceUsd.toLocaleString()} USD)</span>
+                    <strong className="summary-gc-val">{selectedPkg.goldCoins.toLocaleString()} GC</strong>
+                    <span className="sc-highlight">+ {selectedPkg.freeSweepsCoins.toFixed(2)} FREE SC</span>
+                    <span className="price-tag">(${selectedPkg.priceUsd.toFixed(2)} USD)</span>
                   </div>
                 </div>
               </div>
@@ -713,36 +759,34 @@ export default function PaymentModal({
               <div className="checkout-bar-right">
                 <button
                   type="button"
-                  className="instant-checkout-btn"
-                  onClick={handleCheckout}
+                  className={`instant-checkout-btn pulse-ready ${isProcessing ? 'processing' : ''}`}
+                  onClick={() => handleCheckout()}
+                  disabled={isProcessing}
                 >
-                  {paymentMethod === 'crypto' ? (
+                  {isProcessing ? (
+                    <>
+                      <Zap size={16} className="spinning-zap" />
+                      <span>CREDITING WALLET...</span>
+                    </>
+                  ) : paymentMethod === 'crypto' ? (
                     <>
                       <Bitcoin size={16} />
                       <span>CONFIRM CRYPTO DEPOSIT ({cryptoAmount} {activeCrypto.symbol})</span>
+                      <ArrowRight size={15} />
                     </>
                   ) : paymentMethod === 'klarna' ? (
                     <>
                       <span className="k-bold">K.</span>
                       <span>PAY WITH KLARNA (${(selectedPkg.priceUsd / 4).toFixed(2)} TODAY)</span>
-                    </>
-                  ) : paymentMethod === 'paylater' ? (
-                    <>
-                      <Calendar size={16} />
-                      <span>PAY WITH AFTERPAY / AFFIRM (${selectedPkg.priceUsd.toLocaleString()})</span>
-                    </>
-                  ) : paymentMethod === 'wallets' ? (
-                    <>
-                      <Wallet size={16} />
-                      <span>PAY WITH DIGITAL WALLET (${selectedPkg.priceUsd.toLocaleString()})</span>
+                      <ArrowRight size={15} />
                     </>
                   ) : (
                     <>
-                      <CreditCard size={16} />
-                      <span>CHECKOUT WITH CARD / STRIPE (${selectedPkg.priceUsd.toLocaleString()})</span>
+                      <Zap size={16} className="zap-gold-icon" />
+                      <span>1-TAP PAY ${selectedPkg.priceUsd.toFixed(2)} &bull; CLAIM REWARDS</span>
+                      <ArrowRight size={15} />
                     </>
                   )}
-                  <ArrowRight size={15} />
                 </button>
               </div>
             </div>

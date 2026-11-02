@@ -8478,13 +8478,54 @@ body {
   font-weight: 800;
 }
 
+/* Navigation Tab Text Responsiveness */
+.pay-tab-text-short {
+  display: none;
+}
+.pay-tab-text-full {
+  display: inline;
+}
+
 /* Single-Screen Store Tab */
 .single-screen-store,
 .payment-tab-content.store-tab {
-  padding: 16px 20px 14px;
+  padding: 14px 18px 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+}
+
+/* High-Conversion Trust & Value Strip */
+.store-trust-usp-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 10px;
+}
+
+.trust-usp-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.trust-usp-item .usp-icon.zap {
+  color: #fbbf24;
+}
+
+.trust-usp-item .usp-icon.shield {
+  color: #38bdf8;
+}
+
+.trust-usp-item .usp-icon.gift {
+  color: #34d399;
 }
 
 /* 5-Column Package Shelf */
@@ -8640,6 +8681,204 @@ body {
 .shelf-usd-label {
   font-size: 0.6rem;
   opacity: 0.85;
+}
+
+.shelf-bonus-extra-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #34d399;
+  letter-spacing: 0.03em;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  margin-top: 1px;
+}
+
+.shelf-buy-direct-btn {
+  margin-top: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-family: var(--font-royal);
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #d97706 0%, #fbbf24 50%, #f59e0b 100%);
+  border: 1.5px solid #fef08a;
+  color: #1a0e05;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.shelf-buy-direct-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.6);
+}
+
+.shelf-buy-direct-btn:active {
+  transform: scale(0.97);
+}
+
+.shelf-buy-direct-btn .zap-instant-icon {
+  color: #78350f;
+}
+
+.shelf-buy-direct-btn.selected {
+  background: linear-gradient(135deg, #f59e0b 0%, #fef08a 50%, #fbbf24 100%);
+  box-shadow: 0 0 16px rgba(254, 240, 138, 0.6);
+}
+
+/* Collapsible Advanced Accordion (Custom Bundle & High Roller VIP Vault) */
+.store-advanced-accordion {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  overflow: hidden;
+  margin: 6px 0;
+  transition: all 0.2s ease;
+}
+
+.store-accordion-trigger {
+  width: 100%;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: background 0.2s ease;
+}
+
+.store-accordion-trigger:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #f8fafc;
+}
+
+.store-accordion-trigger.open {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.accordion-trigger-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-trigger-left .crown-icon-hr {
+  color: #fbbf24;
+}
+
+.accordion-trigger-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-pill-tag {
+  font-size: 0.65rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fde047;
+  font-weight: 800;
+}
+
+.store-accordion-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Simplified Payment Method Selector Headers */
+.pm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pm-instant-credit-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.payment-method-tabs-row.compact-row {
+  margin-top: 2px;
+}
+
+/* High Conversion Bottom Checkout Bar */
+.store-checkout-bar.high-conversion {
+  border: 2px solid #fbbf24;
+  background: linear-gradient(180deg, rgba(16, 24, 46, 0.98) 0%, rgba(9, 14, 28, 0.99) 100%);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.85), 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+.instant-checkout-btn.pulse-ready {
+  background: linear-gradient(135deg, #b45309 0%, #f59e0b 45%, #fbbf24 100%);
+  border: 1.5px solid #fef08a;
+  color: #1a0e05;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  font-family: var(--font-royal);
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.instant-checkout-btn.pulse-ready:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.7);
+}
+
+.instant-checkout-btn.pulse-ready:active {
+  transform: scale(0.98);
+}
+
+.instant-checkout-btn.processing {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+.spinning-zap {
+  animation: spinZap 0.8s linear infinite;
+  color: #78350f;
+}
+
+@keyframes spinZap {
+  0% { transform: scale(0.9); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(0.9); }
+}
+
+.summary-gc-val {
+  color: #fef08a;
+  font-size: 0.92rem;
 }
 
 /* Bottom Checkout Bar */
@@ -11987,52 +12226,71 @@ body {
     gap: 4px;
   }
 
-  .pay-tab-btn {
-    padding: 9px 12px;
-    font-size: 0.72rem;
-    gap: 5px;
-    flex-shrink: 0;
+  .pay-tab-text-full {
+    display: none !important;
+  }
+  .pay-tab-text-short {
+    display: inline !important;
   }
 
   /* Store Tab Content */
   .single-screen-store,
   .payment-tab-content.store-tab {
-    padding: 10px 10px 14px;
-    gap: 10px;
+    padding: 8px 8px 12px;
+    gap: 8px;
+  }
+
+  .store-trust-usp-strip {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 3px !important;
+    padding: 6px 10px !important;
+  }
+
+  .trust-usp-item {
+    font-size: 0.65rem !important;
+    gap: 5px !important;
   }
 
   /* 2-Column Responsive Shelf Grid with Featured 5th Package */
   .store-packages-shelf {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
   }
 
   .store-shelf-card:last-child,
   .shelf-package-card:last-child {
-    grid-column: 1 / -1;
+    grid-column: 1 / -1 !important;
   }
 
   .store-shelf-card,
   .shelf-package-card {
-    padding: 12px 8px 10px;
-    min-height: 122px;
-    border-radius: 12px;
+    padding: 10px 6px 8px !important;
+    min-height: 145px !important;
+    border-radius: 12px !important;
   }
 
   .shelf-gc-val {
-    font-size: 1.05rem;
+    font-size: 1.05rem !important;
   }
 
   .shelf-sc-pill {
-    font-size: 0.62rem;
-    padding: 2px 6px;
+    font-size: 0.62rem !important;
+    padding: 2px 6px !important;
+  }
+
+  .shelf-buy-direct-btn {
+    margin-top: 4px !important;
+    padding: 7px 6px !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.02em !important;
   }
 
   .shelf-tagline {
-    font-size: 0.58rem;
-    height: auto;
-    min-height: 16px;
-    line-height: 1.2;
+    font-size: 0.56rem !important;
+    height: auto !important;
+    min-height: 14px !important;
+    line-height: 1.15 !important;
   }
 
   .shelf-price-btn {
