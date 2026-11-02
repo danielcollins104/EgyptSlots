@@ -2364,6 +2364,16 @@ export default function App() {
         </div>
       )}
 
+      {/* 2026 Progressive Jackpot Display Marquee: Positioned above stage for 100% unobstructed top tiles */}
+      <div className="casino-jackpots-strip">
+        <JackpotMarqueeBar
+          currencyMode={currencyMode}
+          currentBet={currentBet}
+          isSpinning={isSpinning}
+          hasWin={winningLines.length > 0}
+        />
+      </div>
+
       {/* Main Slot Machine Stage: Left Guardian + Center Cabinet + Right Guardian */}
       <main className="slot-stage-container">
         {/* Left Guardian Character (Anubis on his Pedestal) */}
@@ -2532,16 +2542,6 @@ export default function App() {
             intensity={flowStreak >= 3 ? 1.4 : 1.0}
           />
 
-          {/* Vertical Mobile Topper: Placed JUST ABOVE the cabinet so the top tiles are 100% visible */}
-          <div className="mobile-cabinet-topper-jackpots">
-            <JackpotMarqueeBar
-              currencyMode={currencyMode}
-              currentBet={currentBet}
-              isSpinning={isSpinning}
-              hasWin={winningLines.length > 0}
-            />
-          </div>
-
           <div className={`reel-cabinet-box ${cabinetImpact ? `cabinet-impact-${cabinetImpact}` : ''} ${flowStreak >= 3 ? 'flow-momentum-active' : ''}`}>
             <img
               src={THEME_ASSETS.reelGlowImage}
@@ -2566,16 +2566,6 @@ export default function App() {
             {/* Top Arch 3D Gold & Jewel-Toned Plaque Logo */}
             <div className="cabinet-dc-neon-logo">
               <DcLogoPlaque className="cabinet-dc-logo-img" />
-            </div>
-
-            {/* Desktop / Landscape In-Cabinet Progressive Marquee */}
-            <div className="desktop-cabinet-marquee">
-              <JackpotMarqueeBar
-                currencyMode={currencyMode}
-                currentBet={currentBet}
-                isSpinning={isSpinning}
-                hasWin={winningLines.length > 0}
-              />
             </div>
 
             {/* Reel Cabinet Frame */}
