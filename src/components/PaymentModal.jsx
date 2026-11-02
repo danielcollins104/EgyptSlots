@@ -30,7 +30,13 @@ import {
   Scale,
   Zap,
 } from 'lucide-react';
-import { SWEEPSTAKES_CONFIG, calculateCustomPackage } from '../config/sweepstakesConfig';
+import {
+  SWEEPSTAKES_CONFIG,
+  calculateCustomPackage,
+  CASHTAG_HANDLE,
+  getCashAppPaymentLink,
+  getStripePaymentLink,
+} from '../config/sweepstakesConfig';
 import { paymentService } from '../services/paymentService';
 import { soundEngine } from '../audio/soundEngine';
 import PrivacyTermsModal from './PrivacyTermsModal';
@@ -92,7 +98,7 @@ export default function PaymentModal({
   const [selectedPkg, setSelectedPkg] = useState(
     initialPackage || SWEEPSTAKES_CONFIG.storePackages[2]
   );
-  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'crypto' | 'klarna' | 'paylater' | 'wallets'
+  const [paymentMethod, setPaymentMethod] = useState('cashapp'); // 'cashapp' | 'card' | 'crypto' | 'klarna' | 'paylater'
   const [cryptoCoin, setCryptoCoin] = useState('USDT');
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [showAdvancedStore, setShowAdvancedStore] = useState(false);
@@ -100,6 +106,7 @@ export default function PaymentModal({
   const [checkoutMessage, setCheckoutMessage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [activeOrderSheet, setActiveOrderSheet] = useState(null);
 
   // Redemption form state
   const [redeemAmountInput, setRedeemAmountInput] = useState('50');
@@ -118,6 +125,7 @@ export default function PaymentModal({
       setRedeemSuccessMsg('');
       setRedeemError('');
       setCopiedAddress(false);
+      setActiveOrderSheet(null);
     }
   }, [isOpen, initialTab, initialPackage]);
 
@@ -132,12 +140,14 @@ export default function PaymentModal({
   const handleSelectPackage = (pkg) => {
     setSelectedPkg(pkg);
     setCheckoutMessage(null);
+    setActiveOrderSheet(null);
     soundEngine.playButtonClick(540);
   };
 
   const handleApplyCustomPackage = () => {
     setSelectedPkg(computedCustomPkg);
     setCheckoutMessage(null);
+    setActiveOrderSheet(null);
     soundEngine.playButtonClick(600);
   };
 
@@ -160,53 +170,112 @@ export default function PaymentModal({
     soundEngine.playButtonClick(700);
     setIsProcessing(true);
 
-    let provider = 'stripe';
-    let providerLabel = 'Card / Apple Pay / Google Pay';
+    const refCode = `KEMET-${(pkg.id || 'VIP').replace('pkg_', '').toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    // 1. CASH APP (REAL LIVE INSTANT CHECKOUT)
+    if (paymentMethod === 'cashapp') {
+      const payUrl = pkg.cashAppPaymentLink || getCashAppPaymentLink(pkg.priceUsd);
+      try {
+        window.open(payUrl, '_blank', 'noopener,noreferrer');
+      } catch (_) {}
+
+      paymentService.logTransaction({
+        type: 'purchase_initiated',
+        provider: 'cashapp',
+        description: `${pkg.goldCoins.toLocaleString()} GC + ${pkg.freeSweepsCoins.toFixed(2)} Free SC (Cash App to ${CASHTAG_HANDLE})`,
+        amountUsd: pkg.priceUsd,
+        status: 'Payment Initiated (Awaiting Cash App Settlement)',
+        ref: refCode,
+      });
+
+      setIsProcessing(false);
+      setActiveOrderSheet({
+        type: 'cashapp',
+        pkg,
+        refCode,
+        payUrl,
+        submitted: false,
+      });
+      return;
+    }
+
+    // 2. STRIPE CARD (REAL 256-BIT ENCRYPTED CHECKOUT)
+    if (paymentMethod === 'card') {
+      const payUrl = getStripePaymentLink(pkg);
+      if (payUrl && payUrl.startsWith('https://')) {
+        try {
+          window.open(payUrl, '_blank', 'noopener,noreferrer');
+        } catch (_) {}
+      }
+
+      paymentService.logTransaction({
+        type: 'purchase_initiated',
+        provider: 'stripe',
+        description: `${pkg.goldCoins.toLocaleString()} GC + ${pkg.freeSweepsCoins.toFixed(2)} Free SC (Stripe Checkout)`,
+        amountUsd: pkg.priceUsd,
+        status: 'Payment Initiated (Stripe 256-Bit Hosted Checkout)',
+        ref: refCode,
+      });
+
+      setIsProcessing(false);
+      setActiveOrderSheet({
+        type: 'stripe',
+        pkg,
+        refCode,
+        payUrl,
+        submitted: false,
+      });
+      return;
+    }
+
+    // 3. CRYPTO BLOCKCHAIN
     if (paymentMethod === 'crypto') {
-      const cryptoSym = String(activeCrypto?.symbol || 'crypto').toLowerCase();
-      provider = `crypto_${cryptoSym}`;
-      providerLabel = `Crypto (${String(activeCrypto?.symbol || 'Crypto')})`;
-    } else if (paymentMethod === 'klarna') {
-      provider = 'klarna';
-      providerLabel = 'Klarna (Pay in 4)';
-    } else if (paymentMethod === 'paylater') {
-      provider = 'afterpay';
-      providerLabel = 'PayLater (Afterpay)';
-    } else if (paymentMethod === 'wallets') {
-      provider = 'apple_google_pay';
-      providerLabel = 'Digital Wallet (Apple/Google Pay)';
+      paymentService.logTransaction({
+        type: 'purchase_initiated',
+        provider: `crypto_${cryptoCoin.toLowerCase()}`,
+        description: `${pkg.goldCoins.toLocaleString()} GC + ${pkg.freeSweepsCoins.toFixed(2)} Free SC (${cryptoAmount} ${activeCrypto.symbol})`,
+        amountUsd: pkg.priceUsd,
+        status: 'Deposit Initiated (Awaiting Blockchain Confirmation)',
+        ref: refCode,
+      });
+
+      setIsProcessing(false);
+      setActiveOrderSheet({
+        type: 'crypto',
+        pkg,
+        refCode,
+        crypto: activeCrypto,
+        cryptoAmount,
+        submitted: false,
+      });
+      return;
     }
 
-    // If external Stripe Payment Link exists and card is selected, open link
-    if (paymentMethod === 'card' && pkg?.stripePaymentLink && pkg.stripePaymentLink.startsWith('https://')) {
-      window.open(pkg.stripePaymentLink, '_blank', 'noopener,noreferrer');
+    // 4. BNPL (KLARNA / AFTERPAY / PAYLATER)
+    const payUrl = getStripePaymentLink(pkg);
+    if (payUrl && payUrl.startsWith('https://')) {
+      try {
+        window.open(payUrl, '_blank', 'noopener,noreferrer');
+      } catch (_) {}
     }
 
-    // Record the completed transaction in the local ledger
     paymentService.logTransaction({
-      type: 'purchase',
-      provider,
-      description: `${pkg.goldCoins.toLocaleString()} GC + ${pkg.freeSweepsCoins.toFixed(2)} Free SC (${providerLabel})`,
+      type: 'purchase_initiated',
+      provider: paymentMethod,
+      description: `${pkg.goldCoins.toLocaleString()} GC + ${pkg.freeSweepsCoins.toFixed(2)} Free SC (${paymentMethod.toUpperCase()})`,
       amountUsd: pkg.priceUsd,
-      status: 'completed',
+      status: `Payment Initiated (${paymentMethod.toUpperCase()})`,
+      ref: refCode,
     });
 
-    // Provide quick tactile feedback before closing
-    setTimeout(() => {
-      setIsProcessing(false);
-      // Credit coins immediately to bankroll
-      if (onPurchaseSuccess) {
-        onPurchaseSuccess({
-          goldCoins: pkg.goldCoins,
-          freeSweepsCoins: pkg.freeSweepsCoins,
-          packageId: pkg.id,
-        });
-      }
-    }, 280);
-
-    setCheckoutMessage(
-      `✓ Successfully processed via ${providerLabel}! Credited +${pkg.goldCoins.toLocaleString()} GC & +${pkg.freeSweepsCoins.toFixed(2)} Free SC to your wallet.`
-    );
+    setIsProcessing(false);
+    setActiveOrderSheet({
+      type: 'stripe',
+      pkg,
+      refCode,
+      payUrl,
+      submitted: false,
+    });
   };
 
   const handleDirectBuy = (pkg) => {
@@ -417,6 +486,19 @@ export default function PaymentModal({
               <div className="payment-method-tabs-row compact-row">
                 <button
                   type="button"
+                  className={`pm-tab-btn cashapp-tab ${paymentMethod === 'cashapp' ? 'active' : ''}`}
+                  onClick={() => {
+                    setPaymentMethod('cashapp');
+                    soundEngine.playButtonClick(540);
+                  }}
+                >
+                  <DollarSign size={15} className="cashapp-dollar-icon" />
+                  <span>Cash App (Pay {CASHTAG_HANDLE})</span>
+                  <span className="pm-chip-instant">RECOMMENDED</span>
+                </button>
+
+                <button
+                  type="button"
                   className={`pm-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
                   onClick={() => {
                     setPaymentMethod('card');
@@ -424,8 +506,7 @@ export default function PaymentModal({
                   }}
                 >
                   <CreditCard size={15} />
-                  <span>Card / Apple Pay / GPay</span>
-                  <span className="pm-chip-instant">RECOMMENDED</span>
+                  <span>Credit / Debit Card (Stripe)</span>
                 </button>
 
                 <button
@@ -465,6 +546,44 @@ export default function PaymentModal({
                   <span>Afterpay / Affirm</span>
                 </button>
               </div>
+
+              {/* METHOD 0: CASH APP DETAILS DRAWER */}
+              {paymentMethod === 'cashapp' && (
+                <div className="pm-cashapp-details-card">
+                  <div className="cashapp-header-box">
+                    <div className="cashapp-brand-pill">
+                      <span className="cashapp-dollar-sign">$</span>
+                      <strong>Cash App Instant Pay</strong>
+                    </div>
+                    <div className="cashapp-handle-pill">
+                      <span>Send to: <strong>{CASHTAG_HANDLE}</strong></span>
+                    </div>
+                  </div>
+
+                  <p className="cashapp-instructions-text">
+                    Instant real-money checkout. When you tap <strong>PAY WITH CASH APP</strong> below, Cash App opens pre-filled with <strong>${selectedPkg.priceUsd.toFixed(2)}</strong> to <strong>{CASHTAG_HANDLE}</strong>.
+                  </p>
+
+                  <div className="cashapp-ref-row">
+                    <span className="ref-label">Reference Note for Payment:</span>
+                    <code className="ref-code">KEMET-{(selectedPkg.id || 'VIP').replace('pkg_', '').toUpperCase()}</code>
+                    <span className="ref-hint">Add this note in Cash App for instant credit verification</span>
+                  </div>
+                </div>
+              )}
+
+              {/* METHOD: STRIPE DETAILS DRAWER */}
+              {paymentMethod === 'card' && (
+                <div className="pm-card-details-card">
+                  <div className="card-checkout-header">
+                    <ShieldCheck size={16} className="shield-gold-icon" />
+                    <strong>256-Bit Encrypted Card Checkout (Stripe)</strong>
+                  </div>
+                  <p className="card-checkout-desc">
+                    Visa, MasterCard, American Express, Apple Pay, Google Pay. Opens official hosted payment page.
+                  </p>
+                </div>
+              )}
 
               {/* METHOD 1: CRYPTO DETAILS DRAWER */}
               {paymentMethod === 'crypto' && (
@@ -741,6 +860,220 @@ export default function PaymentModal({
               )}
             </div>
 
+            {/* Real Checkout Active Order Fulfillment Sheet */}
+            {activeOrderSheet && (
+              <div className="active-order-sheet-card" role="region" aria-label="Order Confirmation">
+                <div className="sheet-top-header">
+                  <div className="sheet-status-pill">
+                    <Zap size={14} className="zap-sheet-icon" />
+                    <span>REAL-TIME CHECKOUT INITIATED</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="sheet-close-btn"
+                    onClick={() => setActiveOrderSheet(null)}
+                    aria-label="Close order details"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="sheet-package-summary">
+                  <div className="sheet-summary-left">
+                    <span className="sheet-package-title">Order for {activeOrderSheet.pkg.goldCoins.toLocaleString()} GC</span>
+                    <span className="sheet-package-sc">+{activeOrderSheet.pkg.freeSweepsCoins.toFixed(2)} FREE Bonus SC</span>
+                  </div>
+                  <div className="sheet-summary-price">
+                    ${activeOrderSheet.pkg.priceUsd.toFixed(2)} USD
+                  </div>
+                </div>
+
+                {activeOrderSheet.type === 'cashapp' && (
+                  <div className="sheet-channel-body cashapp">
+                    <div className="channel-alert-banner cashapp-banner">
+                      <CheckCircle2 size={16} className="green-check" />
+                      <span>Cash App payment page opened in a new tab.</span>
+                    </div>
+
+                    <div className="channel-instruction-steps">
+                      <div className="c-step">
+                        <span className="step-num">1</span>
+                        <div>
+                          <strong>Send exactly ${activeOrderSheet.pkg.priceUsd.toFixed(2)} to {CASHTAG_HANDLE}</strong>
+                          <p>Use Cash App balance, linked debit card, or Apple Pay.</p>
+                        </div>
+                      </div>
+                      <div className="c-step">
+                        <span className="step-num">2</span>
+                        <div>
+                          <strong>Include this Reference Code in the Cash App note:</strong>
+                          <div className="ref-code-box">
+                            <code>{activeOrderSheet.refCode}</code>
+                            <button
+                              type="button"
+                              className="copy-ref-btn"
+                              onClick={() => handleCopyAddress(activeOrderSheet.refCode)}
+                            >
+                              {copiedAddress ? <Check size={14} /> : <Copy size={14} />}
+                              <span>{copiedAddress ? 'Copied' : 'Copy Code'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="c-step">
+                        <span className="step-num">3</span>
+                        <div>
+                          <strong>Tap confirmation button once sent:</strong>
+                          <p>Your transaction is queued with priority operator fulfillment.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="sheet-action-buttons">
+                      <button
+                        type="button"
+                        className="sheet-reopen-btn cashapp"
+                        onClick={() => window.open(activeOrderSheet.payUrl, '_blank', 'noopener,noreferrer')}
+                      >
+                        <ExternalLink size={15} />
+                        <span>Re-Open Cash App Link</span>
+                      </button>
+
+                      {!activeOrderSheet.submitted ? (
+                        <button
+                          type="button"
+                          className="sheet-confirm-sent-btn cashapp"
+                          onClick={() => {
+                            paymentService.logTransaction({
+                              type: 'purchase_submitted',
+                              provider: 'cashapp',
+                              description: `Submitted: ${activeOrderSheet.pkg.goldCoins.toLocaleString()} GC + ${activeOrderSheet.pkg.freeSweepsCoins.toFixed(2)} SC (Ref: ${activeOrderSheet.refCode})`,
+                              amountUsd: activeOrderSheet.pkg.priceUsd,
+                              status: 'Submitted for Operator Verification',
+                              ref: activeOrderSheet.refCode,
+                            });
+                            soundEngine.playWinCelebration?.('mini');
+                            setActiveOrderSheet({ ...activeOrderSheet, submitted: true });
+                          }}
+                        >
+                          <Check size={16} />
+                          <span>I Have Sent ${activeOrderSheet.pkg.priceUsd.toFixed(2)}</span>
+                        </button>
+                      ) : (
+                        <div className="sheet-submitted-badge">
+                          <CheckCircle2 size={16} />
+                          <span>Order reference submitted! Verifying receipt at {CASHTAG_HANDLE}.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeOrderSheet.type === 'stripe' && (
+                  <div className="sheet-channel-body stripe">
+                    <div className="channel-alert-banner stripe-banner">
+                      <ShieldCheck size={16} className="blue-shield" />
+                      <span>Stripe 256-bit encrypted checkout opened in a new tab.</span>
+                    </div>
+
+                    <div className="stripe-sheet-content">
+                      <p>
+                        Please enter your Visa, Mastercard, American Express, or Apple Pay details in the Stripe window to complete your purchase of <strong>${activeOrderSheet.pkg.priceUsd.toFixed(2)}</strong>.
+                      </p>
+                      <div className="ref-code-box">
+                        <span className="ref-label">Order Ref:</span>
+                        <code>{activeOrderSheet.refCode}</code>
+                      </div>
+                    </div>
+
+                    <div className="sheet-action-buttons">
+                      <button
+                        type="button"
+                        className="sheet-reopen-btn stripe"
+                        onClick={() => {
+                          if (activeOrderSheet.payUrl) {
+                            window.open(activeOrderSheet.payUrl, '_blank', 'noopener,noreferrer');
+                          }
+                        }}
+                      >
+                        <ExternalLink size={15} />
+                        <span>Re-Open Stripe Checkout</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="sheet-confirm-sent-btn stripe"
+                        onClick={() => {
+                          soundEngine.playButtonClick(600);
+                          setActiveOrderSheet(null);
+                          setCheckoutMessage(`✓ Checkout session active! Reference: ${activeOrderSheet.refCode}. Your wallet updates upon settlement.`);
+                        }}
+                      >
+                        <Check size={16} />
+                        <span>Done / Return to Game</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeOrderSheet.type === 'crypto' && (
+                  <div className="sheet-channel-body crypto">
+                    <div className="channel-alert-banner crypto-banner">
+                      <Bitcoin size={16} className="crypto-orange" />
+                      <span>Send {activeOrderSheet.cryptoAmount} {activeOrderSheet.crypto.symbol} to deposit address.</span>
+                    </div>
+
+                    <div className="crypto-sheet-content">
+                      <div className="crypto-address-copy-box">
+                        <code className="crypto-addr-txt">{activeOrderSheet.crypto.address}</code>
+                        <button
+                          type="button"
+                          className="copy-addr-btn"
+                          onClick={() => handleCopyAddress(activeOrderSheet.crypto.address)}
+                        >
+                          {copiedAddress ? <Check size={14} /> : <Copy size={14} />}
+                          <span>{copiedAddress ? 'Copied!' : 'Copy Address'}</span>
+                        </button>
+                      </div>
+                      <div className="ref-code-box">
+                        <span className="ref-label">Order Ref:</span>
+                        <code>{activeOrderSheet.refCode}</code>
+                      </div>
+                    </div>
+
+                    <div className="sheet-action-buttons">
+                      {!activeOrderSheet.submitted ? (
+                        <button
+                          type="button"
+                          className="sheet-confirm-sent-btn crypto"
+                          onClick={() => {
+                            paymentService.logTransaction({
+                              type: 'purchase_submitted',
+                              provider: `crypto_${activeOrderSheet.crypto.symbol.toLowerCase()}`,
+                              description: `Submitted: ${activeOrderSheet.pkg.goldCoins.toLocaleString()} GC + ${activeOrderSheet.pkg.freeSweepsCoins.toFixed(2)} SC (${activeOrderSheet.cryptoAmount} ${activeOrderSheet.crypto.symbol})`,
+                              amountUsd: activeOrderSheet.pkg.priceUsd,
+                              status: 'Awaiting Blockchain Confirmation',
+                              ref: activeOrderSheet.refCode,
+                            });
+                            soundEngine.playWinCelebration?.('mini');
+                            setActiveOrderSheet({ ...activeOrderSheet, submitted: true });
+                          }}
+                        >
+                          <Check size={16} />
+                          <span>I Have Sent {activeOrderSheet.cryptoAmount} {activeOrderSheet.crypto.symbol}</span>
+                        </button>
+                      ) : (
+                        <div className="sheet-submitted-badge">
+                          <CheckCircle2 size={16} />
+                          <span>Deposit submitted! Awaiting 1 blockchain confirmation.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Sticky Bottom Checkout Bar (1-Tap Fast Conversion) */}
             <div className="store-checkout-bar high-conversion">
               {/* Order Summary */}
@@ -766,7 +1099,19 @@ export default function PaymentModal({
                   {isProcessing ? (
                     <>
                       <Zap size={16} className="spinning-zap" />
-                      <span>CREDITING WALLET...</span>
+                      <span>LAUNCHING CHECKOUT...</span>
+                    </>
+                  ) : paymentMethod === 'cashapp' ? (
+                    <>
+                      <DollarSign size={16} className="cashapp-bold-icon" />
+                      <span>PAY ${selectedPkg.priceUsd.toFixed(2)} WITH CASH APP</span>
+                      <ArrowRight size={15} />
+                    </>
+                  ) : paymentMethod === 'card' ? (
+                    <>
+                      <CreditCard size={16} />
+                      <span>PAY ${selectedPkg.priceUsd.toFixed(2)} WITH CARD</span>
+                      <ArrowRight size={15} />
                     </>
                   ) : paymentMethod === 'crypto' ? (
                     <>
@@ -782,8 +1127,8 @@ export default function PaymentModal({
                     </>
                   ) : (
                     <>
-                      <Zap size={16} className="zap-gold-icon" />
-                      <span>1-TAP PAY ${selectedPkg.priceUsd.toFixed(2)} &bull; CLAIM REWARDS</span>
+                      <Calendar size={16} />
+                      <span>PAY WITH AFTERPAY (${(selectedPkg.priceUsd / 4).toFixed(2)} TODAY)</span>
                       <ArrowRight size={15} />
                     </>
                   )}

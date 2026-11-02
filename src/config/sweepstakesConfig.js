@@ -16,7 +16,32 @@
 //      for cash / bank transfer (Stripe Connect / Chime / Debit) or digital gift cards.
 // ============================================================================
 
+export const CASHTAG_HANDLE =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_CHIME_HANDLE)
+    ? import.meta.env.VITE_CHIME_HANDLE
+    : '$Daniel-Collins-168';
+
+export function getCashAppPaymentLink(priceUsd) {
+  const cleanHandle = CASHTAG_HANDLE.startsWith('$') ? CASHTAG_HANDLE : `$${CASHTAG_HANDLE}`;
+  const num = Number(priceUsd) || 0;
+  const formatted = num % 1 === 0 ? num.toString() : num.toFixed(2);
+  return `https://cash.app/${cleanHandle}/${formatted}`;
+}
+
+export function getStripePaymentLink(pkg) {
+  if (!pkg) return '';
+  const pkgId = String(pkg.id || '').replace('pkg_', '').toUpperCase();
+  const envKey = `VITE_STRIPE_PAYMENT_LINK_${pkgId}`;
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[envKey]) {
+    return import.meta.env[envKey];
+  }
+  return pkg.stripePaymentLink || '';
+}
+
 export const SWEEPSTAKES_CONFIG = {
+  // Cashtag operator configuration for real payments
+  cashtagHandle: CASHTAG_HANDLE,
+
   // Initial / Default Balances for New Players
   defaultGoldCoins: 1000, // 1,000 GC free starting bankroll
   defaultSweepsCoins: 10.0, // 10.00 free SC promotional bonus ($10.00 USD prize value)
@@ -32,6 +57,7 @@ export const SWEEPSTAKES_CONFIG = {
       freeSweepsCoins: 5.0,
       stripePriceId: 'price_1UVHyAPDpwmSIl1LVVPSqGJB',
       stripePaymentLink: 'https://buy.stripe.com/test_bJe7sN8TveURdFH0nB8AE04',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/4.99',
       popular: false,
       badge: 'STARTER BUNDLE',
       tagline: 'Best for getting started',
@@ -44,6 +70,7 @@ export const SWEEPSTAKES_CONFIG = {
       freeSweepsCoins: 10.5,
       stripePriceId: 'price_1UVI3SPDpwmSIl1L7gbjF9cR',
       stripePaymentLink: 'https://buy.stripe.com/test_aFadRbfhTcMJ9preer8AE03',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/9.99',
       popular: false,
       badge: '+5% BONUS SC',
       tagline: 'Great casual value',
@@ -56,6 +83,7 @@ export const SWEEPSTAKES_CONFIG = {
       freeSweepsCoins: 22.0,
       stripePriceId: 'price_1UVHt3PDpwmSIl1LMpDikc7a',
       stripePaymentLink: 'https://buy.stripe.com/test_14A9AV0mZeURatvdan8AE05',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/19.99',
       popular: true,
       badge: 'MOST POPULAR • +10% SC',
       tagline: 'Player favorite package',
@@ -68,6 +96,7 @@ export const SWEEPSTAKES_CONFIG = {
       freeSweepsCoins: 55.0,
       stripePriceId: 'price_1UVI44PDpwmSIl1LRMjorAI9',
       stripePaymentLink: 'https://buy.stripe.com/test_14A6oJd9LbIFgRT5HV8AE01',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/49.99',
       popular: false,
       badge: 'HIGH ROLLER • +10% SC',
       tagline: 'Serious player package',
@@ -80,6 +109,7 @@ export const SWEEPSTAKES_CONFIG = {
       freeSweepsCoins: 115.0,
       stripePriceId: 'price_1UVI4lPDpwmSIl1L8F0xnw10',
       stripePaymentLink: 'https://buy.stripe.com/test_4gM8wR4DfcMJ0SVgmz8AE02',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/99.99',
       popular: false,
       badge: 'VIP WHALE • +15% SC',
       tagline: 'Ultimate VIP value package',
@@ -172,14 +202,31 @@ export const SWEEPSTAKES_CONFIG = {
   // Payment Providers
   paymentProviders: [
     {
+      id: 'cashapp',
+      name: 'Cash App / Apple Pay',
+      badge: 'INSTANT LIVE PAY',
+      handle: CASHTAG_HANDLE,
+      supported: true,
+      icon: 'DollarSign',
+      description: `Instant mobile checkout via Cash App, Apple Pay, or debit card to ${CASHTAG_HANDLE}`,
+    },
+    {
       id: 'stripe',
       name: 'Credit / Debit Card (Stripe Checkout)',
-      badge: 'INSTANT CREDIT',
+      badge: '256-BIT ENCRYPTED',
       supported: true,
       requiresApiKey: true,
       envKey: 'VITE_STRIPE_PUBLISHABLE_KEY',
       icon: 'CreditCard',
       description: 'Visa, MasterCard, Amex, Apple Pay, Google Pay via Stripe',
+    },
+    {
+      id: 'crypto',
+      name: 'Cryptocurrency (USDT / BTC / ETH)',
+      badge: '0% GAS BONUS',
+      supported: true,
+      icon: 'Bitcoin',
+      description: 'Direct blockchain transfer with instant confirmation',
     },
     {
       id: 'chime',

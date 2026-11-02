@@ -6225,6 +6225,397 @@ body {
   color: #ffb3c7;
 }
 
+/* Cash App Tab & Drawer */
+.pm-tab-btn.cashapp-tab {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #a7f3d0;
+}
+
+.pm-tab-btn.cashapp-tab:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.pm-tab-btn.cashapp-tab.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(5, 150, 105, 0.25) 100%);
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+}
+
+.cashapp-dollar-icon,
+.cashapp-gold-icon,
+.cashapp-bold-icon {
+  color: #10b981;
+  font-weight: 900;
+}
+
+.pm-cashapp-details-card,
+.pm-card-details-card {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(10, 15, 28, 0.95);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pm-card-details-card {
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.cashapp-header-box,
+.card-checkout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cashapp-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #34d399;
+  font-size: 0.8rem;
+}
+
+.cashapp-dollar-sign {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #064e3b;
+  font-weight: 900;
+  font-size: 0.75rem;
+}
+
+.cashapp-handle-pill {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.cashapp-instructions-text,
+.card-checkout-desc {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.cashapp-ref-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(15, 23, 42, 0.7);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px dashed rgba(16, 185, 129, 0.35);
+}
+
+.ref-label {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.ref-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fbbf24;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.ref-hint {
+  font-size: 0.64rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Real-Time Active Order Sheet Card */
+.active-order-sheet-card {
+  margin: 12px 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%);
+  border: 2px solid #10b981;
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.35);
+  animation: fadeInOrderSheet 0.25s ease-out;
+}
+
+@keyframes fadeInOrderSheet {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sheet-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sheet-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid #10b981;
+  padding: 4px 10px;
+  border-radius: 20px;
+  color: #34d399;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.sheet-close-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.sheet-close-btn:hover {
+  color: #ffffff;
+}
+
+.sheet-package-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(30, 41, 59, 0.7);
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 14px;
+}
+
+.sheet-summary-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sheet-package-title {
+  font-weight: 800;
+  color: #fbbf24;
+  font-size: 0.85rem;
+}
+
+.sheet-package-sc {
+  font-size: 0.72rem;
+  color: #34d399;
+  font-weight: 700;
+}
+
+.sheet-summary-price {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.channel-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.channel-alert-banner.cashapp-banner {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+}
+
+.channel-alert-banner.stripe-banner {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #7dd3fc;
+}
+
+.channel-alert-banner.crypto-banner {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+}
+
+.channel-instruction-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.c-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.c-step .step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #042f2e;
+  font-size: 0.68rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.c-step strong {
+  font-size: 0.78rem;
+  color: #f1f5f9;
+}
+
+.c-step p {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+.ref-code-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.copy-ref-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid #fbbf24;
+  color: #fef08a;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.copy-ref-btn:hover {
+  background: rgba(251, 191, 36, 0.35);
+  color: #ffffff;
+}
+
+.sheet-action-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sheet-reopen-btn {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sheet-reopen-btn:hover {
+  background: rgba(51, 65, 85, 0.9);
+  color: #ffffff;
+}
+
+.sheet-confirm-sent-btn {
+  flex: 1.4;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sheet-confirm-sent-btn.cashapp {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid #34d399;
+  color: #022c22;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+}
+
+.sheet-confirm-sent-btn.cashapp:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  transform: translateY(-1px);
+}
+
+.sheet-confirm-sent-btn.stripe {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border: 1px solid #818cf8;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.4);
+}
+
+.sheet-confirm-sent-btn.crypto {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: 1px solid #fbbf24;
+  color: #451a03;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.4);
+}
+
+.sheet-submitted-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid #10b981;
+  color: #a7f3d0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  width: 100%;
+}
+
 /* Crypto Drawer */
 .pm-crypto-details-card {
   padding: 14px;
@@ -12452,6 +12843,23 @@ body {
     white-space: normal;
     text-align: center;
     padding: 10px 12px;
+  }
+
+  .active-order-sheet-card {
+    padding: 12px;
+    margin: 8px 0;
+  }
+
+  .sheet-action-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sheet-reopen-btn,
+  .sheet-confirm-sent-btn {
+    width: 100%;
+    min-height: 44px;
+    font-size: 0.8rem;
   }
 
   /* Low Balance / Rescue Offer Modal */
