@@ -8833,6 +8833,74 @@ body {
   }
 }
 
+/* 5. Foldable Tabletop Posture (Half-Folded Dual-Pane Mode) */
+@media (horizontal-viewport-segments: 1) and (vertical-viewport-segments: 2),
+       (max-aspect-ratio: 1/1) and (min-height: 580px) and (max-height: 1080px) and (orientation: portrait) {
+  .casino-app-root {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+  /* Top Half: Stage, Reels & Guardians */
+  .slot-stage-container {
+    flex: 1 1 54% !important;
+    max-height: 56dvh !important;
+    padding: 4px 8px !important;
+    align-items: center !important;
+  }
+  .slot-cabinet-wrapper {
+    max-width: min(96vw, calc((54dvh - 36px) * (2000 / 1350))) !important;
+  }
+  /* Bottom Half: Control Deck & Ergonomic Touch Controls */
+  .mobile-floating-control-dock {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    position: relative !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 80px !important;
+    padding: 12px 16px env(safe-area-inset-bottom, 12px) !important;
+    background: linear-gradient(180deg, rgba(8, 11, 20, 0.96) 0%, rgba(3, 5, 10, 0.99) 100%) !important;
+    border-top: 2px solid rgba(255, 215, 0, 0.35) !important;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.8) !important;
+    z-index: 100 !important;
+  }
+}
+
+/* 6. Desktop Experiences (Tooltips, Fine Cursor Hover & Keyboard Cue Styling) */
+@media (hover: hover) and (pointer: fine) {
+  .psd-spin-btn-graphic,
+  .mobile-dock-spin-btn,
+  .dc-action-btn,
+  .currency-toggle-btn {
+    cursor: pointer !important;
+    transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.15s ease !important;
+  }
+  .psd-spin-btn-graphic:hover,
+  .mobile-dock-spin-btn:hover {
+    filter: brightness(1.12) drop-shadow(0 0 16px rgba(255, 215, 0, 0.6)) !important;
+    transform: scale(1.03) !important;
+  }
+  .psd-spin-btn-graphic:active,
+  .mobile-dock-spin-btn:active {
+    transform: scale(0.97) !important;
+  }
+  /* Floating keyboard shortcut badge hint */
+  .desktop-shortcut-hint {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #ffd700;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+}
+
 /* ============================================================================
    10. PSYCHOLOGICAL FLOW STATE & CADENCE STYLING
    ============================================================================ */

@@ -1336,9 +1336,24 @@ export default function App() {
     }
   }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, freeSpinsOpen, triggerSpin, turboFlow, isAssetsLoaded]);
 
-  // Spacebar continuous hold-to-spin and instant tap-to-spin
+  // Desktop & Adaptive Keyboard Shortcuts (Space, Bet Up/Down, Mute, Paytable, Escape)
   useEffect(() => {
     const onKeyDown = (e) => {
+      // Don't intercept if user is typing in an input field (e.g. login/search)
+      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
+
+      // Escape: Close modals
+      if (e.code === 'Escape') {
+        if (bigWinAmount > 0) setBigWinAmount(0);
+        if (winSplashAmount > 0) setWinSplashAmount(0);
+        if (paytableOpen) setPaytableOpen(false);
+        if (paymentModalOpen) setPaymentModalOpen(false);
+        if (authModalOpen) setAuthModalOpen(false);
+        if (lowBalanceOfferOpen) setLowBalanceOfferOpen(false);
+        return;
+      }
+
+      // Spacebar: Spin trigger
       if (e.code === 'Space' && !showSplash && !paytableOpen && !bonusSession && !freeSpinsOpen && isAssetsLoaded) {
         e.preventDefault();
         if (e.repeat) return; // Prevent browser repeat events
@@ -1351,6 +1366,35 @@ export default function App() {
         } else {
           triggerSpin();
         }
+        return;
+      }
+
+      // Bet Up: ArrowUp or KeyW
+      if ((e.code === 'ArrowUp' || e.code === 'KeyW') && !isSpinning && !showSplash) {
+        e.preventDefault();
+        handleBetChange(1);
+        return;
+      }
+
+      // Bet Down: ArrowDown or KeyS
+      if ((e.code === 'ArrowDown' || e.code === 'KeyS') && !isSpinning && !showSplash) {
+        e.preventDefault();
+        handleBetChange(-1);
+        return;
+      }
+
+      // Mute Toggle: KeyM
+      if (e.code === 'KeyM' && !showSplash) {
+        e.preventDefault();
+        toggleMute();
+        return;
+      }
+
+      // Paytable Toggle: KeyP
+      if (e.code === 'KeyP' && !showSplash) {
+        e.preventDefault();
+        setPaytableOpen((prev) => !prev);
+        return;
       }
     };
 
@@ -1366,7 +1410,21 @@ export default function App() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [showSplash, paytableOpen, bonusSession, freeSpinsOpen, bigWinAmount, winSplashAmount, triggerSpin]);
+  }, [
+    showSplash,
+    paytableOpen,
+    paymentModalOpen,
+    authModalOpen,
+    lowBalanceOfferOpen,
+    bonusSession,
+    freeSpinsOpen,
+    bigWinAmount,
+    winSplashAmount,
+    triggerSpin,
+    isSpinning,
+    muted,
+    currencyMode
+  ]);
 
   const handleBetChange = (delta) => {
     if (isSpinning) return;
