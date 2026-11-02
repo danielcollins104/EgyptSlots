@@ -10317,7 +10317,7 @@ body {
     justify-content: center !important;
     align-items: center !important;
     width: 100% !important;
-    max-width: min(calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px), calc((100dvh - 58px) * (2000 / 1350))) !important;
+    max-width: 100% !important;
     height: 22px !important;
     min-height: 20px !important;
     max-height: 24px !important;
@@ -10386,9 +10386,9 @@ body {
   .slot-cabinet-wrapper {
     height: 100% !important;
     max-height: calc(100dvh - 34px) !important;
-    width: auto !important;
-    flex: 0 1 auto !important;
-    max-width: min(calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px), calc((100dvh - 34px) * (2000 / 1350))) !important;
+    width: min(calc((100dvh - 58px) * (2000 / 1350)), calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px)) !important;
+    max-width: min(calc((100dvh - 58px) * (2000 / 1350)), calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px)) !important;
+    flex: 0 0 auto !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
@@ -10399,11 +10399,14 @@ body {
 
   .reel-cabinet-box {
     aspect-ratio: 2000 / 1350 !important;
-    height: auto !important;
-    max-height: calc(100dvh - 34px - 25px) !important;
-    width: auto !important;
+    width: 100% !important;
     max-width: 100% !important;
+    height: auto !important;
+    max-height: calc(100dvh - 58px) !important;
     position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .reel-cabinet-box .reel-window-viewport {
