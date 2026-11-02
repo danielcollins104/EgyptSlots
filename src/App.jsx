@@ -28,6 +28,7 @@ import {
   Lock,
   LogOut,
   User,
+  Disc,
 } from 'lucide-react';
 import {
   CASINO_BRAND,
@@ -2082,7 +2083,7 @@ export default function App() {
               <div className="card-txt" style={{ flex: 1 }}>
                 <strong style={{ color: '#38bdf8', fontSize: '0.88rem' }}>🎵 Ambient Flow Music</strong>
                 <small style={{ color: '#94a3b8', display: 'block', marginTop: '2px' }}>
-                  {ambientMusicEngine.getCurrentTrack().title} (Quiet Mix)
+                  {ambientMusicEngine.getCurrentTrack()?.title || 'Enchanted Pulse'} (Quiet Mix)
                 </small>
               </div>
               <button
