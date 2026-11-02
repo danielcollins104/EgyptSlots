@@ -59,6 +59,8 @@ import PaytableModal from './components/PaytableModal';
 import BonusGameModal from './components/BonusGameModal';
 import FreeSpinsScreen from './components/FreeSpinsScreen';
 import CollectorCelebrationModal from './components/CollectorCelebrationModal';
+import MajorIlluminationEffect from './components/MajorIlluminationEffect';
+import GuardianBonusCelebrationModal from './components/GuardianBonusCelebrationModal';
 import CelestialOverloadBonusModal from './components/CelestialOverloadBonusModal';
 import PsdGoldNumber from './components/PsdGoldNumber';
 import NeonKeyedImage from './components/NeonKeyedImage';
@@ -297,6 +299,16 @@ export default function App() {
   const guardianChargeLevelRef = useRef(0);
   guardianChargeLevelRef.current = guardianChargeLevel;
 
+  // 2026 Alternating Guardian Power-Up Engine:
+  // First power-up goes to one character, next goes to the other, etc.
+  const [nextPowerUpGuardian, setNextPowerUpGuardian] = useState('anubis'); // 'anubis' | 'bastet'
+  const nextPowerUpGuardianRef = useRef('anubis');
+
+  // Major Illumination & Guardian Bonus Celebration State
+  const [majorIlluminationActive, setMajorIlluminationActive] = useState(false);
+  const [majorIlluminationCells, setMajorIlluminationCells] = useState([]);
+  const [guardianBonusCelebrationOpen, setGuardianBonusCelebrationOpen] = useState(false);
+
   const triggerAnubisPowerUp = useCallback((targetLevel) => {
     const next = Math.max(0, Math.min(4, targetLevel));
     setAnubisCharge(next);
@@ -379,6 +391,124 @@ export default function App() {
     const next = typeof updater === 'function' ? updater(curr) : updater;
     triggerAnubisPowerUp(next);
     triggerBastetPowerUp(next);
+  }, [triggerAnubisPowerUp, triggerBastetPowerUp]);
+
+  // 2026 Guardian Apex Overcharge Climax:
+  // Both characters shoot lightning & fire at the triggering combination, causing major illumination,
+  // followed by a "BONUS!" celebration animation and entry into Free Automatic Spins or 3D Bonus Vault.
+  const triggerGuardianClimax = useCallback((explicitWinCells = null) => {
+    // Both guardians reach Apex Overcharge
+    triggerAnubisPowerUp(4);
+    triggerBastetPowerUp(4);
+    setGuardianAction(true);
+
+    const targetCells =
+      explicitWinCells && explicitWinCells.length > 0
+        ? explicitWinCells
+        : [[1, 1], [2, 1], [3, 1]];
+
+    // 1. Shooting Animation: Anubis unleashes electric lightning, Bastet unleashes solar fire at combination
+    setGuardianStrikeEvent({
+      strikes: [
+        {
+          from: 'left',
+          type: 'lightning',
+          targetCells: targetCells,
+          delay: 0,
+        },
+        {
+          from: 'right',
+          type: 'fire',
+          targetCells: targetCells,
+          delay: 150,
+        },
+      ],
+    });
+
+    soundEngine.playThunderStrike?.();
+    setTimeout(() => soundEngine.playSolarFireball?.(), 160);
+
+    // 2. Major Illumination occurs upon projectile impact
+    setTimeout(() => {
+      setMajorIlluminationCells(targetCells);
+      setMajorIlluminationActive(true);
+      soundEngine.playAnticipationRiser?.();
+    }, 450);
+
+    // 3. Celebration Animation saying "BONUS!"
+    setTimeout(() => {
+      setGuardianBonusCelebrationOpen(true);
+      setGuardianAction(false);
+    }, 1300);
+
+    setStatusMessage(
+      '⚡ APEX WRATH CONVERGENCE! GUARDIANS UNLEASH CELESTIAL STRIKE ON COMBINATION!'
+    );
+  }, [triggerAnubisPowerUp, triggerBastetPowerUp]);
+
+  // Alternating power-up step helper: alternates between Anubis and Bastet
+  const triggerAlternatingPowerUp = useCallback(() => {
+    // If both are already fully powered up (4/4), unleash the Climax!
+    if (anubisChargeRef.current >= 4 && bastetChargeRef.current >= 4) {
+      triggerGuardianClimax();
+      return;
+    }
+
+    const currentTarget = nextPowerUpGuardianRef.current;
+    if (currentTarget === 'anubis') {
+      const nextA = Math.min(4, anubisChargeRef.current + 1);
+      triggerAnubisPowerUp(nextA);
+      nextPowerUpGuardianRef.current = 'bastet';
+      setNextPowerUpGuardian('bastet');
+      setStatusMessage(`⚡ LORD ANUBIS POWERS UP (STAGE ${nextA}/4)! [NEXT POWER-UP -> QUEEN BASTET]`);
+    } else {
+      const nextB = Math.min(4, bastetChargeRef.current + 1);
+      triggerBastetPowerUp(nextB);
+      nextPowerUpGuardianRef.current = 'anubis';
+      setNextPowerUpGuardian('anubis');
+      setStatusMessage(`🌸 QUEEN BASTET POWERS UP (STAGE ${nextB}/4)! [NEXT POWER-UP -> LORD ANUBIS]`);
+    }
+
+    if (anubisChargeRef.current >= 4 && bastetChargeRef.current >= 4) {
+      setStatusMessage('🔥⚡ BOTH GUARDIANS REACHED MAXIMUM APEX OVERCHARGE (4/4)! NEXT WIN UNLEASHES THE DIVINE BONUS!');
+    }
+  }, [triggerAnubisPowerUp, triggerBastetPowerUp, triggerGuardianClimax]);
+
+  const handleStartFreeSpinsFromGuardians = useCallback(() => {
+    setGuardianBonusCelebrationOpen(false);
+    setMajorIlluminationActive(false);
+    // Reset guardian charges to 0 so the player can build them up again
+    triggerAnubisPowerUp(0);
+    triggerBastetPowerUp(0);
+    nextPowerUpGuardianRef.current = 'anubis';
+    setNextPowerUpGuardian('anubis');
+
+    // Launch 10 automated celestial free spins
+    setAutoPlayCount(0);
+    setFreeSpinsCount(10);
+    setFreeSpinsOpen(true);
+    soundEngine.playBonusTrigger?.();
+  }, [triggerAnubisPowerUp, triggerBastetPowerUp]);
+
+  const handleEnterBonusVaultFromGuardians = useCallback(() => {
+    setGuardianBonusCelebrationOpen(false);
+    setMajorIlluminationActive(false);
+    // Reset guardian charges
+    triggerAnubisPowerUp(0);
+    triggerBastetPowerUp(0);
+    nextPowerUpGuardianRef.current = 'anubis';
+    setNextPowerUpGuardian('anubis');
+
+    // Launch 3D Treasure Vault
+    setAutoPlayCount(0);
+    setBonusSession({
+      triggerReason: 'Guardian Apex Overcharge 3D Vault',
+      initialPicks: 5,
+      wheelSpins: 2,
+      startingMultiplier: 3,
+      scatterWinCoins: 0,
+    });
+    soundEngine.playBonusTrigger?.();
   }, [triggerAnubisPowerUp, triggerBastetPowerUp]);
 
   const [guardianMartialMove, setGuardianMartialMove] = useState(null);
@@ -811,41 +941,45 @@ export default function App() {
           setCelestialBonusOpen(true);
           setGuardianAction(false);
         }, 1600);
-      } else if (isSelectCombination) {
+      } else if (isSelectCombination || wins.length > 0) {
         // =========================================================================
-        // INDEPENDENT GUARDIAN PEDESTAL POWER-UPS:
-        // Happens right there on their pedestal without cabinet disruption!
+        // 2026 ALTERNATING GUARDIAN POWER-UPS & FULL CHARGE CLIMAX:
+        // 1. Power-ups strictly alternate between Lord Anubis and Queen Bastet.
+        // 2. Once both are fully powered up (4/4) and get another power-up:
+        //    They shoot lightning & fire at the combination, causing major illumination,
+        //    a celebratory "BONUS!" animation, and launching Free Automatic Spins!
         // =========================================================================
-        setGuardianAction(true);
-        setTimeout(() => setGuardianAction(false), 1600);
+        const areBothFullyPowered =
+          anubisChargeRef.current >= 4 && bastetChargeRef.current >= 4;
 
         let statusText = '';
-        if (hasLotusMatch && hasScepterMatch) {
-          const nextA = triggerAnubisPowerUp(Math.min(4, anubisChargeRef.current + 1));
-          const nextB = triggerBastetPowerUp(Math.min(4, bastetChargeRef.current + 1));
-          statusText = `🌸⚡ DUAL RELICS CONVERGE! ANUBIS (LVL ${nextA}) & BASTET (LVL ${nextB}) POWER UP ON THEIR PEDESTALS!`;
-        } else if (hasScepterMatch) {
-          const nextA = triggerAnubisPowerUp(Math.min(4, anubisChargeRef.current + 1));
-          statusText = `⚡ ANUBIS SCEPTER CRACKLES! LORD ANUBIS POWERS UP ON HIS PEDESTAL (STAGE ${nextA})!`;
-        } else if (hasLotusMatch) {
-          const nextB = triggerBastetPowerUp(Math.min(4, bastetChargeRef.current + 1));
-          statusText = `🌸 BASTET LOTUS BLOOMS! QUEEN BASTET POWERS UP ON HER PEDESTAL (STAGE ${nextB})!`;
+
+        if (areBothFullyPowered) {
+          // CLIMAX: Fully powered up AND received another power-up from this combination!
+          triggerGuardianClimax(allWinCells);
+          statusText = '⚡🔥 DUAL GUARDIANS FULLY CHARGED! LIGHTNING & FIRE STRIKE COMBINATION — BONUS ACTIVATED!';
         } else {
-          // If win is predominantly on left side (reels 0, 1) -> power up Anubis
-          // If win is predominantly on right side (reels 3, 4) -> power up Bastet
-          // If big win or center -> power up both!
-          const hasLeft = allWinCells.some((c) => c[0] <= 1);
-          const hasRight = allWinCells.some((c) => c[0] >= 3);
-          if (isBig || (hasLeft && hasRight)) {
-            const nextA = triggerAnubisPowerUp(Math.min(4, anubisChargeRef.current + 1));
-            const nextB = triggerBastetPowerUp(Math.min(4, bastetChargeRef.current + 1));
-            statusText = `⚡ HIGH TRIUMPH! BOTH GUARDIANS SURGE (ANUBIS LVL ${nextA} • BASTET LVL ${nextB})!`;
-          } else if (hasLeft) {
-            const nextA = triggerAnubisPowerUp(Math.min(4, anubisChargeRef.current + 1));
-            statusText = `⚡ SACRED WESTERN RELICS! ANUBIS POWERS UP ON HIS PEDESTAL (STAGE ${nextA})!`;
+          // Standard alternating power-up sequence
+          setGuardianAction(true);
+          setTimeout(() => setGuardianAction(false), 1600);
+
+          const currentTarget = nextPowerUpGuardianRef.current;
+          if (currentTarget === 'anubis') {
+            const nextA = Math.min(4, anubisChargeRef.current + 1);
+            triggerAnubisPowerUp(nextA);
+            nextPowerUpGuardianRef.current = 'bastet';
+            setNextPowerUpGuardian('bastet');
+            statusText = `⚡ LORD ANUBIS POWERS UP (STAGE ${nextA}/4)! [NEXT POWER-UP -> QUEEN BASTET]`;
           } else {
-            const nextB = triggerBastetPowerUp(Math.min(4, bastetChargeRef.current + 1));
-            statusText = `🌸 SACRED EASTERN RELICS! BASTET POWERS UP ON HER PEDESTAL (STAGE ${nextB})!`;
+            const nextB = Math.min(4, bastetChargeRef.current + 1);
+            triggerBastetPowerUp(nextB);
+            nextPowerUpGuardianRef.current = 'anubis';
+            setNextPowerUpGuardian('anubis');
+            statusText = `🌸 QUEEN BASTET POWERS UP (STAGE ${nextB}/4)! [NEXT POWER-UP -> LORD ANUBIS]`;
+          }
+
+          if (anubisChargeRef.current >= 4 && bastetChargeRef.current >= 4) {
+            statusText = '🔥⚡ BOTH GUARDIANS REACHED MAXIMUM APEX OVERCHARGE (4/4)! NEXT WIN UNLEASHES THE DIVINE BONUS!';
           }
         }
 
@@ -1877,6 +2011,26 @@ export default function App() {
             </span>
           </button>
 
+          {/* Alternating Power-Up Demo Button */}
+          <button
+            className="dc-action-btn special-guardian-alt"
+            onClick={triggerAlternatingPowerUp}
+            title="Alternate power-ups between Lord Anubis and Queen Bastet! Once both reach 4/4, the next triggers the Climax!"
+          >
+            <Zap size={15} color="#00e5ff" />
+            <span>Alt Power-Up ({nextPowerUpGuardian === 'anubis' ? 'Anubis' : 'Bastet'})</span>
+          </button>
+
+          {/* Full Climax Animation Demo Button */}
+          <button
+            className="dc-action-btn special-guardian-climax"
+            onClick={() => triggerGuardianClimax()}
+            title="Trigger full Apex Overcharge Climax: Anubis shoots lightning, Bastet shoots fire, major illumination, BONUS celebration & 10 Free Automatic Spins!"
+          >
+            <Flame size={15} color="#f59e0b" />
+            <span>Guardians Climax (BONUS)</span>
+          </button>
+
           <button
             className="dc-action-btn special-collector-demo"
             onClick={() => {
@@ -2261,6 +2415,20 @@ export default function App() {
               <div className="card-txt">
                 <strong>Expanding Wilds</strong>
                 <small>1x3 Full Column Guardians</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card climax-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerGuardianClimax();
+              }}
+            >
+              <Flame size={20} className="card-icon" color="#f59e0b" />
+              <div className="card-txt">
+                <strong>Guardians Climax (BONUS)</strong>
+                <small>Lightning, Fire, Illumination & Free Spins</small>
               </div>
             </button>
 
@@ -3181,6 +3349,24 @@ export default function App() {
           onComplete={() => setGuardianStrikeEvent(null)}
         />
       </main>
+
+      {/* 2026 Major Illumination Effect: Blinding radiant burst upon Guardian combination strike */}
+      <MajorIlluminationEffect
+        active={majorIlluminationActive}
+        targetCells={majorIlluminationCells}
+        onIlluminationPeak={() => {
+          soundEngine.playWinCelebration?.();
+        }}
+      />
+
+      {/* 2026 Guardian Bonus Celebration Modal: "BONUS!" Fanfare & Automatic Free Spins entry */}
+      <GuardianBonusCelebrationModal
+        isOpen={guardianBonusCelebrationOpen}
+        onStartFreeSpins={handleStartFreeSpinsFromGuardians}
+        onEnterBonusVault={handleEnterBonusVaultFromGuardians}
+        onClose={() => setGuardianBonusCelebrationOpen(false)}
+        initialSpins={10}
+      />
 
       {/* 3D Bonus Games Modal */}
       <BonusGameModal
