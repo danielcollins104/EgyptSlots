@@ -39,6 +39,8 @@ export default function FreeSpinsScreen({
   betAmount = 1,
   coinValue = 1.0,
   currencyMode = 'GC',
+  linesCount = 15,
+  lineBet = null,
   onComplete,
 }) {
   const [spinsRemaining, setSpinsRemaining] = useState(initialSpins);
@@ -72,8 +74,9 @@ export default function FreeSpinsScreen({
       let totalCoinsWon = 0;
       const multiplier = FREE_SPINS_CONFIG.winMultiplier || 2;
 
-      // 1. Evaluate 15 Paylines
-      for (const line of PAYLINES) {
+      // 1. Evaluate Active Paylines
+      const activePaylines = PAYLINES.slice(0, linesCount || 15);
+      for (const line of activePaylines) {
         const lineSymbols = line.rows.map((r, c) => grid[c][r]);
         if (!lineSymbols[0] || lineSymbols[0].isScatter) continue;
 
@@ -265,9 +268,10 @@ export default function FreeSpinsScreen({
       // Calculate won amount in active currency
       let wonAmount = 0;
       if (totalCoinsWon > 0) {
+        const effectiveLineBet = lineBet != null ? lineBet : (betAmount / (linesCount || 15));
         wonAmount = isSC
-          ? Number(((totalCoinsWon / 15) * betAmount).toFixed(2))
-          : Math.round((totalCoinsWon / 15) * betAmount);
+          ? Number((totalCoinsWon * effectiveLineBet).toFixed(2))
+          : Math.round(totalCoinsWon * effectiveLineBet);
 
         setLastSpinWin(wonAmount);
         setTotalAccumulatedWin((prev) =>

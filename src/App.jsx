@@ -41,6 +41,9 @@ import {
   PAYLINES,
   BET_TIERS_GC,
   BET_TIERS_SC,
+  LINE_OPTIONS,
+  LINE_BET_TIERS_SC,
+  LINE_BET_TIERS_GC,
   getSymbols,
   getWildSymbol,
   getExpandingSymbol,
@@ -225,9 +228,12 @@ export default function App() {
     }
   };
 
-  // Bottom UI State (Unified Bet Selector across 15 Fixed Paylines)
-  const [betIndexGC, setBetIndexGC] = useState(4); // Default 75 GC (5 per line)
-  const [betIndexSC, setBetIndexSC] = useState(4); // Default 0.75 SC (0.05 per line)
+  // Bottom UI State (Multi-Line Wagering & Per-Line Bet Selector)
+  const [selectedLines, setSelectedLines] = useState(15);
+  const [lineBetIndexSC, setLineBetIndexSC] = useState(0); // Default 0.25 SC ($3.75 total bet at 15 lines)
+  const [lineBetIndexGC, setLineBetIndexGC] = useState(0); // Default 25 GC (375 GC total bet at 15 lines)
+  const [betIndexGC, setBetIndexGC] = useState(4); // Backward-compatibility
+  const [betIndexSC, setBetIndexSC] = useState(4); // Backward-compatibility
 
   // Initial Reel Grid & Spin Trigger
   const [initialGrid] = useState(() => generateInitialGrid());
@@ -561,14 +567,24 @@ export default function App() {
   const isHoldingSpinRef = useRef(false);
   const lastSpinEndTimeRef = useRef(0);
 
-  // Direct Bet calculations for GC and SC
-  const activeBetTiers = currencyMode === 'SC' ? BET_TIERS_SC : BET_TIERS_GC;
-  const currentBetIdx = currencyMode === 'SC' ? betIndexSC : betIndexGC;
-  const currentBetGC = BET_TIERS_GC[betIndexGC] ?? 75;
-  const currentBetSC = BET_TIERS_SC[betIndexSC] ?? 0.75;
-  const currentBet = currencyMode === 'SC' ? currentBetSC : currentBetGC;
-  const level = Math.max(1, Math.round(currencyMode === 'SC' ? currentBetSC / 0.15 : currentBetGC / 15));
-  const coinValue = currencyMode === 'SC' ? Number((currentBetSC / 15).toFixed(3)) : 1.0;
+  // Multi-Line Wagering and Per-Line Bet calculations for GC and SC
+  const selectedLinesIdx = Math.max(0, LINE_OPTIONS.indexOf(selectedLines));
+  const activeLineBetTiers = currencyMode === 'SC' ? LINE_BET_TIERS_SC : LINE_BET_TIERS_GC;
+  const lineBetIdx = currencyMode === 'SC' ? lineBetIndexSC : lineBetIndexGC;
+  const lineBetSC = LINE_BET_TIERS_SC[lineBetIndexSC] ?? 0.25;
+  const lineBetGC = LINE_BET_TIERS_GC[lineBetIndexGC] ?? 25;
+  const currentLineBet = currencyMode === 'SC' ? lineBetSC : lineBetGC;
+
+  // The total bet is strictly calculated as: bet per line * selected lines
+  const totalBetSC = Number((lineBetSC * selectedLines).toFixed(2));
+  const totalBetGC = Math.round(lineBetGC * selectedLines);
+  const currentBet = currencyMode === 'SC' ? totalBetSC : totalBetGC;
+  const currentBetSC = totalBetSC;
+  const currentBetGC = totalBetGC;
+  const activeBetTiers = activeLineBetTiers;
+  const currentBetIdx = lineBetIdx;
+  const level = Math.max(1, Math.round(currencyMode === 'SC' ? totalBetSC / 0.25 : totalBetGC / 25));
+  const coinValue = currencyMode === 'SC' ? lineBetSC : 1.0;
   const currentTheme = COLOR_PALETTES[neonThemeIdx % COLOR_PALETTES.length];
 
   // Sync balances and currencyMode to localStorage
@@ -690,96 +706,117 @@ export default function App() {
    *     awarding whichever valid combination pays higher.
    *  4. Evaluates 3+ `isBonus` Scatter symbols anywhere on the 5×3 grid (awards Scatter payout + Bonus Game).
    */
-  const evaluateGridWins = useCallback((finalGrid, betLevel, stripMetadata = {}) => {
-    // Phase 1 Math Core: Decoupled evaluation via SlotMathEngine
-    const outcome = slotMathEngine.evaluateGrid(finalGrid, betLevel, stripMetadata);
+  const evaluateGridWins = useCallback(
+    (
+      finalGrid,
+      betLevel = 1,
+      stripMetadata = {},
+      activeLinesCount = selectedLines,
+      effectiveLineBet = (currencyMode === 'SC' ? lineBetSC : lineBetGC)
+    ) => {
+      const numLines = activeLinesCount || selectedLines || 15;
+      const isSC = currencyMode === 'SC';
+      const outcome = slotMathEngine.evaluateGrid(finalGrid, 1, stripMetadata, numLines);
 
-    // Map outcome to UI-compatible format with explicit cell coordinates and dual-currency figures
-    const wins = outcome.winningLines.map((wl) => {
-      // Find original symbol object from grid for UI rendering
-      let symObj = null;
-      for (let c = 0; c < COLS; c++) {
-        for (let r = 0; r < ROWS; r++) {
-          if (finalGrid[c][r]?.id === wl.symbolId) {
-            symObj = finalGrid[c][r];
-            break;
-          }
-        }
-        if (symObj) break;
-      }
-      const winCells =
-        wl.cells ||
-        Array.from({ length: wl.matchCount }, (_, c) => [c, wl.line.rows[c]]);
-      const lineWinSC = Number(
-        (((wl.lineWin / (15 * (betLevel || 1))) * (currentBetSC || 0.75))).toFixed(2)
-      );
-      return {
-        line: wl.line,
-        symbol: symObj || { id: wl.symbolId, name: wl.symbolName },
-        matchCount: wl.matchCount,
-        lineWin: wl.lineWin,
-        lineWinSC,
-        wildMultiplier: wl.multiplier,
-        isScatter: false,
-        cells: winCells,
-      };
-    });
-
-    if (outcome.scatterCount >= 3) {
-      let bonusSym = null;
-      for (let c = 0; c < COLS; c++) {
-        for (let r = 0; r < ROWS; r++) {
-          if (finalGrid[c][r]?.isBonus) {
-            bonusSym = finalGrid[c][r];
-            break;
-          }
-        }
-        if (bonusSym) break;
-      }
-      const scatterCells =
-        outcome.scatterPositions && outcome.scatterPositions.length > 0
-          ? outcome.scatterPositions.map((p) => [p.col, p.row])
-          : [];
-      if (scatterCells.length === 0) {
+      // Map outcome to UI-compatible format with explicit cell coordinates and dual-currency figures
+      const wins = outcome.winningLines.map((wl) => {
+        // Find original symbol object from grid for UI rendering
+        let symObj = null;
         for (let c = 0; c < COLS; c++) {
           for (let r = 0; r < ROWS; r++) {
-            if (finalGrid[c][r]?.isBonus) scatterCells.push([c, r]);
+            if (finalGrid[c][r]?.id === wl.symbolId) {
+              symObj = finalGrid[c][r];
+              break;
+            }
+          }
+          if (symObj) break;
+        }
+        const winCells =
+          wl.cells ||
+          Array.from({ length: wl.matchCount }, (_, c) => [c, wl.line.rows[c]]);
+
+        // Each line win pays base payout * wild multiplier * per-line bet
+        const lineWinSC = Number((wl.lineWin * lineBetSC).toFixed(2));
+        const lineWinGC = Math.round(wl.lineWin * lineBetGC);
+
+        return {
+          line: wl.line,
+          symbol: symObj || { id: wl.symbolId, name: wl.symbolName },
+          matchCount: wl.matchCount,
+          lineWin: isSC ? lineWinSC : lineWinGC,
+          lineWinSC,
+          lineWinGC,
+          wildMultiplier: wl.multiplier,
+          isScatter: false,
+          cells: winCells,
+        };
+      });
+
+      if (outcome.scatterCount >= 3) {
+        let bonusSym = null;
+        for (let c = 0; c < COLS; c++) {
+          for (let r = 0; r < ROWS; r++) {
+            if (finalGrid[c][r]?.isBonus) {
+              bonusSym = finalGrid[c][r];
+              break;
+            }
+          }
+          if (bonusSym) break;
+        }
+        const scatterCells =
+          outcome.scatterPositions && outcome.scatterPositions.length > 0
+            ? outcome.scatterPositions.map((p) => [p.col, p.row])
+            : [];
+        if (scatterCells.length === 0) {
+          for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+              if (finalGrid[c][r]?.isBonus) scatterCells.push([c, r]);
+            }
           }
         }
+        const scatterWinSC = Number((outcome.scatterWin * lineBetSC).toFixed(2));
+        const scatterWinGC = Math.round(outcome.scatterWin * lineBetGC);
+        wins.unshift({
+          line: {
+            id: 'BONUS',
+            name: `${outcome.scatterCount}× ${bonusSym?.name || 'Solar Scarab Scatters'}`,
+            rows: [1, 1, 1, 1, 1],
+            color: '#fbbf24',
+          },
+          symbol: bonusSym || { id: 'bonus_crest', name: '3D Solar Scarab Relic' },
+          matchCount: outcome.scatterCount,
+          lineWin: isSC ? scatterWinSC : scatterWinGC,
+          lineWinSC,
+          lineWinGC,
+          wildMultiplier: 1,
+          isScatter: true,
+          cells: scatterCells,
+        });
       }
-      const scatterWinSC = Number(
-        (((outcome.scatterWin / (15 * (betLevel || 1))) * (currentBetSC || 0.75))).toFixed(2)
-      );
-      wins.unshift({
-        line: {
-          id: 'BONUS',
-          name: `${outcome.scatterCount}× ${bonusSym?.name || 'Solar Scarab Scatters'}`,
-          rows: [1, 1, 1, 1, 1],
-          color: '#fbbf24',
-        },
-        symbol: bonusSym || { id: 'bonus_crest', name: '3D Solar Scarab Relic' },
-        matchCount: outcome.scatterCount,
-        lineWin: outcome.scatterWin,
-        lineWinSC: scatterWinSC,
-        wildMultiplier: 1,
-        isScatter: true,
-        cells: scatterCells,
-      });
-    }
 
-    return {
-      wins,
-      winCoordSet: new Set(outcome.winningCells),
-      totalCoinsWon: outcome.totalWin,
-      bonusCount: outcome.scatterCount,
-      scatterWinCoins: outcome.scatterWin,
-      meterChargesEarned: outcome.meterChargesEarned,
-      winCategory: outcome.winCategory,
-      isLDW: outcome.isLDW,
-      nearMiss: outcome.nearMiss,
-      outcome,
-    };
-  }, [currentBetSC]);
+      const totalWinCoins = isSC
+        ? Number((outcome.totalWin * lineBetSC).toFixed(2))
+        : Math.round(outcome.totalWin * lineBetGC);
+
+      const scatterWinCoins = isSC
+        ? Number((outcome.scatterWin * lineBetSC).toFixed(2))
+        : Math.round(outcome.scatterWin * lineBetGC);
+
+      return {
+        wins,
+        winCoordSet: new Set(outcome.winningCells),
+        totalCoinsWon: totalWinCoins,
+        bonusCount: outcome.scatterCount,
+        scatterWinCoins,
+        meterChargesEarned: outcome.meterChargesEarned,
+        winCategory: outcome.winCategory,
+        isLDW: outcome.isLDW,
+        nearMiss: outcome.nearMiss,
+        outcome,
+      };
+    },
+    [currencyMode, lineBetSC, lineBetGC, selectedLines]
+  );
 
   const handleColumnStop = useCallback((colIdx, didExpand, targetSymbols) => {
     if (targetSymbols) {
@@ -820,7 +857,7 @@ export default function App() {
       return;
     }
 
-    const { nextGrid, activeLevel, spinBet, forcedMode, stripMetadata } = pending;
+    const { nextGrid, activeLevel, spinBet, lineBet, linesCount, forcedMode, stripMetadata } = pending;
     const {
       wins,
       winCoordSet,
@@ -831,7 +868,7 @@ export default function App() {
       winCategory,
       isLDW,
       nearMiss,
-    } = evaluateGridWins(nextGrid, activeLevel, stripMetadata || {});
+    } = evaluateGridWins(nextGrid, activeLevel, stripMetadata || {}, linesCount || selectedLines, lineBet);
 
     // Update the 3D Bonus Collector Meter
     let meterTriggeredBonus = false;
@@ -845,12 +882,8 @@ export default function App() {
     });
 
     const isSC = currencyMode === 'SC';
-    const finalWin = isSC
-      ? Number(((totalCoinsWon / (15 * activeLevel)) * spinBet).toFixed(2))
-      : totalCoinsWon;
-    const finalScatterWin = isSC
-      ? Number(((scatterWinCoins / (15 * activeLevel)) * spinBet).toFixed(2))
-      : scatterWinCoins;
+    const finalWin = totalCoinsWon;
+    const finalScatterWin = scatterWinCoins;
 
     if (totalCoinsWon > 0) {
       if (isSC) {
@@ -1302,25 +1335,46 @@ export default function App() {
       }
 
       let activeSpinBet = overrideBet;
+      let activeLineBet = isSC ? lineBetSC : lineBetGC;
+      let activeLinesCount = selectedLines;
+
       if (activeSpinBet == null) {
-        activeSpinBet = isSC ? (BET_TIERS_SC[betIndexSC] ?? 0.75) : (BET_TIERS_GC[betIndexGC] ?? 75);
+        activeSpinBet = isSC ? totalBetSC : totalBetGC;
       }
 
       // Smart Balance Evaluation & Dynamic Bet Adjuster:
       // If the player has coins, NEVER block them from spinning!
       if (isSC) {
-        const minSCBet = BET_TIERS_SC[0]; // 0.15 SC
+        const minSCBet = LINE_BET_TIERS_SC[0]; // 0.25 SC min
         if (liveSC >= activeSpinBet) {
           // Normal: Player has sufficient SC for this bet
         } else if (liveSC >= minSCBet) {
-          // Player has SC, but current bet is higher than balance -> auto-adjust down to highest affordable tier!
-          let fitIdx = BET_TIERS_SC.length - 1;
-          while (fitIdx > 0 && BET_TIERS_SC[fitIdx] > liveSC) fitIdx--;
-          activeSpinBet = BET_TIERS_SC[fitIdx];
-          setBetIndexSC(fitIdx);
-          setStatusMessage(`BET AUTO-ADJUSTED TO $${activeSpinBet.toFixed(2)} SC TO MATCH YOUR BALANCE!`);
+          // Player has SC, but current total bet is higher than balance
+          // 1. Try lowering the per-line bet tier at current selectedLines
+          let fitIdx = lineBetIndexSC;
+          while (fitIdx > 0 && Number((LINE_BET_TIERS_SC[fitIdx] * activeLinesCount).toFixed(2)) > liveSC) {
+            fitIdx--;
+          }
+          if (Number((LINE_BET_TIERS_SC[fitIdx] * activeLinesCount).toFixed(2)) <= liveSC) {
+            setLineBetIndexSC(fitIdx);
+            activeLineBet = LINE_BET_TIERS_SC[fitIdx];
+            activeSpinBet = Number((activeLineBet * activeLinesCount).toFixed(2));
+            setStatusMessage(`BET AUTO-ADJUSTED TO $${activeSpinBet.toFixed(2)} SC ($${formatCoinValue(activeLineBet)} × ${activeLinesCount}L) TO MATCH YOUR BALANCE!`);
+          } else {
+            // Even at lowest line bet (0.25), reduce active lines to fit
+            let fitLinesIdx = LINE_OPTIONS.length - 1;
+            while (fitLinesIdx > 0 && Number((LINE_BET_TIERS_SC[0] * LINE_OPTIONS[fitLinesIdx]).toFixed(2)) > liveSC) {
+              fitLinesIdx--;
+            }
+            setSelectedLines(LINE_OPTIONS[fitLinesIdx]);
+            setLineBetIndexSC(0);
+            activeLinesCount = LINE_OPTIONS[fitLinesIdx];
+            activeLineBet = LINE_BET_TIERS_SC[0];
+            activeSpinBet = Number((activeLineBet * activeLinesCount).toFixed(2));
+            setStatusMessage(`LINES & BET AUTO-ADJUSTED TO $${activeSpinBet.toFixed(2)} SC ($0.25 × ${activeLinesCount}L) TO MATCH YOUR BALANCE!`);
+          }
         } else {
-          // Player is OUT of Sweeps Coins (< 0.15 SC)
+          // Player is OUT of Sweeps Coins (< 0.25 SC)
           // Open the Refill modal immediately with 1-click Gold Coin bundles (+ Free SC)
           setAutoPlayCount(0);
           soundEngine.playButtonClick(420);
@@ -1332,18 +1386,33 @@ export default function App() {
       }
 
       if (!isSC) {
-        const minGCBet = BET_TIERS_GC[0]; // 15 GC
+        const minGCBet = LINE_BET_TIERS_GC[0]; // 25 GC min
         if (liveGC >= activeSpinBet) {
           // Normal: Player has sufficient GC for this bet
         } else if (liveGC >= minGCBet) {
-          // Player has GC, but current bet is higher than balance -> auto-adjust down to highest affordable tier!
-          let fitIdx = BET_TIERS_GC.length - 1;
-          while (fitIdx > 0 && BET_TIERS_GC[fitIdx] > liveGC) fitIdx--;
-          activeSpinBet = BET_TIERS_GC[fitIdx];
-          setBetIndexGC(fitIdx);
-          setStatusMessage(`BET AUTO-ADJUSTED TO ${activeSpinBet.toLocaleString()} GC TO MATCH YOUR BALANCE!`);
+          let fitIdx = lineBetIndexGC;
+          while (fitIdx > 0 && Math.round(LINE_BET_TIERS_GC[fitIdx] * activeLinesCount) > liveGC) {
+            fitIdx--;
+          }
+          if (Math.round(LINE_BET_TIERS_GC[fitIdx] * activeLinesCount) <= liveGC) {
+            setLineBetIndexGC(fitIdx);
+            activeLineBet = LINE_BET_TIERS_GC[fitIdx];
+            activeSpinBet = Math.round(activeLineBet * activeLinesCount);
+            setStatusMessage(`BET AUTO-ADJUSTED TO ${activeSpinBet.toLocaleString()} GC (${activeLineBet.toLocaleString()} × ${activeLinesCount}L) TO MATCH YOUR BALANCE!`);
+          } else {
+            let fitLinesIdx = LINE_OPTIONS.length - 1;
+            while (fitLinesIdx > 0 && Math.round(LINE_BET_TIERS_GC[0] * LINE_OPTIONS[fitLinesIdx]) > liveGC) {
+              fitLinesIdx--;
+            }
+            setSelectedLines(LINE_OPTIONS[fitLinesIdx]);
+            setLineBetIndexGC(0);
+            activeLinesCount = LINE_OPTIONS[fitLinesIdx];
+            activeLineBet = LINE_BET_TIERS_GC[0];
+            activeSpinBet = Math.round(activeLineBet * activeLinesCount);
+            setStatusMessage(`LINES & BET AUTO-ADJUSTED TO ${activeSpinBet.toLocaleString()} GC (25 × ${activeLinesCount}L) TO MATCH YOUR BALANCE!`);
+          }
         } else {
-          // Out of Gold Coins (< 15 GC)
+          // Out of Gold Coins (< 25 GC)
           setAutoPlayCount(0);
           soundEngine.playButtonClick(420);
           setStatusMessage('OUT OF GOLD COINS! REFILL IN STORE TO KEEP PLAYING OR SWITCH TO SWEEPS COINS.');
@@ -1509,6 +1578,8 @@ export default function App() {
         nextExpanded,
         activeLevel,
         spinBet: activeSpinBet,
+        lineBet: activeLineBet,
+        linesCount: activeLinesCount,
         forcedMode,
         stripMetadata,
       };
@@ -1531,6 +1602,13 @@ export default function App() {
       currentBetSC,
       betIndexGC,
       betIndexSC,
+      selectedLines,
+      lineBetIndexSC,
+      lineBetIndexGC,
+      lineBetSC,
+      lineBetGC,
+      totalBetSC,
+      totalBetGC,
       currentUser,
       turboFlow,
       isAssetsLoaded,
@@ -1637,6 +1715,22 @@ export default function App() {
         return;
       }
 
+      // Lines Left/Right: ArrowLeft / KeyA (Decrease Lines), ArrowRight / KeyD (Increase Lines)
+      if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey) {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          handleLinesChange(-1);
+          return;
+        }
+      }
+      if ((e.code === 'ArrowRight' || e.code === 'KeyD') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey) {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          handleLinesChange(1);
+          return;
+        }
+      }
+
       // Bet Up: ArrowUp or KeyW
       if ((e.code === 'ArrowUp' || e.code === 'KeyW') && !isSpinning && !showSplash) {
         e.preventDefault();
@@ -1691,20 +1785,78 @@ export default function App() {
     triggerSpin,
     isSpinning,
     muted,
-    currencyMode
+    currencyMode,
+    selectedLines,
+    lineBetIndexSC,
+    lineBetIndexGC,
   ]);
+
+  const handleLinesChange = (delta) => {
+    if (isSpinning) return;
+    soundEngine.playButtonClick(540);
+    const currIdx = LINE_OPTIONS.indexOf(selectedLines);
+    const nextIdx = Math.min(LINE_OPTIONS.length - 1, Math.max(0, (currIdx === -1 ? 4 : currIdx) + delta));
+    const nextLines = LINE_OPTIONS[nextIdx];
+    setSelectedLines(nextLines);
+    if (currencyMode === 'SC') {
+      const nextTotal = Number((lineBetSC * nextLines).toFixed(2));
+      setStatusMessage(`LINES SET TO ${nextLines} ACTIVE PAYLINE${nextLines > 1 ? 'S' : ''}! TOTAL BET: $${formatCoinValue(nextTotal)} SC ($${formatCoinValue(lineBetSC)} × ${nextLines}L)`);
+    } else {
+      const nextTotal = Math.round(lineBetGC * nextLines);
+      setStatusMessage(`LINES SET TO ${nextLines} ACTIVE PAYLINE${nextLines > 1 ? 'S' : ''}! TOTAL BET: ${nextTotal.toLocaleString()} GC (${lineBetGC.toLocaleString()} × ${nextLines}L)`);
+    }
+  };
+
+  const handleSelectLines = (lines) => {
+    if (isSpinning || !LINE_OPTIONS.includes(lines)) return;
+    soundEngine.playButtonClick(540);
+    setSelectedLines(lines);
+    if (currencyMode === 'SC') {
+      const nextTotal = Number((lineBetSC * lines).toFixed(2));
+      setStatusMessage(`LINES SET TO ${lines} ACTIVE PAYLINE${lines > 1 ? 'S' : ''}! TOTAL BET: $${formatCoinValue(nextTotal)} SC`);
+    } else {
+      const nextTotal = Math.round(lineBetGC * lines);
+      setStatusMessage(`LINES SET TO ${lines} ACTIVE PAYLINE${lines > 1 ? 'S' : ''}! TOTAL BET: ${nextTotal.toLocaleString()} GC`);
+    }
+  };
 
   const handleBetChange = (delta) => {
     if (isSpinning) return;
     soundEngine.playButtonClick(620);
     if (currencyMode === 'SC') {
-      setBetIndexSC((prev) =>
-        Math.min(BET_TIERS_SC.length - 1, Math.max(0, prev + delta))
-      );
+      setLineBetIndexSC((prev) => {
+        const next = Math.min(LINE_BET_TIERS_SC.length - 1, Math.max(0, prev + delta));
+        const nextLineBet = LINE_BET_TIERS_SC[next];
+        const nextTotal = Number((nextLineBet * selectedLines).toFixed(2));
+        setStatusMessage(`LINE BET: $${formatCoinValue(nextLineBet)} SC × ${selectedLines} LINES = $${formatCoinValue(nextTotal)} SC TOTAL BET!`);
+        return next;
+      });
     } else {
-      setBetIndexGC((prev) =>
-        Math.min(BET_TIERS_GC.length - 1, Math.max(0, prev + delta))
-      );
+      setLineBetIndexGC((prev) => {
+        const next = Math.min(LINE_BET_TIERS_GC.length - 1, Math.max(0, prev + delta));
+        const nextLineBet = LINE_BET_TIERS_GC[next];
+        const nextTotal = Math.round(nextLineBet * selectedLines);
+        setStatusMessage(`LINE BET: ${nextLineBet.toLocaleString()} GC × ${selectedLines} LINES = ${nextTotal.toLocaleString()} GC TOTAL BET!`);
+        return next;
+      });
+    }
+  };
+
+  const handleSelectLineBet = (tierIdx) => {
+    if (isSpinning) return;
+    soundEngine.playButtonClick(620);
+    if (currencyMode === 'SC') {
+      const validIdx = Math.min(LINE_BET_TIERS_SC.length - 1, Math.max(0, tierIdx));
+      setLineBetIndexSC(validIdx);
+      const nextLineBet = LINE_BET_TIERS_SC[validIdx];
+      const nextTotal = Number((nextLineBet * selectedLines).toFixed(2));
+      setStatusMessage(`LINE BET: $${formatCoinValue(nextLineBet)} SC × ${selectedLines} LINES = $${formatCoinValue(nextTotal)} SC TOTAL BET!`);
+    } else {
+      const validIdx = Math.min(LINE_BET_TIERS_GC.length - 1, Math.max(0, tierIdx));
+      setLineBetIndexGC(validIdx);
+      const nextLineBet = LINE_BET_TIERS_GC[validIdx];
+      const nextTotal = Math.round(nextLineBet * selectedLines);
+      setStatusMessage(`LINE BET: ${nextLineBet.toLocaleString()} GC × ${selectedLines} LINES = ${nextTotal.toLocaleString()} GC TOTAL BET!`);
     }
   };
 
@@ -1713,20 +1865,23 @@ export default function App() {
     soundEngine.playButtonClick(740);
     const isSC = currencyMode === 'SC';
     const liveBal = isSC ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins);
-    const tiers = isSC ? BET_TIERS_SC : BET_TIERS_GC;
+    const tiers = isSC ? LINE_BET_TIERS_SC : LINE_BET_TIERS_GC;
 
-    // Find highest affordable bet up to the maximum tier
+    // Max Bet maximizes to 15 lines and highest affordable per-line bet tier
+    setSelectedLines(15);
     let targetIdx = tiers.length - 1;
-    while (targetIdx > 0 && tiers[targetIdx] > liveBal) {
+    while (targetIdx > 0 && (tiers[targetIdx] * 15) > liveBal) {
       targetIdx--;
     }
 
     if (isSC) {
-      setBetIndexSC(targetIdx);
-      triggerSpin(null, tiers[targetIdx]);
+      setLineBetIndexSC(targetIdx);
+      const newTotal = Number((tiers[targetIdx] * 15).toFixed(2));
+      triggerSpin(null, newTotal);
     } else {
-      setBetIndexGC(targetIdx);
-      triggerSpin(null, tiers[targetIdx]);
+      setLineBetIndexGC(targetIdx);
+      const newTotal = Math.round(tiers[targetIdx] * 15);
+      triggerSpin(null, newTotal);
     }
   };
 
@@ -2254,6 +2409,94 @@ export default function App() {
                 </div>
               </button>
             )}
+
+            {/* Paylines & Bet Multiplier Quick Selector Card */}
+            <div
+              className="mobile-drawer-card mobile-bet-lines-card"
+              style={{
+                gridColumn: '1 / -1',
+                borderColor: 'rgba(255, 215, 0, 0.45)',
+                background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(0, 0, 0, 0.85))',
+                padding: '12px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 900, color: '#fde047', letterSpacing: '0.04em' }}>
+                  WAGER CALCULATOR
+                </span>
+                <span style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 800 }}>
+                  TOTAL BET: {currencyMode === 'SC' ? `$${formatCoinValue(totalBetSC)}` : totalBetGC.toLocaleString()}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.75)' }}>
+                {currencyMode === 'SC'
+                  ? `$${formatCoinValue(lineBetSC)} SC × ${selectedLines} Lines = $${formatCoinValue(totalBetSC)} SC`
+                  : `${lineBetGC.toLocaleString()} GC × ${selectedLines} Lines = ${totalBetGC.toLocaleString()} GC`}
+              </div>
+
+              {/* Lines chips: 1, 2, 5, 10, 15 */}
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '5px', fontWeight: 700 }}>
+                  SELECT ACTIVE PAYLINES:
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {LINE_OPTIONS.map((lines) => (
+                    <button
+                      key={lines}
+                      type="button"
+                      onClick={() => handleSelectLines(lines)}
+                      style={{
+                        flex: '1 1 auto',
+                        minWidth: '48px',
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        border: selectedLines === lines ? '1.5px solid #ffd700' : '1px solid rgba(255, 255, 255, 0.2)',
+                        background: selectedLines === lines ? 'linear-gradient(180deg, #b45309, #78350f)' : 'rgba(0, 0, 0, 0.45)',
+                        color: selectedLines === lines ? '#fff' : 'rgba(255, 255, 255, 0.85)',
+                        fontWeight: selectedLines === lines ? 900 : 700,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        boxShadow: selectedLines === lines ? '0 0 10px rgba(245, 158, 11, 0.6)' : 'none',
+                      }}
+                    >
+                      {lines} {lines === 1 ? 'Line' : 'Lines'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bet per line chips */}
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '5px', fontWeight: 700 }}>
+                  BET PER LINE:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                  {activeLineBetTiers.map((tierVal, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectLineBet(idx)}
+                      style={{
+                        padding: '6px 4px',
+                        borderRadius: '6px',
+                        border: lineBetIdx === idx ? '1.5px solid #34d399' : '1px solid rgba(255, 255, 255, 0.2)',
+                        background: lineBetIdx === idx ? 'linear-gradient(180deg, #047857, #064e3b)' : 'rgba(0, 0, 0, 0.45)',
+                        color: lineBetIdx === idx ? '#fff' : 'rgba(255, 255, 255, 0.85)',
+                        fontWeight: lineBetIdx === idx ? 900 : 700,
+                        fontSize: '0.72rem',
+                        cursor: 'pointer',
+                        boxShadow: lineBetIdx === idx ? '0 0 10px rgba(52, 211, 153, 0.5)' : 'none',
+                      }}
+                    >
+                      {currencyMode === 'SC' ? `$${formatCoinValue(tierVal)}` : tierVal.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
             {/* Mobile Ambient Flow Music Card */}
             <div
@@ -2916,7 +3159,41 @@ export default function App() {
                     className="psd-label-img neon-label-glow"
                     draggable={false}
                   />
-                  <div className="psd-stat-value lines-display">15</div>
+                  <div className="psd-Selector-row">
+                    <button
+                      type="button"
+                      className="psd-arrow-btn"
+                      onClick={() => handleLinesChange(-1)}
+                      onMouseEnter={() => soundEngine.playButtonHover()}
+                      disabled={isSpinning || selectedLinesIdx <= 0}
+                      aria-label="Decrease Lines"
+                      title="Decrease Paylines (1, 2, 5, 10, 15)"
+                    >
+                      <img
+                        src="/assets/psd/arrow_left.png"
+                        alt="<"
+                        className="neon-label-glow"
+                        draggable={false}
+                      />
+                    </button>
+                    <span className="psd-stat-value lines-display">{selectedLines}</span>
+                    <button
+                      type="button"
+                      className="psd-arrow-btn"
+                      onClick={() => handleLinesChange(1)}
+                      onMouseEnter={() => soundEngine.playButtonHover()}
+                      disabled={isSpinning || selectedLinesIdx >= LINE_OPTIONS.length - 1}
+                      aria-label="Increase Lines"
+                      title="Increase Paylines (1, 2, 5, 10, 15)"
+                    >
+                      <img
+                        src="/assets/psd/arrow_right.png"
+                        alt=">"
+                        className="neon-label-glow"
+                        draggable={false}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="psd-stat-block bet-block">
@@ -2928,11 +3205,13 @@ export default function App() {
                   />
                   <div className="psd-Selector-row">
                     <button
+                      type="button"
                       className="psd-arrow-btn"
                       onClick={() => handleBetChange(-1)}
                       onMouseEnter={() => soundEngine.playButtonHover()}
-                      disabled={isSpinning || currentBetIdx <= 0}
+                      disabled={isSpinning || lineBetIdx <= 0}
                       aria-label="Decrease Bet"
+                      title="Decrease Bet Per Line (.25, .50, 1, 2, 5, 10, 25, 50)"
                     >
                       <img
                         src="/assets/psd/arrow_left.png"
@@ -2941,17 +3220,26 @@ export default function App() {
                         draggable={false}
                       />
                     </button>
-                    <span className="psd-stat-value bet-display">
-                      {currencyMode === 'SC'
-                        ? `$${formatCoinValue(currentBetSC)}`
-                        : currentBetGC.toLocaleString()}
-                    </span>
+                    <div className="psd-bet-stacked-display">
+                      <span className="psd-stat-value bet-display">
+                        {currencyMode === 'SC'
+                          ? `$${formatCoinValue(totalBetSC)}`
+                          : totalBetGC.toLocaleString()}
+                      </span>
+                      <span className="psd-bet-subtext">
+                        {currencyMode === 'SC'
+                          ? `($${formatCoinValue(lineBetSC)} × ${selectedLines})`
+                          : `(${lineBetGC.toLocaleString()} × ${selectedLines})`}
+                      </span>
+                    </div>
                     <button
+                      type="button"
                       className="psd-arrow-btn"
                       onClick={() => handleBetChange(1)}
                       onMouseEnter={() => soundEngine.playButtonHover()}
-                      disabled={isSpinning || currentBetIdx >= activeBetTiers.length - 1}
+                      disabled={isSpinning || lineBetIdx >= activeLineBetTiers.length - 1}
                       aria-label="Increase Bet"
+                      title="Increase Bet Per Line (.25, .50, 1, 2, 5, 10, 25, 50)"
                     >
                       <img
                         src="/assets/psd/arrow_right.png"
@@ -3512,6 +3800,8 @@ export default function App() {
         betAmount={currentBet}
         coinValue={coinValue}
         currencyMode={currencyMode}
+        linesCount={selectedLines}
+        lineBet={currentLineBet}
         onComplete={handleCompleteFreeSpins}
       />
 
@@ -3647,28 +3937,62 @@ export default function App() {
           </button>
         </div>
 
-        {/* Tier 2: Spin, Bet & Win Controls */}
+        {/* Tier 2: Spin, Lines, Bet & Win Controls */}
         <div className="mobile-dock-bottom-controls">
+          <div className="mobile-dock-lines-group">
+            <button
+              type="button"
+              className="mobile-dock-btn lines-stepper-btn"
+              onClick={() => handleLinesChange(-1)}
+              disabled={isSpinning || selectedLinesIdx <= 0}
+              aria-label="Decrease Lines"
+              title="Decrease Lines (1, 2, 5, 10, 15)"
+            >
+              -
+            </button>
+            <div className="mobile-dock-lines-info">
+              <span className="mobile-dock-label">LINES</span>
+              <span className="mobile-dock-val lines-val">{selectedLines}</span>
+            </div>
+            <button
+              type="button"
+              className="mobile-dock-btn lines-stepper-btn"
+              onClick={() => handleLinesChange(1)}
+              disabled={isSpinning || selectedLinesIdx >= LINE_OPTIONS.length - 1}
+              aria-label="Increase Lines"
+              title="Increase Lines (1, 2, 5, 10, 15)"
+            >
+              +
+            </button>
+          </div>
+
           <div className="mobile-dock-bet-group">
             <button
-              className="mobile-dock-btn"
+              type="button"
+              className="mobile-dock-btn bet-stepper-btn"
               onClick={() => handleBetChange(-1)}
-              disabled={isSpinning || currentBetIdx <= 0}
+              disabled={isSpinning || lineBetIdx <= 0}
               aria-label="Decrease Bet"
+              title="Decrease Bet"
             >
               -
             </button>
             <div className="mobile-dock-bet-info">
               <span className="mobile-dock-label">BET</span>
               <span className="mobile-dock-val">
-                {currencyMode === 'SC' ? `$${formatCoinValue(currentBetSC)}` : currentBetGC.toLocaleString()}
+                {currencyMode === 'SC' ? `$${formatCoinValue(totalBetSC)}` : totalBetGC.toLocaleString()}
+              </span>
+              <span className="mobile-dock-subval">
+                {currencyMode === 'SC' ? `$${formatCoinValue(lineBetSC)}/L` : `${lineBetGC.toLocaleString()}/L`}
               </span>
             </div>
             <button
-              className="mobile-dock-btn"
+              type="button"
+              className="mobile-dock-btn bet-stepper-btn"
               onClick={() => handleBetChange(1)}
-              disabled={isSpinning || currentBetIdx >= activeBetTiers.length - 1}
+              disabled={isSpinning || lineBetIdx >= activeLineBetTiers.length - 1}
               aria-label="Increase Bet"
+              title="Increase Bet"
             >
               +
             </button>

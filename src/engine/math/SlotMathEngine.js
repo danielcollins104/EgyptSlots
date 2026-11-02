@@ -26,9 +26,9 @@ export class SlotMathEngine {
    * @param {Function} [randomFn=Math.random] - RNG function
    * @returns {SlotOutcome}
    */
-  spin(betLevel = 1, randomFn = Math.random) {
+  spin(betLevel = 1, randomFn = Math.random, activeLinesCount = this.paylines.length) {
     const { stops, grid, peeksAbove, peeksBelow } = spinPhysicalReels(randomFn);
-    return this.evaluateGrid(grid, betLevel, { stops, peeksAbove, peeksBelow });
+    return this.evaluateGrid(grid, betLevel, { stops, peeksAbove, peeksBelow }, activeLinesCount);
   }
 
   /**
@@ -37,12 +37,14 @@ export class SlotMathEngine {
    * @param {(string|object)[][]} grid - 5 columns × 3 rows of symbols
    * @param {number} [betLevel=1] - Multiplier level
    * @param {object} [stripMetadata={}] - Optional stops and peek symbols for near-miss analysis
+   * @param {number} [activeLinesCount=15] - Number of active paylines (1, 2, 5, 10, or 15)
    * @returns {SlotOutcome}
    */
-  evaluateGrid(grid, betLevel = 1, stripMetadata = {}) {
+  evaluateGrid(grid, betLevel = 1, stripMetadata = {}, activeLinesCount = this.paylines.length) {
     const COLS = 5;
     const ROWS = 3;
-    const totalLines = this.paylines.length;
+    const activePaylines = this.paylines.slice(0, activeLinesCount);
+    const totalLines = activePaylines.length;
     const totalBet = totalLines * betLevel;
 
     // Normalize grid symbols to string IDs and object descriptors
@@ -82,8 +84,8 @@ export class SlotMathEngine {
       }
     }
 
-    // 1. Evaluate 15 Left-to-Right Paylines
-    for (const line of this.paylines) {
+    // 1. Evaluate Active Left-to-Right Paylines
+    for (const line of activePaylines) {
       const lineCells = line.rows.map((row, col) => ({
         col,
         row,

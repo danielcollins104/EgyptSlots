@@ -26,6 +26,18 @@ export const BET_TIERS_SC = [
   0.15, 0.30, 0.45, 0.60, 0.75, 1.50, 3.00, 4.50, 7.50, 15.00, 30.00, 45.00, 75.00, 150.00,
 ];
 
+// Configurable Multi-Line Wagering System (1, 2, 5, 10, or 15 lines)
+export const LINE_OPTIONS = [1, 2, 5, 10, 15];
+
+// Per-Line Bet Tiers (User selectable from 0.25 to 50.00)
+export const LINE_BET_TIERS_SC = [
+  0.25, 0.50, 1.00, 2.00, 5.00, 10.00, 25.00, 50.00,
+];
+
+export const LINE_BET_TIERS_GC = [
+  25, 50, 100, 200, 500, 1000, 2500, 5000,
+];
+
 export const ACTIVE_THEME = {
   id: 'crowns_of_kemet',
 
