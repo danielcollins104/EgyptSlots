@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import gsap from 'gsap';
-import { Sparkles, Flame, Compass, Gem, CheckCircle2, RotateCw, Crown, Zap, Star } from 'lucide-react';
+import {
+  Sparkles,
+  Flame,
+  Compass,
+  Gem,
+  CheckCircle2,
+  RotateCw,
+  Crown,
+  Zap,
+  Star,
+  Coins,
+  Sun,
+  ShieldAlert,
+  ArrowRight,
+  TrendingUp,
+  Volume2,
+} from 'lucide-react';
 import { BONUS_CONFIG, BONUS_JACKPOT_TIERS } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
 import PsdGoldNumber from './PsdGoldNumber';
@@ -30,6 +46,43 @@ function buildVaultBoard(currentBet) {
   });
 }
 
+function buildHoldSpinBoard(currentBet) {
+  const table = BONUS_CONFIG.holdSpin?.coinTable || [];
+  const pickRandomCoin = () => {
+    let r = Math.random();
+    for (const c of table) {
+      r -= c.chance;
+      if (r <= 0) return { ...c, coins: Math.round(c.mult * currentBet) };
+    }
+    const last = table[table.length - 1] || { mult: 1, label: '1× BET', icon: '/assets/symbols/high/high_scarab_no_frame.png', color: '#10b981' };
+    return { ...last, coins: Math.round(last.mult * currentBet) };
+  };
+
+  const cells = Array.from({ length: 15 }, (_, id) => ({
+    id,
+    locked: false,
+    coin: null,
+    isNew: false,
+  }));
+
+  // Pick 3 initial random unique cell indexes
+  const initialIdxs = [];
+  const targetInitial = BONUS_CONFIG.holdSpin?.initialCoins || 3;
+  while (initialIdxs.length < targetInitial) {
+    const rand = Math.floor(Math.random() * 15);
+    if (!initialIdxs.includes(rand)) initialIdxs.push(rand);
+  }
+
+  let initialWin = 0;
+  initialIdxs.forEach((idx) => {
+    const coin = pickRandomCoin();
+    cells[idx] = { id: idx, locked: true, coin, isNew: true };
+    initialWin += coin.coins;
+  });
+
+  return { cells, initialWin };
+}
+
 export default function BonusGameModal({
   bonusSession,
   currentBet,
@@ -37,7 +90,10 @@ export default function BonusGameModal({
   currencyMode = 'GC',
   onCompleteBonus,
 }) {
-  const [activeTab, setActiveTab] = useState('vault'); // 'vault' | 'wheel'
+  // Navigation: 'doors' | 'holdspin' | 'vault' | 'wheel' | 'ascension'
+  const [activeTab, setActiveTab] = useState('doors');
+
+  // Game 1: 3D Pick Vault State
   const [picksLeft, setPicksLeft] = useState(bonusSession?.initialPicks || 3);
   const [vaultMultiplier, setVaultMultiplier] = useState(bonusSession?.startingMultiplier || 1);
   const [vaultTiles, setVaultTiles] = useState([]);
@@ -49,7 +105,7 @@ export default function BonusGameModal({
   const [multiplierBlaze, setMultiplierBlaze] = useState(false);
   const [jackpotCelebration, setJackpotCelebration] = useState(null);
 
-  // Fortune Wheel State
+  // Game 2: Fortune Wheel State
   const [wheelSpinsLeft, setWheelSpinsLeft] = useState(bonusSession?.wheelSpins || 1);
   const [wheelMultiplier, setWheelMultiplier] = useState(bonusSession?.startingMultiplier || 1);
   const [wheelSpinning, setWheelSpinning] = useState(false);
@@ -57,13 +113,32 @@ export default function BonusGameModal({
   const [wheelBanner, setWheelBanner] = useState(BONUS_CONFIG.wheelDefaultBanner);
   const [activeWedgeIdx, setActiveWedgeIdx] = useState(null);
 
+  // Game 3: Pharaoh's Hold & Win Respins State (5x3 = 15 cells)
+  const [hwCells, setHwCells] = useState([]);
+  const [hwSpinsLeft, setHwSpinsLeft] = useState(3);
+  const [hwTotalWin, setHwTotalWin] = useState(0);
+  const [hwIsSpinning, setHwIsSpinning] = useState(false);
+  const [hwCompleted, setHwCompleted] = useState(false);
+  const [hwBanner, setHwBanner] = useState("LOCK ORBS ON THE 5×3 GRID! EVERY NEW COIN RESETS RESPINS TO 3!");
+
+  // Game 4: Ascension of Ra (Crash Multiplier Run)
+  const [raStep, setRaStep] = useState(-1);
+  const [raFlying, setRaFlying] = useState(false);
+  const [raCrashed, setRaCrashed] = useState(false);
+  const [raCashedOut, setRaCashedOut] = useState(false);
+  const [raWinCoins, setRaWinCoins] = useState(0);
+  const [raBanner, setRaBanner] = useState("THE SUN CHARIOT OF RA IS READY TO ASCEND THROUGH THE 8 CELESTIAL GATES!");
+
   const wheelCanvasRef = useRef(null);
   const wheelRotationRef = useRef({ deg: 0 });
+  const raTimerRef = useRef(null);
   const wedges = BONUS_CONFIG.wheelWedges;
+  const ascensionNodes = BONUS_CONFIG.ascension?.nodes || [2, 3, 5, 8, 15, 30, 50, 100];
+  const ascensionCrashProbs = BONUS_CONFIG.ascension?.crashProb || [0.08, 0.12, 0.15, 0.20, 0.28, 0.38, 0.50, 0.65];
 
   useEffect(() => {
     if (!bonusSession) return;
-    setActiveTab(bonusSession.defaultGame || 'vault');
+    setActiveTab(bonusSession.defaultGame || 'doors');
     setPicksLeft(bonusSession.initialPicks || 3);
     setVaultMultiplier(bonusSession.startingMultiplier || 1);
     setVaultTiles(buildVaultBoard(currentBet));
@@ -81,7 +156,31 @@ export default function BonusGameModal({
     setWheelWinCoins(0);
     setActiveWedgeIdx(null);
     wheelRotationRef.current.deg = 0;
+
+    // Initialize Hold & Win
+    const hwInit = buildHoldSpinBoard(currentBet);
+    setHwCells(hwInit.cells);
+    setHwSpinsLeft(3);
+    setHwTotalWin(hwInit.initialWin);
+    setHwIsSpinning(false);
+    setHwCompleted(false);
+    setHwBanner("LOCK ORBS ON THE 5×3 GRID! EVERY NEW COIN RESETS RESPINS TO 3!");
+
+    // Initialize Ascension of Ra
+    setRaStep(-1);
+    setRaFlying(false);
+    setRaCrashed(false);
+    setRaCashedOut(false);
+    setRaWinCoins(0);
+    setRaBanner("THE SUN CHARIOT OF RA IS READY TO ASCEND THROUGH THE 8 CELESTIAL GATES!");
   }, [bonusSession, currentBet]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (raTimerRef.current) clearTimeout(raTimerRef.current);
+    };
+  }, []);
 
   // Draw the 3D Brushed-Gold & Cabochon-Gemstone Fortune Wheel onto Canvas
   const drawWheelCanvas = useCallback(() => {
@@ -226,14 +325,18 @@ export default function BonusGameModal({
   if (!bonusSession) return null;
 
   const totalCombinedBonusWin =
-    (bonusSession.scatterWinCoins || 0) + vaultWinCoins + wheelWinCoins;
+    (bonusSession.scatterWinCoins || 0) +
+    vaultWinCoins +
+    wheelWinCoins +
+    hwTotalWin +
+    raWinCoins;
 
+  // --- 1. PICK VAULT HANDLER ---
   const handlePickTile = (tileId, e) => {
     if (picksLeft <= 0) return;
     const target = vaultTiles.find((t) => t.id === tileId);
     if (!target || target.picked) return;
 
-    // Trigger visual burst shockwave on clicked tile
     setBurstTiles((prev) => new Set([...prev, tileId]));
     setTimeout(() => {
       setBurstTiles((prev) => {
@@ -247,7 +350,6 @@ export default function BonusGameModal({
     let nextMult = vaultMultiplier;
     let nextPicks = picksLeft - 1;
 
-    // Compute spawn position for floating coin burst
     const rect = e?.currentTarget?.getBoundingClientRect();
     const spawnX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
     const spawnY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
@@ -324,6 +426,7 @@ export default function BonusGameModal({
     }
   };
 
+  // --- 2. FORTUNE WHEEL HANDLER ---
   const handleSpinWheel = () => {
     if (wheelSpinning || wheelSpinsLeft <= 0) return;
     setWheelSpinning(true);
@@ -397,6 +500,146 @@ export default function BonusGameModal({
     });
   };
 
+  // --- 3. PHARAOH'S HOLD & WIN RESPIN HANDLER ---
+  const handleHoldSpinRespin = () => {
+    if (hwIsSpinning || hwSpinsLeft <= 0 || hwCompleted) return;
+    setHwIsSpinning(true);
+    soundEngine.playSpinStart();
+
+    const table = BONUS_CONFIG.holdSpin?.coinTable || [];
+    const pickRandomCoin = () => {
+      let r = Math.random();
+      for (const c of table) {
+        r -= c.chance;
+        if (r <= 0) return { ...c, coins: Math.round(c.mult * currentBet) };
+      }
+      const last = table[table.length - 1];
+      return { ...last, coins: Math.round(last.mult * currentBet) };
+    };
+
+    setTimeout(() => {
+      let newLandedCount = 0;
+      let newWonCoins = 0;
+      let updatedCells = [...hwCells];
+
+      updatedCells = updatedCells.map((cell) => {
+        if (cell.locked) return { ...cell, isNew: false };
+        if (Math.random() < (BONUS_CONFIG.holdSpin?.landChance || 0.28)) {
+          const coin = pickRandomCoin();
+          newLandedCount++;
+          newWonCoins += coin.coins;
+          return {
+            ...cell,
+            locked: true,
+            coin,
+            isNew: true,
+          };
+        }
+        return cell;
+      });
+
+      const totalLocked = updatedCells.filter((c) => c.locked).length;
+      setHwCells(updatedCells);
+      setHwIsSpinning(false);
+      setHwTotalWin((prev) => prev + newWonCoins);
+
+      if (newLandedCount > 0) {
+        setHwSpinsLeft(3); // Reset to 3 respins on new coin!
+        soundEngine.playRespinReset();
+        setHwBanner(`✨ ${newLandedCount} NEW SACRED ORBS LOCKED! RESPINS RESET TO 3!`);
+      } else {
+        const nextSpins = hwSpinsLeft - 1;
+        setHwSpinsLeft(nextSpins);
+        soundEngine.playHoldAndWinLock();
+        setHwBanner(`NO NEW ORBS THIS RESPIN. ${nextSpins} RESPINS REMAINING!`);
+
+        if (nextSpins <= 0) {
+          setHwCompleted(true);
+          soundEngine.playWinCelebration('epic');
+          setHwBanner(`👑 HOLD & WIN COMPLETED! VAULT HARVESTED +${(hwTotalWin + newWonCoins).toLocaleString()} COINS!`);
+        }
+      }
+
+      // Check full board Grand Jackpot (15/15 cells filled)
+      if (totalLocked >= 15) {
+        const grandBonus = currentBet * (BONUS_CONFIG.holdSpin?.fullBoardBonusMult || 500);
+        setHwTotalWin((prev) => prev + grandBonus);
+        setHwCompleted(true);
+        soundEngine.playThunderStrike?.();
+        soundEngine.playWinCelebration('epic');
+        setWonJackpots((prev) => [...prev, 'grand']);
+        setJackpotCelebration({
+          label: 'FULL BOARD 15/15 GRAND JACKPOT!',
+          amount: grandBonus,
+        });
+        setHwBanner(`👑 FULL BOARD 15/15 ACHIEVED! GRAND JACKPOT +${grandBonus.toLocaleString()} COINS AWARDED!`);
+      }
+    }, 700);
+  };
+
+  // --- 4. ASCENSION OF RA (CRASH MULTIPLIER) HANDLER ---
+  const handleStartAscension = () => {
+    if (raFlying || raCrashed || raCashedOut) return;
+    setRaFlying(true);
+    setRaStep(-1);
+    setRaCrashed(false);
+    setRaCashedOut(false);
+    setRaBanner("SUN CHARIOT LIFTING OFF! CLIMBING TOWARDS THE 8 CELESTIAL GATES OF RA!");
+    soundEngine.playBonusTrigger();
+
+    let step = 0;
+    const runNextStep = () => {
+      if (step >= ascensionNodes.length) {
+        // Perfect Zenith Flight
+        const topMult = ascensionNodes[ascensionNodes.length - 1];
+        const topWin = topMult * currentBet;
+        setRaStep(ascensionNodes.length - 1);
+        setRaFlying(false);
+        setRaCashedOut(true);
+        setRaWinCoins(topWin);
+        soundEngine.playAscensionCashOut();
+        setRaBanner(`☀️ ZENITH GLORY! PERFECT FLIGHT REACHED ×${topMult}! +${topWin.toLocaleString()} COINS BANKED!`);
+        return;
+      }
+
+      const isCrashed = Math.random() < ascensionCrashProbs[step];
+      if (isCrashed) {
+        setRaStep(step);
+        setRaFlying(false);
+        setRaCrashed(true);
+        soundEngine.playAscensionCrash();
+        const safeMult = step > 0 ? ascensionNodes[step - 1] : (BONUS_CONFIG.ascension?.consolationMult || 1);
+        const consolationCoins = safeMult * currentBet;
+        setRaWinCoins(consolationCoins);
+        setRaBanner(`⚡ DIVINE STORM STRUCK AT ×${ascensionNodes[step]}! CONSOLATION SAFE PAYOUT: +${consolationCoins.toLocaleString()} COINS (×${safeMult})!`);
+      } else {
+        setRaStep(step);
+        soundEngine.playAscensionStep(step);
+        setRaBanner(`☀️ REACHED GATE #${step + 1}: CURRENT MULTIPLIER ×${ascensionNodes[step]}! CASH OUT OR CLIMB HIGHER!`);
+        step++;
+        raTimerRef.current = setTimeout(runNextStep, BONUS_CONFIG.ascension?.stepDelay || 950);
+      }
+    };
+
+    raTimerRef.current = setTimeout(runNextStep, BONUS_CONFIG.ascension?.startDelay || 900);
+  };
+
+  const handleCashOutAscension = () => {
+    if (!raFlying || raCrashed || raCashedOut || raStep < 0) return;
+    if (raTimerRef.current) clearTimeout(raTimerRef.current);
+    const lockedMult = ascensionNodes[raStep];
+    const wonAmt = lockedMult * currentBet;
+    setRaFlying(false);
+    setRaCashedOut(true);
+    setRaWinCoins(wonAmt);
+    soundEngine.playAscensionCashOut();
+    setRaBanner(`👑 CASHED OUT SAFELY AT ×${lockedMult}! +${wonAmt.toLocaleString()} COINS BANKED!`);
+  };
+
+  const activeRaMultiplier = raStep >= 0 ? ascensionNodes[raStep] : 1;
+  const currentCashOutCoins = activeRaMultiplier * currentBet;
+  const hwLockedCount = hwCells.filter((c) => c.locked).length;
+
   return (
     <div className="bonus-modal-backdrop">
       <div className="bonus-modal-cabinet">
@@ -414,6 +657,28 @@ export default function BonusGameModal({
           <div className="bonus-tabs-center-row">
             <div className="bonus-game-tabs">
               <button
+                className={`bonus-tab-btn ${activeTab === 'doors' ? 'active' : ''}`}
+                onClick={() => {
+                  soundEngine.playButtonClick(520);
+                  setActiveTab('doors');
+                }}
+              >
+                <Crown size={15} />
+                <span>Doors of Kemet</span>
+              </button>
+
+              <button
+                className={`bonus-tab-btn ${activeTab === 'holdspin' ? 'active' : ''}`}
+                onClick={() => {
+                  soundEngine.playButtonClick(540);
+                  setActiveTab('holdspin');
+                }}
+              >
+                <Coins size={15} />
+                <span>Hold &amp; Win ({hwCompleted ? 'Done' : `${hwSpinsLeft} Respins`})</span>
+              </button>
+
+              <button
                 className={`bonus-tab-btn ${activeTab === 'vault' ? 'active' : ''}`}
                 onClick={() => {
                   soundEngine.playButtonClick(560);
@@ -421,21 +686,29 @@ export default function BonusGameModal({
                 }}
               >
                 <Gem size={15} />
-                <span>
-                  {BONUS_CONFIG.game1TabLabel} ({picksLeft} Picks)
-                </span>
+                <span>Vault ({picksLeft} Picks)</span>
               </button>
+
               <button
                 className={`bonus-tab-btn ${activeTab === 'wheel' ? 'active' : ''}`}
                 onClick={() => {
-                  soundEngine.playButtonClick(620);
+                  soundEngine.playButtonClick(600);
                   setActiveTab('wheel');
                 }}
               >
                 <Compass size={15} />
-                <span>
-                  {BONUS_CONFIG.game2TabLabel} ({wheelSpinsLeft} Spins)
-                </span>
+                <span>Wheel ({wheelSpinsLeft} Spins)</span>
+              </button>
+
+              <button
+                className={`bonus-tab-btn ${activeTab === 'ascension' ? 'active' : ''}`}
+                onClick={() => {
+                  soundEngine.playButtonClick(640);
+                  setActiveTab('ascension');
+                }}
+              >
+                <Sun size={15} />
+                <span>Ascension of Ra</span>
               </button>
             </div>
           </div>
@@ -464,11 +737,142 @@ export default function BonusGameModal({
           </div>
         </div>
 
-        {/* GAME 1: 3D POP-OUT PICK VAULT (12 TILES) */}
-        <div
-          className="bonus-vault-stage"
-          style={{ display: activeTab === 'vault' ? 'block' : 'none' }}
-        >
+        {/* SCREEN 1: DOORS OF KEMET PORTAL HUB */}
+        {activeTab === 'doors' && (
+          <div className="bonus-doors-stage">
+            <div className="doors-hero-header">
+              <h2 className="doors-hero-title">{BONUS_CONFIG.doorsTitle || 'THE DOORS OF KEMET'}</h2>
+              <p className="doors-hero-sub">
+                {BONUS_CONFIG.doorsSubtitle || 'CHOOSE YOUR PATH THROUGH THE SACRED TEMPLES OF WEALTH'}
+              </p>
+            </div>
+
+            <div className="doors-grid-container">
+              {(BONUS_CONFIG.doors || []).map((door) => (
+                <div
+                  key={door.id}
+                  className="door-gateway-card"
+                  onClick={() => {
+                    soundEngine.playButtonClick(620);
+                    setActiveTab(door.id);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="door-badge-pill" style={{ color: door.color }}>
+                    {door.badge}
+                  </div>
+                  <div className="door-icon-orb">
+                    <span className="door-emoji-symbol">{door.icon}</span>
+                  </div>
+                  <h3 className="door-card-name">{door.name}</h3>
+                  <div className="door-card-subtitle">{door.subtitle}</div>
+                  <p className="door-card-tagline">{door.tagline}</p>
+                  <button
+                    type="button"
+                    className="door-enter-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      soundEngine.playButtonClick(640);
+                      setActiveTab(door.id);
+                    }}
+                  >
+                    <span>ENTER CHAMBER</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* SCREEN 2: PHARAOH'S 15-CELL HOLD & WIN RESPINS */}
+        {activeTab === 'holdspin' && (
+          <div className="bonus-holdspin-stage">
+            <div className="bonus-stats-ribbon">
+              <div className="bonus-stat-pill">
+                <span>RESPINS REMAINING</span>
+                <div className="hw-respins-pips">
+                  {[1, 2, 3].map((pip) => (
+                    <span
+                      key={pip}
+                      className={`hw-respin-pip ${pip <= hwSpinsLeft ? 'pip-lit' : ''}`}
+                    />
+                  ))}
+                  <strong>{hwSpinsLeft}</strong>
+                </div>
+              </div>
+              <div className="bonus-stat-pill mult-pill">
+                <span>LOCKED ORBS</span>
+                <strong>{hwLockedCount} / 15</strong>
+              </div>
+              <div className="bonus-stat-pill">
+                <span>HOLD &amp; WIN REWARD</span>
+                <strong>+{hwTotalWin.toLocaleString()} COINS</strong>
+              </div>
+            </div>
+
+            <div className="bonus-live-banner">
+              <Coins size={16} />
+              <span>{hwBanner}</span>
+            </div>
+
+            <div className="hw-grid-board">
+              {hwCells.map((cell) => (
+                <div
+                  key={cell.id}
+                  className={`hw-cell-tile ${cell.locked ? 'cell-locked' : 'cell-empty'} ${
+                    cell.isNew ? 'cell-new-land' : ''
+                  }`}
+                >
+                  <div className="hw-cell-bg-carving" />
+                  {cell.locked && cell.coin ? (
+                    <div className="hw-orb-content">
+                      <img
+                        src={cell.coin.icon}
+                        alt=""
+                        className="hw-orb-icon"
+                        draggable={false}
+                      />
+                      <span className="hw-orb-badge" style={{ color: cell.coin.color || '#fde047' }}>
+                        {cell.coin.label}
+                      </span>
+                      <div className="hw-orb-coins">
+                        <PsdGoldNumber value={cell.coin.coins} height={18} gap={-2} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="hw-empty-placeholder">
+                      <span className="hw-empty-dot" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="hw-controls-panel">
+              <button
+                type="button"
+                className="hw-respin-btn"
+                onClick={handleHoldSpinRespin}
+                disabled={hwIsSpinning || hwSpinsLeft <= 0 || hwCompleted}
+              >
+                <RotateCw size={18} className={hwIsSpinning ? 'spin-icon-anim' : ''} />
+                <span>
+                  {hwIsSpinning
+                    ? 'ORBS CASCADING...'
+                    : hwCompleted
+                    ? 'ALL RESPINS FINISHED'
+                    : `SPIN RESPIN (${hwSpinsLeft} LEFT · RESETS ON HIT)`}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* SCREEN 3: 3D POP-OUT PICK VAULT (12 TILES) */}
+        {activeTab === 'vault' && (
+          <div className="bonus-vault-stage">
             <div className="bonus-stats-ribbon">
               <div className="bonus-stat-pill">
                 <span>VAULT PICKS LEFT</span>
@@ -555,84 +959,175 @@ export default function BonusGameModal({
                 );
               })}
             </div>
-        </div>
-
-        {/* GAME 2: 3D CABOCHON FORTUNE WHEEL */}
-        <div
-          className="bonus-wheel-stage"
-          style={{ display: activeTab === 'wheel' ? 'block' : 'none' }}
-        >
-          <div className="bonus-stats-ribbon">
-            <div className="bonus-stat-pill">
-              <span>WHEEL SPINS LEFT</span>
-              <strong>{wheelSpinsLeft}</strong>
-            </div>
-            <div className="bonus-stat-pill mult-pill">
-              <span>WHEEL WEDGE MULTIPLIER</span>
-              <strong>{wheelMultiplier}×</strong>
-            </div>
-            <div className="bonus-stat-pill">
-              <span>WHEEL WINNINGS</span>
-              <strong>+{wheelWinCoins.toLocaleString()} COINS</strong>
-            </div>
           </div>
+        )}
 
-          <div className="bonus-live-banner">
-            <Sparkles size={16} />
-            <span>{wheelBanner}</span>
-          </div>
+        {/* SCREEN 4: 3D CABOCHON FORTUNE WHEEL */}
+        {activeTab === 'wheel' && (
+          <div className="bonus-wheel-stage">
+            <div className="bonus-stats-ribbon">
+              <div className="bonus-stat-pill">
+                <span>WHEEL SPINS LEFT</span>
+                <strong>{wheelSpinsLeft}</strong>
+              </div>
+              <div className="bonus-stat-pill mult-pill">
+                <span>WHEEL WEDGE MULTIPLIER</span>
+                <strong>{wheelMultiplier}×</strong>
+              </div>
+              <div className="bonus-stat-pill">
+                <span>WHEEL WINNINGS</span>
+                <strong>+{wheelWinCoins.toLocaleString()} COINS</strong>
+              </div>
+            </div>
 
-          <div className="wheel-chamber-layout">
-            <div className="wheel-canvas-container">
-              <div className={`wheel-top-pointer ${wheelSpinning ? 'flapper-vibrating' : ''}`}>
-                ▼
-                {wheelSpinning && <span className="wheel-pointer-spark" />}
+            <div className="bonus-live-banner">
+              <Sparkles size={16} />
+              <span>{wheelBanner}</span>
+            </div>
+
+            <div className="wheel-chamber-layout">
+              <div className="wheel-canvas-container">
+                <div className={`wheel-top-pointer ${wheelSpinning ? 'flapper-vibrating' : ''}`}>
+                  ▼
+                  {wheelSpinning && <span className="wheel-pointer-spark" />}
+                </div>
+
+                <canvas
+                  ref={wheelCanvasRef}
+                  width={420}
+                  height={420}
+                  className="kemet-wheel-canvas"
+                />
+
+                <button
+                  className="wheel-center-scarab-btn"
+                  onClick={handleSpinWheel}
+                  disabled={wheelSpinning || wheelSpinsLeft <= 0}
+                  title="Click to Spin the 3D Fortune Wheel!"
+                >
+                  <img
+                    src={BONUS_CONFIG.wheelCenterIcon}
+                    alt="Spin Wheel"
+                    className="wheel-center-scarab-img"
+                    draggable={false}
+                  />
+                  <span>{wheelSpinning ? 'SPINNING' : 'SPIN'}</span>
+                </button>
               </div>
 
-              <canvas
-                ref={wheelCanvasRef}
-                width={420}
-                height={420}
-                className="kemet-wheel-canvas"
-              />
+              <div className="wheel-controls-panel">
+                <h3>{BONUS_CONFIG.wheelTitle}</h3>
+                <p>{BONUS_CONFIG.wheelDescription}</p>
 
-              <button
-                className="wheel-center-scarab-btn"
-                onClick={handleSpinWheel}
-                disabled={wheelSpinning || wheelSpinsLeft <= 0}
-                title="Click to Spin the 3D Fortune Wheel!"
-              >
-                <img
-                  src={BONUS_CONFIG.wheelCenterIcon}
-                  alt="Spin Wheel"
-                  className="wheel-center-scarab-img"
-                  draggable={false}
-                />
-                <span>{wheelSpinning ? 'SPINNING' : 'SPIN'}</span>
-              </button>
-            </div>
-
-            <div className="wheel-controls-panel">
-              <h3>{BONUS_CONFIG.wheelTitle}</h3>
-              <p>{BONUS_CONFIG.wheelDescription}</p>
-
-              <button
-                className="wheel-spin-cta-btn"
-                onClick={handleSpinWheel}
-                disabled={wheelSpinning || wheelSpinsLeft <= 0}
-              >
-                <RotateCw size={18} className={wheelSpinning ? 'spin-icon-anim' : ''} />
-                <span>
-                  {wheelSpinning
-                    ? '3D FORTUNE WHEEL SPINNING...'
-                    : wheelSpinsLeft > 0
-                    ? `SPIN 3D FORTUNE WHEEL (${wheelSpinsLeft} LEFT)`
-                    : 'ALL WHEEL SPINS COMPLETED'}
-                </span>
-              </button>
+                <button
+                  className="wheel-spin-cta-btn"
+                  onClick={handleSpinWheel}
+                  disabled={wheelSpinning || wheelSpinsLeft <= 0}
+                >
+                  <RotateCw size={18} className={wheelSpinning ? 'spin-icon-anim' : ''} />
+                  <span>
+                    {wheelSpinning
+                      ? '3D FORTUNE WHEEL SPINNING...'
+                      : wheelSpinsLeft > 0
+                      ? `SPIN 3D FORTUNE WHEEL (${wheelSpinsLeft} LEFT)`
+                      : 'ALL WHEEL SPINS COMPLETED'}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* SCREEN 5: ASCENSION OF RA (CRASH-STYLE MULTIPLIER RUN) */}
+        {activeTab === 'ascension' && (
+          <div className="bonus-ascension-stage">
+            <div className="bonus-stats-ribbon">
+              <div className="bonus-stat-pill">
+                <span>ACTIVE GATE</span>
+                <strong>{raStep >= 0 ? `${ascensionNodes[raStep]}×` : 'GATE #1 READY'}</strong>
+              </div>
+              <div className="bonus-stat-pill mult-pill">
+                <span>BANKABLE WIN</span>
+                <strong>+{currentCashOutCoins.toLocaleString()} COINS</strong>
+              </div>
+              <div className="bonus-stat-pill">
+                <span>FLIGHT STATUS</span>
+                <strong>
+                  {raFlying
+                    ? 'CHARIOT ASCENDING'
+                    : raCrashed
+                    ? 'STORM STRUCK'
+                    : raCashedOut
+                    ? 'BANKED SAFELY'
+                    : 'READY AT LAUNCH'}
+                </strong>
+              </div>
+            </div>
+
+            <div className="bonus-live-banner">
+              <Sun size={16} />
+              <span>{raBanner}</span>
+            </div>
+
+            {/* Visual 8 Celestial Gates Multiplier Ladder Track */}
+            <div className="ra-gates-track">
+              {ascensionNodes.map((mult, idx) => {
+                const isPassed = raStep > idx;
+                const isCurrent = raStep === idx;
+                const isDead = raCrashed && isCurrent;
+
+                return (
+                  <div
+                    key={idx}
+                    className={`ra-gate-node ${isPassed ? 'gate-passed' : ''} ${
+                      isCurrent ? 'gate-current' : ''
+                    } ${isDead ? 'gate-dead' : ''}`}
+                  >
+                    <div className="gate-number-tag">GATE #{idx + 1}</div>
+                    <div className="gate-sun-disk">
+                      {isCurrent && (
+                        <div className="ra-solar-chariot-avatar" aria-hidden="true">
+                          ☀️
+                        </div>
+                      )}
+                      <span className="gate-mult-val">{mult}×</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Interactive Flight Controls */}
+            <div className="ra-controls-panel">
+              {!raFlying && !raCashedOut && !raCrashed ? (
+                <button
+                  type="button"
+                  className="ra-launch-btn"
+                  onClick={handleStartAscension}
+                >
+                  <Sun size={20} className="launch-sun-icon" />
+                  <span>LAUNCH SUN CHARIOT (ASCEND 8 GATES)</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`ra-cashout-btn ${raFlying && raStep >= 0 ? 'cashout-pulsing' : ''}`}
+                  onClick={handleCashOutAscension}
+                  disabled={!raFlying || raStep < 0}
+                >
+                  <TrendingUp size={20} />
+                  <span>
+                    {raCashedOut
+                      ? `CASHED OUT: +${raWinCoins.toLocaleString()} COINS`
+                      : raCrashed
+                      ? `STORM STRUCK (CONSOLATION: +${raWinCoins.toLocaleString()})`
+                      : `CASH OUT NOW: +${currentCashOutCoins.toLocaleString()} COINS (×${activeRaMultiplier})`}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Footer: Total Bonus Payout & Collect Button */}
         <div className="bonus-modal-footer">
@@ -652,22 +1147,13 @@ export default function BonusGameModal({
           </div>
 
           <div className="bonus-footer-actions">
-            {picksLeft > 0 && activeTab === 'wheel' && (
+            {activeTab !== 'doors' && (
               <button
                 className="bonus-switch-game-btn"
-                onClick={() => setActiveTab('vault')}
+                onClick={() => setActiveTab('doors')}
               >
-                <Gem size={16} />
-                <span>Use {picksLeft} Vault Picks</span>
-              </button>
-            )}
-            {wheelSpinsLeft > 0 && activeTab === 'vault' && (
-              <button
-                className="bonus-switch-game-btn"
-                onClick={() => setActiveTab('wheel')}
-              >
-                <Compass size={16} />
-                <span>Use {wheelSpinsLeft} Wheel Spin!</span>
+                <Crown size={16} />
+                <span>Doors Portal</span>
               </button>
             )}
 
@@ -677,7 +1163,7 @@ export default function BonusGameModal({
                 soundEngine.playWin(true);
                 onCompleteBonus(totalCombinedBonusWin);
               }}
-              disabled={wheelSpinning}
+              disabled={wheelSpinning || hwIsSpinning || raFlying}
             >
               <CheckCircle2 size={18} />
               <span>

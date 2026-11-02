@@ -346,6 +346,47 @@ LINE_OPTIONS.forEach((lines) => {
   });
 });
 
+// ============================================================================
+// 10. GOLDEN HUSTLE HYBRID SUITE (DOORS, HOLD & WIN, AND ASCENSION OF RA)
+// ============================================================================
+console.log('\n--- 10. Testing Golden Hustle Hybrid Suite (Doors, Hold & Win, and Ascension of Ra) ---');
+
+// 10.1 Doors of Kemet Hub
+assert(Array.isArray(BONUS_CONFIG.doors) && BONUS_CONFIG.doors.length === 4, 'Doors of Kemet configured with 4 temple gateways');
+const doorIds = BONUS_CONFIG.doors.map((d) => d.id);
+assert(doorIds.includes('holdspin'), 'Doors include [HOLD & WIN RESPINS]');
+assert(doorIds.includes('vault'), 'Doors include [SACRED RELIC VAULT]');
+assert(doorIds.includes('wheel'), 'Doors include [WHEEL OF KEMET]');
+assert(doorIds.includes('ascension'), 'Doors include [ASCENSION OF RA]');
+
+// 10.2 Pharaoh's 15-Cell Hold & Win Respins
+const hwConfig = BONUS_CONFIG.holdSpin;
+assert(Boolean(hwConfig), 'Hold & Win configuration defined');
+assert(hwConfig.gridCols === 5 && hwConfig.gridRows === 3, 'Hold & Win uses classic 5×3 grid (15 cells)');
+assert(hwConfig.spins === 3, 'Hold & Win starts with 3 Respins');
+assert(hwConfig.fullBoardBonusMult === 500, 'Filling all 15 cells awards 500× Full Board Grand Jackpot');
+assert(Array.isArray(hwConfig.coinTable) && hwConfig.coinTable.length >= 8, 'Hold & Win coin table contains diverse multipliers & jackpots');
+const hasMiniJackpot = hwConfig.coinTable.some((c) => c.type === 'jackpot' && c.jackpotId === 'mini');
+const hasMinorJackpot = hwConfig.coinTable.some((c) => c.type === 'jackpot' && c.jackpotId === 'minor');
+const hasMajorJackpot = hwConfig.coinTable.some((c) => c.type === 'jackpot' && c.jackpotId === 'major');
+assert(hasMiniJackpot, 'Hold & Win coin table includes Mini Emerald Jackpot orb');
+assert(hasMinorJackpot, 'Hold & Win coin table includes Minor Sapphire Jackpot orb');
+assert(hasMajorJackpot, 'Hold & Win coin table includes Major Amethyst Jackpot orb');
+
+// 10.3 Ascension of Ra (Crash Multiplier Run)
+const raConfig = BONUS_CONFIG.ascension;
+assert(Boolean(raConfig), 'Ascension of Ra configuration defined');
+assert(Array.isArray(raConfig.nodes) && raConfig.nodes.length === 8, 'Ascension of Ra features 8 celestial gates');
+assert(raConfig.nodes[0] === 2 && raConfig.nodes[raConfig.nodes.length - 1] === 100, 'Ascension nodes climb from 2× up to 100× Apex Multiplier');
+assert(Array.isArray(raConfig.crashProb) && raConfig.crashProb.length === raConfig.nodes.length, 'Crash probabilities mapped for every celestial gate');
+
+// 10.4 Tactile Casino Sound Effects
+checkFileExists('/assets/audio/sfx/stack.ogg', 'Hold & Win Token Lock Sound');
+checkFileExists('/assets/audio/sfx/coins2.ogg', 'Respin Reset Coin Cascade');
+checkFileExists('/assets/audio/sfx/clunk.ogg', 'Mechanical Wheel Peg Stop');
+checkFileExists('/assets/audio/sfx/coin.ogg', 'Tactile Coin Tick');
+checkFileExists('/assets/audio/sfx/stopLast.ogg', 'Ascension Storm Impact');
+
 console.log('\n================================================================');
 console.log(`TOTAL BONUS TESTS EXECUTED: ${totalTests}`);
 console.log(`PASSED: ${passedTests}`);

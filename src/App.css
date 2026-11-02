@@ -16234,3 +16234,516 @@ body {
   0% { opacity: 0.45; }
   100% { opacity: 0.9; }
 }
+
+/* ============================================================================
+   GOLDEN HUSTLE HYBRID BONUS SUITE: DOORS, HOLD & WIN, AND ASCENSION OF RA
+   ============================================================================ */
+
+/* 1. Doors of Kemet Portal Stage */
+.bonus-doors-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 10px 4px;
+  box-sizing: border-box;
+}
+
+.doors-hero-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.doors-hero-title {
+  margin: 0;
+  font-family: var(--font-display, 'Cinzel Decorative', serif);
+  font-size: clamp(1.4rem, 3.5vw, 2.1rem);
+  font-weight: 900;
+  color: #fde047;
+  text-shadow: 0 0 20px rgba(253, 224, 71, 0.8), 0 2px 4px #000;
+}
+
+.doors-hero-sub {
+  margin: 0;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.12em;
+}
+
+.doors-grid-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .doors-grid-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 500px) {
+  .doors-grid-container {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.door-gateway-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(28, 14, 52, 0.95) 0%, rgba(12, 5, 24, 0.98) 100%);
+  border: 2px solid rgba(255, 215, 0, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), box-shadow 0.25s ease, border-color 0.25s ease;
+  user-select: none;
+}
+
+.door-gateway-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  border-color: #ffd700;
+  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.65), 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.door-badge-pill {
+  position: absolute;
+  top: -10px;
+  padding: 3px 10px;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.door-icon-orb {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(253, 224, 71, 0.25) 0%, rgba(0, 0, 0, 0.6) 70%);
+  border: 2px solid rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.35);
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+
+.door-emoji-symbol {
+  font-size: 2.1rem;
+}
+
+.door-card-name {
+  margin: 0;
+  font-family: var(--font-display, 'Cinzel Decorative', serif);
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: #fde047;
+  text-shadow: 0 0 10px rgba(253, 224, 71, 0.5);
+}
+
+.door-card-subtitle {
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #00e5ff;
+  margin-top: 3px;
+  margin-bottom: 8px;
+}
+
+.door-card-tagline {
+  margin: 0;
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.35;
+  flex: 1;
+  margin-bottom: 14px;
+}
+
+.door-enter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  font-family: var(--font-display, 'Cinzel Decorative', serif);
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #000;
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #d97706 100%);
+  border: 1.5px solid #fffbeb;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(245, 158, 11, 0.6);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.door-enter-btn:hover {
+  transform: scale(1.03);
+  filter: brightness(1.15);
+}
+
+/* 2. Pharaoh's 15-Cell Hold & Win Respins */
+.bonus-holdspin-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.hw-respins-pips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hw-respin-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #374151;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
+}
+
+.hw-respin-pip.pip-lit {
+  background: #fde047;
+  border-color: #fff;
+  box-shadow: 0 0 8px #fde047;
+}
+
+.hw-grid-board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 8px;
+  width: min(94vw, 680px);
+  padding: 12px;
+  border-radius: 16px;
+  background: radial-gradient(circle, rgba(20, 8, 38, 0.95) 0%, rgba(8, 3, 16, 0.98) 100%);
+  border: 2px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 35px rgba(255, 215, 0, 0.25), inset 0 0 30px rgba(0, 0, 0, 0.85);
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .hw-grid-board {
+    gap: 6px;
+    padding: 8px;
+  }
+}
+
+.hw-cell-tile {
+  height: 82px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 600px) {
+  .hw-cell-tile {
+    height: 64px;
+  }
+}
+
+.hw-cell-tile.cell-empty {
+  background: rgba(15, 7, 30, 0.7);
+  border: 1.5px dashed rgba(255, 215, 0, 0.25);
+}
+
+.hw-empty-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.hw-cell-tile.cell-locked {
+  background: radial-gradient(circle at 45% 40%, rgba(245, 158, 11, 0.35) 0%, rgba(12, 4, 25, 0.95) 100%);
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.4), inset 0 0 12px rgba(253, 224, 71, 0.25);
+  animation: orbPopIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.hw-cell-tile.cell-new-land {
+  animation: orbNewLandPulse 0.6s ease-out;
+}
+
+@keyframes orbPopIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes orbNewLandPulse {
+  0% { transform: scale(1.18); filter: brightness(1.8); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+.hw-orb-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+
+.hw-orb-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px #000);
+}
+
+@media (max-width: 600px) {
+  .hw-orb-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.hw-orb-badge {
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 3px #000;
+}
+
+.hw-controls-panel {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.hw-respin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 32px;
+  font-family: var(--font-display, 'Cinzel Decorative', serif);
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #000;
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #d97706 100%);
+  border: 2px solid #fffbeb;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.7);
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.hw-respin-btn:hover:not(:disabled) {
+  transform: scale(1.04);
+  filter: brightness(1.15);
+}
+
+.hw-respin-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* 3. Ascension of Ra (Crash-Style Multiplier Track) */
+.bonus-ascension-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.ra-gates-track {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  width: min(94vw, 780px);
+  padding: 16px 12px;
+  border-radius: 16px;
+  background: radial-gradient(circle, rgba(30, 12, 45, 0.95) 0%, rgba(10, 4, 20, 0.98) 100%);
+  border: 2px solid rgba(255, 215, 0, 0.45);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.35);
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .ra-gates-track {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+  }
+}
+
+.ra-gate-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.gate-number-tag {
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.06em;
+}
+
+.gate-sun-disk {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: radial-gradient(circle, rgba(253, 224, 71, 0.2) 0%, rgba(0, 0, 0, 0.6) 70%);
+  border: 1.5px solid rgba(255, 215, 0, 0.4);
+}
+
+.ra-solar-chariot-avatar {
+  position: absolute;
+  top: -16px;
+  font-size: 1.4rem;
+  animation: chariotBob 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes chariotBob {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-4px) scale(1.15); }
+}
+
+.gate-mult-val {
+  font-family: var(--font-display, 'Cinzel Decorative', serif);
+  font-size: 1rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.ra-gate-node.gate-passed {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.ra-gate-node.gate-passed .gate-sun-disk {
+  border-color: #34d399;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.5);
+}
+
+.ra-gate-node.gate-passed .gate-mult-val {
+  color: #34d399;
+}
+
+.ra-gate-node.gate-current {
+  border-color: #fde047;
+  background: rgba(245, 158, 11, 0.25);
+  transform: scale(1.08);
+}
+
+.ra-gate-node.gate-current .gate-sun-disk {
+  border-color: #fde047;
+  box-shadow: 0 0 20px rgba(253, 224, 71, 0.85);
+}
+
+.ra-gate-node.gate-current .gate-mult-val {
+  color: #fde047;
+  text-shadow: 0 0 10px #fde047;
+}
+
+.ra-gate-node.gate-dead {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.ra-gate-node.gate-dead .gate-sun-disk {
+  border-color: #ef4444;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
+}
+
+.ra-controls-panel {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.ra-launch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 32px;
+  font-family: var(--font-display, 'Cinzel Decorative', serif);
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #000;
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #d97706 100%);
+  border: 2px solid #fffbeb;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.7);
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.ra-launch-btn:hover {
+  transform: scale(1.04);
+  filter: brightness(1.15);
+}
+
+.ra-cashout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 38px;
+  font-family: var(--font-display, 'Cinzel Decorative', serif);
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 2px solid #a7f3d0;
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.7);
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.ra-cashout-btn.cashout-pulsing {
+  animation: cashoutPulseGlow 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes cashoutPulseGlow {
+  0% { transform: scale(1); box-shadow: 0 0 18px rgba(16, 185, 129, 0.7); }
+  100% { transform: scale(1.05); box-shadow: 0 0 35px rgba(52, 211, 153, 0.95), 0 0 50px rgba(16, 185, 129, 0.8); }
+}
+
+.ra-cashout-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -851,6 +851,56 @@ class SoundEngine {
       cOsc.stop(t + 0.6);
     });
   }
+
+  // Audio sample playback for Golden Hustle tactile casino effects
+  playSfxSample(name, volume = 0.65) {
+    if (this.muted || typeof Audio === 'undefined') return;
+    try {
+      const audio = new Audio(`/assets/audio/sfx/${name}.ogg`);
+      audio.volume = Math.min(1, Math.max(0, volume));
+      audio.play().catch(() => {});
+    } catch (_) {}
+  }
+
+  playHoldAndWinLock() {
+    this.playSfxSample('stack', 0.8);
+    this.playCoinTick(1);
+  }
+
+  playRespinReset() {
+    this.playSfxSample('coins2', 0.85);
+    this.playBonusPick(true);
+  }
+
+  playAscensionStep(step = 0) {
+    this.playSfxSample('click', 0.6);
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const baseFreq = 330 * Math.pow(1.12, step);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, now + 0.22);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.connect(gain);
+    this.playVoice([osc, gain], 0.28);
+    osc.start(now);
+    osc.stop(now + 0.26);
+  }
+
+  playAscensionCrash() {
+    this.playSfxSample('clunk', 0.85);
+    this.playThunderStrike();
+  }
+
+  playAscensionCashOut() {
+    this.playSfxSample('coins', 0.9);
+    this.playWinCelebration('big');
+  }
 }
 
 export const soundEngine = new SoundEngine();
