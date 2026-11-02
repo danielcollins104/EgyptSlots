@@ -1382,6 +1382,60 @@ export default function App() {
 
   triggerSpinRef.current = triggerSpin;
 
+  // --------------------------------------------------------------------------
+  // Tap-to-Spin Engine: Allows players on mobile (and desktop) to tap anywhere
+  // on the reels / symbols to trigger spin, slam-stop, or hold for continuous flow.
+  // --------------------------------------------------------------------------
+  const lastReelTapTimeRef = useRef(0);
+  const reelTouchStartRef = useRef(null);
+
+  const handleReelPointerDown = useCallback((e) => {
+    // Only accept primary touch or left-click
+    if (e.button !== undefined && e.button !== 0) return;
+    isHoldingSpinRef.current = true;
+    reelTouchStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now(),
+    };
+  }, []);
+
+  const handleReelPointerUp = useCallback((e) => {
+    isHoldingSpinRef.current = false;
+    if (!reelTouchStartRef.current) return;
+    const dx = Math.abs(e.clientX - reelTouchStartRef.current.x);
+    const dy = Math.abs(e.clientY - reelTouchStartRef.current.y);
+    const dt = Date.now() - reelTouchStartRef.current.time;
+    reelTouchStartRef.current = null;
+
+    // Detect quick intentional tap (held < 450ms and moved < 35px)
+    if (dt < 450 && dx < 35 && dy < 35) {
+      const now = Date.now();
+      if (now - lastReelTapTimeRef.current > 200) {
+        lastReelTapTimeRef.current = now;
+        if (bigWinAmount > 0) setBigWinAmount(0);
+        if (winSplashAmount > 0) setWinSplashAmount(0);
+        triggerSpin();
+      }
+    }
+  }, [bigWinAmount, winSplashAmount, triggerSpin]);
+
+  const handleReelPointerCancel = useCallback(() => {
+    isHoldingSpinRef.current = false;
+    reelTouchStartRef.current = null;
+  }, []);
+
+  const handleReelClick = useCallback(() => {
+    const now = Date.now();
+    // Guard against duplicate trigger if pointerup already handled this tap
+    if (now - lastReelTapTimeRef.current > 200) {
+      lastReelTapTimeRef.current = now;
+      if (bigWinAmount > 0) setBigWinAmount(0);
+      if (winSplashAmount > 0) setWinSplashAmount(0);
+      triggerSpin();
+    }
+  }, [bigWinAmount, winSplashAmount, triggerSpin]);
+
   // Autoplay handler
   useEffect(() => {
     if (autoPlayCount > 0 && !isSpinning && bigWinAmount === 0 && !bonusSession && !freeSpinsOpen && isAssetsLoaded) {
@@ -2589,8 +2643,19 @@ export default function App() {
               )}
             </div>
 
-            {/* 5x3 Reel Window */}
-            <div className="reel-window-viewport">
+            {/* 5x3 Reel Window - Tap anywhere on reels/symbols to spin or instant stop */}
+            <div
+              className={`reel-window-viewport tap-to-spin-viewport ${isSpinning ? 'reels-spinning' : 'reels-idle'}`}
+              onClick={handleReelClick}
+              onPointerDown={handleReelPointerDown}
+              onPointerUp={handleReelPointerUp}
+              onPointerCancel={handleReelPointerCancel}
+              onPointerLeave={handleReelPointerCancel}
+              role="button"
+              tabIndex={0}
+              aria-label={!isAssetsLoaded ? 'Loading Assets' : (isSpinning ? 'Instant Stop' : 'Tap Anywhere on Tiles to Spin')}
+              title={!isAssetsLoaded ? 'Pre-caching 3D Relic Assets...' : (isSpinning ? 'Tap Anywhere on Tiles for Instant Stop' : 'Tap Anywhere on Tiles / Symbols to Spin')}
+            >
               <PhaserReelEngine
                 ref={phaserEngineRef}
                 initialGrid={initialGrid}
