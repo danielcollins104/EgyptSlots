@@ -8277,13 +8277,26 @@ body {
 .payment-modal-dialog.compact-single-page {
   max-width: 1040px;
   width: 95vw;
-  max-height: 94vh;
+  max-height: min(94dvh, calc(100% - 20px));
   height: auto;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   border-radius: 20px;
   background: linear-gradient(180deg, #090e1a 0%, #060a14 100%);
   border: 2px solid rgba(251, 191, 36, 0.45);
   box-shadow: 0 0 55px rgba(245, 158, 11, 0.35), 0 25px 70px rgba(0, 0, 0, 0.95);
+}
+
+.payment-modal-dialog.compact-single-page::-webkit-scrollbar {
+  width: 6px;
+}
+
+.payment-modal-dialog.compact-single-page::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.4);
+  border-radius: 4px;
 }
 
 .payment-vault-hero-banner {
@@ -8360,31 +8373,51 @@ body {
   gap: 12px;
 }
 
+.v-bal-pill,
 .vault-bal-card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 6px 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(15, 23, 42, 0.85);
   border: 1.5px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  font-family: var(--font-royal);
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: #ffffff;
+  white-space: nowrap;
 }
 
+.v-bal-pill.gc,
 .vault-bal-card.gc {
   border-color: rgba(245, 158, 11, 0.45);
 }
 
+.v-bal-pill.gc .gc-coin-icon,
 .vault-bal-card.gc .gc-icon {
   color: #fbbf24;
 }
 
+.v-bal-pill.gc,
+.vault-bal-card.gc .bal-val {
+  color: #fef08a;
+}
+
+.v-bal-pill.sc,
 .vault-bal-card.sc {
   border-color: rgba(16, 185, 129, 0.45);
 }
 
+.v-bal-pill.sc .sc-gem-icon,
 .vault-bal-card.sc .sc-icon {
   color: #34d399;
+}
+
+.v-bal-pill.sc,
+.vault-bal-card.sc .bal-val {
+  color: #a7f3d0;
 }
 
 .bal-meta {
@@ -8406,12 +8439,29 @@ body {
   color: #ffffff;
 }
 
-.vault-bal-card.gc .bal-val {
-  color: #fef08a;
+.payment-modal-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
 }
 
-.vault-bal-card.sc .bal-val {
-  color: #a7f3d0;
+.payment-modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #ffffff;
+  transform: scale(1.08);
 }
 
 /* Compact Navigation Tabs */
@@ -8427,13 +8477,13 @@ body {
   font-weight: 800;
 }
 
-/* Single-Screen Store Tab (No Scrollbars) */
-.single-screen-store {
+/* Single-Screen Store Tab */
+.single-screen-store,
+.payment-tab-content.store-tab {
   padding: 16px 20px 14px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow: hidden;
 }
 
 /* 5-Column Package Shelf */
@@ -8443,6 +8493,7 @@ body {
   gap: 10px;
 }
 
+.store-shelf-card,
 .shelf-package-card {
   position: relative;
   padding: 14px 10px 12px;
@@ -8458,23 +8509,27 @@ body {
   user-select: none;
 }
 
+.store-shelf-card:hover,
 .shelf-package-card:hover {
   transform: translateY(-3px);
   border-color: rgba(251, 191, 36, 0.6);
   box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
 }
 
+.store-shelf-card.selected,
 .shelf-package-card.selected {
   border: 2px solid #fbbf24;
   background: linear-gradient(180deg, rgba(30, 44, 75, 0.98) 0%, rgba(15, 24, 46, 0.98) 100%);
   box-shadow: 0 0 25px rgba(245, 158, 11, 0.45), inset 0 1px 1px rgba(254, 240, 138, 0.5);
 }
 
+.store-shelf-card.popular,
 .shelf-package-card.popular {
   border-color: rgba(245, 158, 11, 0.65);
 }
 
-.shelf-badge-tag {
+.shelf-badge-tag,
+.shelf-badge-popular {
   position: absolute;
   top: -8px;
   left: 50%;
@@ -8488,6 +8543,12 @@ body {
   color: #1a0e05;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  z-index: 2;
+}
+
+.shelf-badge-popular {
+  background: linear-gradient(135deg, #d97706 0%, #fbbf24 100%);
+  color: #1a0e05;
 }
 
 .shelf-card-body {
@@ -10868,14 +10929,26 @@ body {
   position: relative;
   width: 100%;
   max-width: 680px;
+  max-height: min(94dvh, calc(100% - 20px));
   background: linear-gradient(180deg, #131d36 0%, #0a0f1e 100%);
   border: 2px solid rgba(251, 191, 36, 0.5);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 40px rgba(245, 158, 11, 0.25);
   border-radius: 20px;
   padding: 24px 22px 18px;
   color: #ffffff;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   animation: modalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.low-balance-modal-dialog::-webkit-scrollbar {
+  width: 6px;
+}
+
+.low-balance-modal-dialog::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.4);
+  border-radius: 4px;
 }
 
 .low-balance-modal-aura {
@@ -11757,18 +11830,11 @@ body {
   animation: modalFadeIn 0.2s ease-out;
 }
 
-/* Responsive adjustments for mobile vertical view */
+/* ============================================================================
+   RESPONSIVE MOBILE VIEWPORT OPTIMIZATIONS FOR COIN STORE & CHECKOUT
+   ============================================================================ */
+
 @media (max-width: 768px) {
-  .rescue-packages-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .high-roller-shelf {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
   .store-custom-amount-card {
     flex-direction: column;
     align-items: stretch;
@@ -11777,6 +11843,490 @@ body {
 
   .custom-preview-right {
     justify-content: space-between;
+  }
+
+  .high-roller-shelf {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 680px) {
+  /* Backdrops with Safe Area Insets */
+  .payment-modal-backdrop,
+  .low-balance-modal-backdrop {
+    padding: max(8px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+  }
+
+  /* Store Modal Dialog Container */
+  .payment-modal-dialog.compact-single-page {
+    width: 100%;
+    max-width: 100%;
+    max-height: min(94dvh, calc(100% - 12px));
+    border-radius: 16px;
+    margin: auto;
+  }
+
+  /* Compact Hero Banner */
+  .payment-vault-hero-banner {
+    height: 60px;
+  }
+
+  .vault-hero-content {
+    padding: 0 14px;
+  }
+
+  .vault-brand-header {
+    gap: 1px;
+  }
+
+  .vault-pill-badge {
+    font-size: 0.52rem;
+    gap: 4px;
+  }
+
+  .vault-store-heading {
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+  }
+
+  .vault-header-balances {
+    gap: 6px;
+  }
+
+  .v-bal-pill,
+  .vault-bal-card {
+    padding: 3px 8px;
+    font-size: 0.68rem;
+    gap: 4px;
+    border-radius: 8px;
+  }
+
+  .payment-modal-close-btn {
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Navigation Tabs */
+  .payment-modal-tabs {
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .pay-tab-btn {
+    padding: 9px 12px;
+    font-size: 0.72rem;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  /* Store Tab Content */
+  .single-screen-store,
+  .payment-tab-content.store-tab {
+    padding: 10px 10px 14px;
+    gap: 10px;
+  }
+
+  /* 2-Column Responsive Shelf Grid with Featured 5th Package */
+  .store-packages-shelf {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .store-shelf-card:last-child,
+  .shelf-package-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .store-shelf-card,
+  .shelf-package-card {
+    padding: 12px 8px 10px;
+    min-height: 122px;
+    border-radius: 12px;
+  }
+
+  .shelf-gc-val {
+    font-size: 1.05rem;
+  }
+
+  .shelf-sc-pill {
+    font-size: 0.62rem;
+    padding: 2px 6px;
+  }
+
+  .shelf-tagline {
+    font-size: 0.58rem;
+    height: auto;
+    min-height: 16px;
+    line-height: 1.2;
+  }
+
+  .shelf-price-btn {
+    font-size: 0.92rem;
+    padding: 6px 8px;
+    margin-top: 4px;
+  }
+
+  /* Custom Bundle Builder */
+  .store-custom-amount-card {
+    padding: 10px;
+    border-radius: 10px;
+    gap: 8px;
+  }
+
+  .custom-label-wrap {
+    font-size: 0.72rem;
+  }
+
+  .custom-field-controls {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .custom-currency-input-wrap {
+    width: 100%;
+  }
+
+  .custom-preset-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .preset-chip-btn {
+    flex: 1 1 calc(25% - 6px);
+    min-height: 36px;
+    padding: 6px;
+    font-size: 0.72rem;
+  }
+
+  .custom-preview-right {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+
+  /* High Roller Drawer */
+  .high-roller-toggle-link {
+    font-size: 0.72rem;
+    padding: 8px 10px;
+  }
+
+  /* Payment Method Tabs Horizontal Scroll */
+  .payment-methods-selector-section {
+    padding: 10px;
+    gap: 8px;
+    margin-top: 4px;
+    border-radius: 10px;
+  }
+
+  .payment-method-tabs-row {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .payment-method-tabs-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pm-tab-btn {
+    flex-shrink: 0;
+    min-height: 42px;
+    padding: 8px 12px;
+    font-size: 0.72rem;
+  }
+
+  .crypto-qr-address-grid {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .crypto-details-right {
+    width: 100%;
+  }
+
+  .crypto-rate-row {
+    justify-content: center;
+  }
+
+  .crypto-network-row {
+    justify-content: center;
+  }
+
+  .crypto-address-copy-box {
+    width: 100%;
+  }
+
+  .bnpl-installments-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  /* Sticky Bottom Checkout Bar */
+  .store-checkout-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 25;
+    background: rgba(8, 13, 25, 0.98);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(251, 191, 36, 0.5);
+    border-radius: 14px;
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.75);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .checkout-bar-left,
+  .checkout-bar-right {
+    width: 100%;
+  }
+
+  .checkout-selection-pill {
+    width: 100%;
+    justify-content: space-between;
+    padding: 6px 10px;
+  }
+
+  .summary-pill-text {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.76rem;
+  }
+
+  .instant-checkout-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+    font-size: 0.82rem;
+    white-space: normal;
+    text-align: center;
+    padding: 10px 12px;
+  }
+
+  /* Low Balance / Rescue Offer Modal */
+  .low-balance-modal-dialog {
+    padding: 16px 12px 14px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    border-radius: 16px;
+  }
+
+  .low-balance-modal-header {
+    margin-bottom: 12px;
+  }
+
+  .rescue-urgent-pill {
+    font-size: 0.62rem;
+    padding: 3px 10px;
+    margin-bottom: 6px;
+  }
+
+  .rescue-modal-title {
+    font-size: 1.1rem;
+    margin: 0 0 4px 0;
+  }
+
+  .rescue-modal-subtitle {
+    font-size: 0.74rem;
+    line-height: 1.35;
+  }
+
+  .rescue-daily-claim-bar {
+    padding: 6px 10px;
+    margin-bottom: 10px;
+  }
+
+  .daily-claim-title {
+    font-size: 0.7rem;
+  }
+
+  .daily-claim-sub {
+    font-size: 0.62rem;
+  }
+
+  .daily-claim-btn {
+    padding: 6px 10px;
+    font-size: 0.68rem;
+  }
+
+  /* 2x2 Clean Grid for 4 Rescue Packages */
+  .rescue-packages-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .rescue-package-card {
+    padding: 12px 6px 10px;
+    border-radius: 12px;
+  }
+
+  .rescue-badge-tag {
+    font-size: 0.5rem;
+    top: -8px;
+    padding: 1px 6px;
+  }
+
+  .rescue-gc-val {
+    font-size: 1.05rem;
+  }
+
+  .rescue-sc-pill {
+    font-size: 0.64rem;
+    padding: 2px 6px;
+  }
+
+  .rescue-tagline {
+    font-size: 0.56rem;
+    height: auto;
+    min-height: 24px;
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+
+  .rescue-cta-btn {
+    font-size: 0.74rem;
+    padding: 7px 6px;
+    min-height: 40px;
+  }
+
+  .rescue-modal-footer {
+    gap: 6px;
+  }
+
+  .rescue-switch-gc-btn {
+    font-size: 0.72rem;
+    padding: 8px 10px;
+    min-height: 44px;
+  }
+
+  .rescue-all-packages-link {
+    font-size: 0.72rem;
+    min-height: 38px;
+    padding: 4px;
+  }
+
+  .rescue-dismiss-text-btn {
+    font-size: 0.68rem;
+    min-height: 36px;
+    padding: 4px;
+  }
+
+  .rescue-guarantee-strip {
+    font-size: 0.58rem;
+    margin-top: 6px;
+    padding-top: 6px;
+    text-align: center;
+  }
+}
+
+/* Compact Landscape Orientation (height <= 560px) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .payment-modal-dialog.compact-single-page {
+    max-height: 96dvh;
+  }
+
+  .payment-vault-hero-banner {
+    height: 44px;
+  }
+
+  .payment-modal-tabs {
+    padding: 0 6px;
+  }
+
+  .pay-tab-btn {
+    padding: 6px 10px;
+    font-size: 0.68rem;
+  }
+
+  .store-packages-shelf {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+
+  .store-shelf-card,
+  .shelf-package-card {
+    padding: 8px 4px 6px;
+    min-height: 96px;
+  }
+
+  .shelf-gc-val {
+    font-size: 0.92rem;
+  }
+
+  .shelf-sc-pill {
+    font-size: 0.58rem;
+    padding: 2px 4px;
+  }
+
+  .shelf-tagline {
+    display: none;
+  }
+
+  .shelf-price-btn {
+    font-size: 0.84rem;
+    padding: 4px;
+  }
+
+  .rescue-packages-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  .low-balance-modal-dialog {
+    max-height: 96dvh;
+    padding: 10px 12px;
+  }
+
+  .rescue-modal-header {
+    margin-bottom: 4px;
+  }
+
+  .rescue-modal-title {
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+  }
+
+  .rescue-modal-subtitle {
+    font-size: 0.65rem;
+    line-height: 1.2;
+  }
+
+  .rescue-tagline {
+    display: none;
+  }
+
+  .rescue-cta-btn {
+    min-height: 34px;
+    font-size: 0.7rem;
+    padding: 5px;
+  }
+
+  .rescue-modal-footer {
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 

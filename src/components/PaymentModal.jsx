@@ -314,7 +314,7 @@ export default function PaymentModal({
                 return (
                   <div
                     key={pkg.id}
-                    className={`store-shelf-card ${isSelected ? 'selected' : ''} ${pkg.popular ? 'popular' : ''}`}
+                    className={`store-shelf-card shelf-package-card ${isSelected ? 'selected' : ''} ${pkg.popular ? 'popular' : ''}`}
                     onClick={() => handleSelectPackage(pkg)}
                   >
                     {pkg.popular && (
