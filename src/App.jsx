@@ -2418,16 +2418,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 2026 Progressive Jackpot Display Marquee: Positioned above stage for 100% unobstructed top tiles */}
-      <div className="casino-jackpots-strip">
-        <JackpotMarqueeBar
-          currencyMode={currencyMode}
-          currentBet={currentBet}
-          isSpinning={isSpinning}
-          hasWin={winningLines.length > 0}
-        />
-      </div>
-
       {/* Main Slot Machine Stage: Left Guardian + Center Cabinet + Right Guardian */}
       <main className="slot-stage-container">
         {/* Left Guardian Character (Anubis on his Pedestal) */}
@@ -2595,6 +2585,16 @@ export default function App() {
             hasWin={winningLines.length > 0}
             intensity={flowStreak >= 3 ? 1.4 : 1.0}
           />
+
+          {/* 2026 Progressive Jackpot Display Marquee: Positioned JUST ABOVE the cabinet with ZERO tile obstruction */}
+          <div className="casino-jackpots-strip">
+            <JackpotMarqueeBar
+              currencyMode={currencyMode}
+              currentBet={currentBet}
+              isSpinning={isSpinning}
+              hasWin={winningLines.length > 0}
+            />
+          </div>
 
           <div className={`reel-cabinet-box ${cabinetImpact ? `cabinet-impact-${cabinetImpact}` : ''} ${flowStreak >= 3 ? 'flow-momentum-active' : ''}`}>
             <img

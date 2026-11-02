@@ -2962,6 +2962,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   transform: translateZ(0);
   backface-visibility: hidden;
   will-change: transform;
@@ -2974,7 +2975,7 @@ body {
   position: relative;
   width: auto;
   height: 100%;
-  max-height: 100%;
+  max-height: calc(100% - 36px);
   max-width: 100%;
   aspect-ratio: 2000 / 1350;
   display: flex;
@@ -9706,7 +9707,7 @@ body {
     height: 28px !important;
     min-height: 26px !important;
     max-height: 30px !important;
-    margin: 2px auto 2px auto !important;
+    margin: 0 auto 3px auto !important;
     padding: 0 4px !important;
     z-index: 25 !important;
     flex-shrink: 0 !important;
@@ -10369,8 +10370,8 @@ body {
   }
 
   .slot-stage-container {
-    height: calc(100dvh - 32px - 24px) !important;
-    max-height: calc(100dvh - 32px - 24px) !important;
+    height: calc(100dvh - 32px) !important;
+    max-height: calc(100dvh - 32px) !important;
     padding: 1px max(4px, env(safe-area-inset-left, 4px)) 1px max(4px, env(safe-area-inset-right, 4px)) !important;
     margin: 0 auto !important;
     overflow: hidden !important;
@@ -10384,21 +10385,22 @@ body {
 
   .slot-cabinet-wrapper {
     height: 100% !important;
-    max-height: calc(100dvh - 58px) !important;
+    max-height: calc(100dvh - 34px) !important;
     width: auto !important;
     flex: 0 1 auto !important;
-    max-width: min(calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px), calc((100dvh - 58px) * (2000 / 1350))) !important;
+    max-width: min(calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px), calc((100dvh - 34px) * (2000 / 1350))) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
     margin: 0 auto !important;
+    gap: 2px !important;
   }
 
   .reel-cabinet-box {
     aspect-ratio: 2000 / 1350 !important;
-    height: 100% !important;
-    max-height: calc(100dvh - 58px) !important;
+    height: auto !important;
+    max-height: calc(100dvh - 34px - 25px) !important;
     width: auto !important;
     max-width: 100% !important;
     position: relative !important;
@@ -13239,13 +13241,15 @@ body {
   position: relative;
   z-index: 25;
   width: 100%;
+  max-width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 4px 16px 2px;
+  padding: 0 4px;
   box-sizing: border-box;
   flex-shrink: 0;
   pointer-events: auto;
+  margin: 0 auto 3px auto;
 }
 
 .jackpot-marquee-bar {
@@ -13610,7 +13614,7 @@ body {
     height: 28px !important;
     min-height: 26px !important;
     max-height: 30px !important;
-    margin: 2px auto 2px auto !important;
+    margin: 0 auto 3px auto !important;
     padding: 0 4px !important;
     z-index: 25 !important;
     flex-shrink: 0 !important;
