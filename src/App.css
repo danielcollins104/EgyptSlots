@@ -10234,8 +10234,72 @@ body {
     border-radius: 6px !important;
   }
 
+  /* 2026 Mythic Guardians in Mobile Horizontal Mode: Perfectly Flanking the Cabinet */
   .anubis-guardian-column {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: clamp(60px, 9.5vw, 120px) !important;
+    max-width: 125px !important;
+    min-width: 55px !important;
+    height: 100% !important;
+    max-height: calc(100dvh - 56px) !important;
+    flex-shrink: 0 !important;
+    z-index: 12 !important;
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    transform: translateZ(0) !important;
+  }
+
+  .anubis-guardian-column .anubis-guardian-figure {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+  }
+
+  .anubis-guardian-column .guardian-body-img {
+    max-height: clamp(140px, 60vh, 250px) !important;
+    width: auto !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
+  }
+
+  .anubis-guardian-column .guardian-pedestal-plaque {
+    width: clamp(52px, 8.5vw, 95px) !important;
+    margin-top: -12px !important;
+  }
+
+  .anubis-guardian-column .guardian-plaque-txt span {
+    font-size: 0.38rem !important;
+  }
+
+  .anubis-guardian-column .guardian-plaque-txt strong {
+    font-size: 0.54rem !important;
+  }
+
+  .anubis-guardian-column .guardian-floor-runes {
     display: none !important;
+  }
+
+  .anubis-guardian-column .guardian-pedestal-shock-ring.ring-1 {
+    width: clamp(70px, 10vw, 110px) !important;
+    height: 28px !important;
+  }
+
+  .anubis-guardian-column .guardian-pedestal-shock-ring.ring-2 {
+    width: clamp(60px, 9vw, 95px) !important;
+    height: 24px !important;
+  }
+
+  .anubis-guardian-column .guardian-pedestal-badge {
+    font-size: 8px !important;
+    padding: 3px 8px !important;
+    top: -20px !important;
   }
 
   .cabinet-bonus-and-win-bar {
@@ -10252,7 +10316,7 @@ body {
     justify-content: center !important;
     align-items: center !important;
     width: 100% !important;
-    max-width: min(96vw, calc((100dvh - 58px) * (2000 / 1350))) !important;
+    max-width: min(calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px), calc((100dvh - 58px) * (2000 / 1350))) !important;
     height: 22px !important;
     min-height: 20px !important;
     max-height: 24px !important;
@@ -10307,20 +10371,23 @@ body {
   .slot-stage-container {
     height: calc(100dvh - 32px - 24px) !important;
     max-height: calc(100dvh - 32px - 24px) !important;
-    padding: 1px 4px !important;
+    padding: 1px max(4px, env(safe-area-inset-left, 4px)) 1px max(4px, env(safe-area-inset-right, 4px)) !important;
     margin: 0 auto !important;
     overflow: hidden !important;
     display: flex !important;
+    flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
+    gap: clamp(2px, 1vw, 8px) !important;
     box-sizing: border-box !important;
   }
 
   .slot-cabinet-wrapper {
     height: 100% !important;
     max-height: calc(100dvh - 58px) !important;
-    width: 100% !important;
-    max-width: min(96vw, calc((100dvh - 58px) * (2000 / 1350))) !important;
+    width: auto !important;
+    flex: 0 1 auto !important;
+    max-width: min(calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px), calc((100dvh - 58px) * (2000 / 1350))) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
