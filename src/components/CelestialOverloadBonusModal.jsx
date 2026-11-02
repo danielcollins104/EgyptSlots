@@ -27,6 +27,10 @@ export default function CelestialOverloadBonusModal({
   const [bannerMessage, setBannerMessage] = useState(
     '⚡ HARNESS THE DIVINE TEMPEST! CHOOSE A SACRED CELESTIAL ALTAR TO UNLEASH LIGHTNING & SOLAR FIRE!'
   );
+  const [comboStreak, setComboStreak] = useState(0);
+  const [lastElement, setLastElement] = useState(null);
+  const [resonanceAlert, setResonanceAlert] = useState(null);
+  const [floatingCoinToasts, setFloatingCoinToasts] = useState([]);
 
   // Initialize or reset bonus round
   useEffect(() => {
@@ -57,6 +61,10 @@ export default function CelestialOverloadBonusModal({
     setActiveMultiplier(1);
     setIsCompleted(false);
     setActiveStrikeEffect(null);
+    setComboStreak(0);
+    setLastElement(null);
+    setResonanceAlert(null);
+    setFloatingCoinToasts([]);
     setBannerMessage(
       '⚡ HARNESS THE DIVINE TEMPEST! CHOOSE A SACRED CELESTIAL ALTAR TO UNLEASH LIGHTNING & SOLAR FIRE!'
     );
@@ -220,7 +228,7 @@ export default function CelestialOverloadBonusModal({
 
   // Altar Pick Handler
   const handleAltarPick = useCallback(
-    (altarId) => {
+    (altarId, e) => {
       if (isCompleted || picksRemaining <= 0) return;
       const target = altars.find((a) => a.id === altarId);
       if (!target || target.isRevealed) return;
@@ -233,12 +241,48 @@ export default function CelestialOverloadBonusModal({
       setActiveStrikeEffect(altarId);
       setTimeout(() => setActiveStrikeEffect(null), 850);
 
-      const nextPicks = picksRemaining - 1;
+      // Elemental Resonance combo calculation
+      let isResonance = false;
+      let comboAddPicks = 0;
+      let comboAddMult = 0;
+
+      if (lastElement && (lastElement === target.element || target.element === 'cosmic' || lastElement === 'cosmic')) {
+        isResonance = true;
+        comboAddPicks = 1;
+        comboAddMult = 2;
+        setComboStreak((prev) => prev + 1);
+        soundEngine.playBonusTrigger();
+        setResonanceAlert(
+          `⚡ ELEMENTAL RESONANCE! ${String(target.element).toUpperCase()} HARMONY AWARDS +1 EXTRA PICK & +2× MULTIPLIER!`
+        );
+        setTimeout(() => setResonanceAlert(null), 3500);
+      } else {
+        setComboStreak(1);
+      }
+      setLastElement(target.element);
+
+      const nextPicks = picksRemaining - 1 + comboAddPicks;
       setPicksRemaining(nextPicks);
 
       // Update altar state
       const winWithMultiplier = target.winAmount * activeMultiplier;
-      const nextMultiplier = activeMultiplier + (target.bonusMult || 1);
+      const nextMultiplier = activeMultiplier + (target.bonusMult || 1) + comboAddMult;
+
+      // Calculate spawn coordinates for floating toast
+      const rect = e?.currentTarget?.getBoundingClientRect();
+      const spawnX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+      const spawnY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+
+      setFloatingCoinToasts((prev) => [
+        ...prev,
+        {
+          id: Date.now() + Math.random(),
+          text: `+${winWithMultiplier.toLocaleString()}`,
+          x: spawnX,
+          y: spawnY,
+          isResonance,
+        },
+      ]);
 
       setAltars((prev) =>
         prev.map((a) =>
@@ -251,9 +295,15 @@ export default function CelestialOverloadBonusModal({
       setTotalWinCoins((prev) => prev + winWithMultiplier);
       setActiveMultiplier(nextMultiplier);
 
-      setBannerMessage(
-        `⚡ ${String(target?.title || 'DIVINE ALTAR').toUpperCase()} STRUCK! +${winWithMultiplier.toLocaleString()} COINS AWARDED • MULTIPLIER BOOSTED TO ${nextMultiplier}×!`
-      );
+      if (isResonance) {
+        setBannerMessage(
+          `🌟 ELEMENTAL HARMONY! ${String(target?.title || 'ALTAR').toUpperCase()} STRUCK: +${winWithMultiplier.toLocaleString()} COINS, +1 PICK & MULT BOOSTED TO ${nextMultiplier}×!`
+        );
+      } else {
+        setBannerMessage(
+          `⚡ ${String(target?.title || 'DIVINE ALTAR').toUpperCase()} STRUCK! +${winWithMultiplier.toLocaleString()} COINS AWARDED • MULTIPLIER BOOSTED TO ${nextMultiplier}×!`
+        );
+      }
 
       // Play coin tick
       soundEngine.playCoinTick(1);
@@ -268,7 +318,7 @@ export default function CelestialOverloadBonusModal({
         }, 1100);
       }
     },
-    [altars, isCompleted, picksRemaining, activeMultiplier]
+    [altars, isCompleted, picksRemaining, activeMultiplier, lastElement]
   );
 
   const handleCollectPrize = () => {
@@ -311,13 +361,24 @@ export default function CelestialOverloadBonusModal({
 
             <div className="celestial-hud-item win-total-item">
               <span className="hud-label">TOTAL CELESTIAL WIN</span>
-              <span className="hud-val win-val">
-                {currencyMode === 'SC'
-                  ? `$${(totalWinCoins / 100).toFixed(2)} SC`
-                  : `${totalWinCoins.toLocaleString()} GC`}
-              </span>
+              <div className="celestial-hud-digits">
+                <PsdGoldNumber
+                  value={currencyMode === 'SC' ? (totalWinCoins / 100).toFixed(2) : totalWinCoins}
+                  height={24}
+                  gap={-2}
+                />
+              </div>
             </div>
           </div>
+
+          {/* Elemental Resonance Callout Toast */}
+          {resonanceAlert && (
+            <div className="celestial-resonance-banner">
+              <Zap size={18} className="zap-pulse-icon" />
+              <span>{resonanceAlert}</span>
+              <Flame size={18} className="flame-pulse-icon" />
+            </div>
+          )}
 
           {/* Dynamic Status / Lore Banner */}
           <div className="celestial-status-banner">
@@ -337,14 +398,16 @@ export default function CelestialOverloadBonusModal({
                 className={`celestial-altar-card ${altar.isRevealed ? 'revealed' : ''} ${
                   isStrikingThis ? 'under-strike' : ''
                 } altar-${altar.element}`}
-                onClick={() => handleAltarPick(altar.id)}
+                onClick={(e) => handleAltarPick(altar.id, e)}
                 role="button"
                 tabIndex={altar.isRevealed || isCompleted ? -1 : 0}
                 aria-label={altar.isRevealed ? `${altar.title} revealed` : `Altar ${altar.id + 1}`}
               >
-                {/* Electric Strike Flash FX */}
+                {/* Electric Strike Flash & Dual Convergence FX */}
                 {isStrikingThis && (
                   <div className="altar-strike-flash">
+                    <div className="altar-convergence-beam-anubis" />
+                    <div className="altar-convergence-beam-bastet" />
                     <div className="altar-lightning-blast" />
                     <div className="altar-solar-supernova" />
                   </div>
@@ -366,9 +429,11 @@ export default function CelestialOverloadBonusModal({
                     <div className="revealed-icon">{altar.icon}</div>
                     <div className="revealed-title">{altar.name}</div>
                     <div className="revealed-win-amount">
-                      {currencyMode === 'SC'
-                        ? `$${(altar.winAmount / 100).toFixed(2)} SC`
-                        : `${altar.winAmount.toLocaleString()} GC`}
+                      <PsdGoldNumber
+                        value={currencyMode === 'SC' ? (altar.winAmount / 100).toFixed(2) : altar.winAmount}
+                        height={20}
+                        gap={-2}
+                      />
                     </div>
                     <div className="revealed-multiplier-boost">
                       +{altar.bonusMult}× MULTIPLIER BOOST
@@ -380,12 +445,23 @@ export default function CelestialOverloadBonusModal({
           })}
         </div>
 
+        {/* Floating Altar Coin Toasts */}
+        {floatingCoinToasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`celestial-flying-coin-toast ${toast.isResonance ? 'resonance-toast' : ''}`}
+            style={{ left: toast.x, top: toast.y }}
+          >
+            {toast.text}
+          </div>
+        ))}
+
         {/* Completion Celebration Overlay & Collect Prize Button */}
         {isCompleted && (
           <div className="celestial-completion-card">
             <div className="completion-ribbon">
               <Trophy size={20} className="trophy-icon" />
-              <span>DIVINE VICTORY ACHIVED!</span>
+              <span>DIVINE VICTORY ACHIEVED!</span>
               <Trophy size={20} className="trophy-icon" />
             </div>
 
@@ -393,10 +469,17 @@ export default function CelestialOverloadBonusModal({
 
             <div className="completion-gold-total">
               <span className="gold-label">TOTAL ACCUMULATED REWARD</span>
-              <span className="gold-number">
+              <div className="completion-gold-digits">
+                <PsdGoldNumber
+                  value={currencyMode === 'SC' ? (totalWinCoins / 100).toFixed(2) : totalWinCoins}
+                  height={48}
+                  gap={-2}
+                />
+              </div>
+              <span className="completion-usd-sub">
                 {currencyMode === 'SC'
-                  ? `$${(totalWinCoins / 100).toFixed(2)} SC`
-                  : `${totalWinCoins.toLocaleString()} GC`}
+                  ? `+$${(totalWinCoins / 100).toFixed(2)} USD REAL PRIZE VALUE`
+                  : `+${totalWinCoins.toLocaleString()} GOLD COINS`}
               </span>
             </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import gsap from 'gsap';
-import { Sparkles, Flame, Compass, Gem, CheckCircle2, RotateCw } from 'lucide-react';
+import { Sparkles, Flame, Compass, Gem, CheckCircle2, RotateCw, Crown, Zap, Star } from 'lucide-react';
 import { BONUS_CONFIG, BONUS_JACKPOT_TIERS } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
 import PsdGoldNumber from './PsdGoldNumber';
@@ -44,6 +44,10 @@ export default function BonusGameModal({
   const [vaultWinCoins, setVaultWinCoins] = useState(0);
   const [wonJackpots, setWonJackpots] = useState([]);
   const [vaultBanner, setVaultBanner] = useState(BONUS_CONFIG.vaultDefaultBanner);
+  const [burstTiles, setBurstTiles] = useState(new Set());
+  const [floatingPrizes, setFloatingPrizes] = useState([]);
+  const [multiplierBlaze, setMultiplierBlaze] = useState(false);
+  const [jackpotCelebration, setJackpotCelebration] = useState(null);
 
   // Fortune Wheel State
   const [wheelSpinsLeft, setWheelSpinsLeft] = useState(bonusSession?.wheelSpins || 1);
@@ -224,25 +228,47 @@ export default function BonusGameModal({
   const totalCombinedBonusWin =
     (bonusSession.scatterWinCoins || 0) + vaultWinCoins + wheelWinCoins;
 
-  const handlePickTile = (tileId) => {
+  const handlePickTile = (tileId, e) => {
     if (picksLeft <= 0) return;
     const target = vaultTiles.find((t) => t.id === tileId);
     if (!target || target.picked) return;
+
+    // Trigger visual burst shockwave on clicked tile
+    setBurstTiles((prev) => new Set([...prev, tileId]));
+    setTimeout(() => {
+      setBurstTiles((prev) => {
+        const next = new Set(prev);
+        next.delete(tileId);
+        return next;
+      });
+    }, 1200);
 
     const { prize } = target;
     let nextMult = vaultMultiplier;
     let nextPicks = picksLeft - 1;
 
+    // Compute spawn position for floating coin burst
+    const rect = e?.currentTarget?.getBoundingClientRect();
+    const spawnX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+    const spawnY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+
     if (prize.kind === 'multiplier') {
       nextMult = vaultMultiplier + prize.multAdd;
       nextPicks += prize.extraPicks;
       soundEngine.playBonusPick(true);
+      setMultiplierBlaze(true);
+      setTimeout(() => setMultiplierBlaze(false), 2000);
     } else if (prize.kind === 'extra_picks') {
       nextPicks += prize.extraPicks;
       soundEngine.playBonusPick(true);
     } else if (prize.kind === 'jackpot') {
       soundEngine.playWin(true);
+      soundEngine.playThunderStrike?.();
       setWonJackpots((prev) => [...prev, prize.jackpotId]);
+      setJackpotCelebration({
+        label: prize.label,
+        amount: prize.baseCoins,
+      });
     } else {
       soundEngine.playBonusPick(false);
     }
@@ -251,6 +277,17 @@ export default function BonusGameModal({
       prize.kind === 'jackpot'
         ? prize.baseCoins
         : Math.round(prize.baseCoins * nextMult);
+
+    setFloatingPrizes((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        text: `+${wonCoins.toLocaleString()}`,
+        x: spawnX,
+        y: spawnY,
+        isJackpot: prize.kind === 'jackpot',
+      },
+    ]);
 
     setVaultMultiplier(nextMult);
     setPicksLeft(nextPicks);
@@ -270,19 +307,19 @@ export default function BonusGameModal({
 
     if (prize.kind === 'multiplier') {
       setVaultBanner(
-        `${prize.label} VAULT MULTIPLIER UPGRADED TO ${nextMult}× + ${wonCoins.toLocaleString()} COINS!`
+        `⚡ ${prize.label} VAULT MULTIPLIER UPGRADED TO ${nextMult}× + ${wonCoins.toLocaleString()} COINS!`
       );
     } else if (prize.kind === 'extra_picks') {
       setVaultBanner(
-        `${BONUS_CONFIG.vaultExtraPicksBlessing} ${prize.label} + ${wonCoins.toLocaleString()} COINS!`
+        `✨ ${BONUS_CONFIG.vaultExtraPicksBlessing} ${prize.label} + ${wonCoins.toLocaleString()} COINS!`
       );
     } else if (prize.kind === 'jackpot') {
       setVaultBanner(
-        `JACKPOT UNLOCKED! ${prize.label} PAID ${wonCoins.toLocaleString()} COINS!`
+        `👑 JACKPOT UNLOCKED! ${prize.label} PAID ${wonCoins.toLocaleString()} COINS!`
       );
     } else {
       setVaultBanner(
-        `REVEALED ${String(target?.title || 'RELIC').toUpperCase()}: +${wonCoins.toLocaleString()} COINS (${nextMult}× MULT)!`
+        `✨ REVEALED ${String(target?.title || 'RELIC').toUpperCase()}: +${wonCoins.toLocaleString()} COINS (${nextMult}× MULT)!`
       );
     }
   };
@@ -340,6 +377,11 @@ export default function BonusGameModal({
           setWheelWinCoins((prev) => prev + jpCoins);
           setWonJackpots((prev) => [...prev, wedge.jackpotId]);
           soundEngine.playWin(true);
+          soundEngine.playThunderStrike?.();
+          setJackpotCelebration({
+            label: wedge.label,
+            amount: jpCoins,
+          });
           setWheelBanner(
             `${BONUS_CONFIG.wheelJackpotBannerPrefix} ${wedge.label} AWARDED +${jpCoins.toLocaleString()} COINS!`
           );
@@ -432,7 +474,7 @@ export default function BonusGameModal({
                 <span>VAULT PICKS LEFT</span>
                 <strong>{picksLeft}</strong>
               </div>
-              <div className="bonus-stat-pill mult-pill">
+              <div className={`bonus-stat-pill mult-pill ${multiplierBlaze ? 'mult-blazing' : ''}`}>
                 <span>ACTIVE VAULT MULTIPLIER</span>
                 <strong>{vaultMultiplier}×</strong>
               </div>
@@ -451,6 +493,7 @@ export default function BonusGameModal({
               {vaultTiles.map((tile) => {
                 const isRevealed = tile.picked || picksLeft === 0;
                 const isUnpickedReveal = !tile.picked && picksLeft === 0;
+                const isBursting = burstTiles.has(tile.id);
 
                 return (
                   <button
@@ -458,9 +501,16 @@ export default function BonusGameModal({
                     className={`vault-3d-tile ${tile.tileClass} ${
                       tile.picked ? 'tile-picked-win' : ''
                     } ${isUnpickedReveal ? 'tile-unpicked-dim' : ''}`}
-                    onClick={() => handlePickTile(tile.id)}
+                    onClick={(e) => handlePickTile(tile.id, e)}
                     disabled={tile.picked || picksLeft <= 0}
                   >
+                    {isBursting && (
+                      <div className="vault-tile-burst-effect">
+                        <div className="burst-shockwave-ring" />
+                        <div className="burst-spark-glow" />
+                      </div>
+                    )}
+
                     <div className="vault-tile-velvet-cushion">
                       <span className="corner-gem tl" />
                       <span className="corner-gem tr" />
@@ -534,7 +584,10 @@ export default function BonusGameModal({
 
           <div className="wheel-chamber-layout">
             <div className="wheel-canvas-container">
-              <div className="wheel-top-pointer">▼</div>
+              <div className={`wheel-top-pointer ${wheelSpinning ? 'flapper-vibrating' : ''}`}>
+                ▼
+                {wheelSpinning && <span className="wheel-pointer-spark" />}
+              </div>
 
               <canvas
                 ref={wheelCanvasRef}
@@ -633,6 +686,58 @@ export default function BonusGameModal({
             </button>
           </div>
         </div>
+
+        {/* Ambient floating hieroglyphic particles */}
+        <div className="vault-ambient-particles" aria-hidden="true">
+          <span className="vault-hieroglyph-float p1">𓋹</span>
+          <span className="vault-hieroglyph-float p2">𓊹</span>
+          <span className="vault-hieroglyph-float p3">𓆣</span>
+          <span className="vault-hieroglyph-float p4">𓂀</span>
+          <span className="vault-hieroglyph-float p5">𓇳</span>
+        </div>
+
+        {/* Floating Flying Coin Prize Toasts */}
+        {floatingPrizes.map((toast) => (
+          <div
+            key={toast.id}
+            className={`bonus-flying-prize-toast ${toast.isJackpot ? 'jackpot-toast' : ''}`}
+            style={{ left: toast.x, top: toast.y }}
+          >
+            {toast.text}
+          </div>
+        ))}
+
+        {/* Royal Jackpot Celebration Popup Splash */}
+        {jackpotCelebration && (
+          <div
+            className="vault-jackpot-splash-overlay"
+            onClick={() => setJackpotCelebration(null)}
+          >
+            <div
+              className="vault-jackpot-splash-card"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="jp-crown-halo">
+                <Crown size={56} className="jp-crown-spin" />
+              </div>
+              <h2 className="jp-splash-title">ROYAL JACKPOT STRUCK!</h2>
+              <div className="jp-splash-tier">{jackpotCelebration.label}</div>
+              <div className="jp-splash-amount">
+                <PsdGoldNumber value={jackpotCelebration.amount} height={46} gap={-2} />
+              </div>
+              <p className="jp-splash-sub">
+                THE GODS OF KEMET BESTOW THEIR SUPREME TREASURE UPON YOU!
+              </p>
+              <button
+                type="button"
+                className="jp-splash-claim-btn"
+                onClick={() => setJackpotCelebration(null)}
+              >
+                CLAIM JACKPOT REWARD
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

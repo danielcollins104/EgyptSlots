@@ -56,6 +56,7 @@ export default function FreeSpinsScreen({
   const [retriggerBanner, setRetriggerBanner] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [countdown, setCountdown] = useState(2); // Initial 2-sec intro countdown
+  const [winStreak, setWinStreak] = useState(0);
 
   const isSC = currencyMode === 'SC';
   const autoLoopTimerRef = useRef(null);
@@ -268,6 +269,7 @@ export default function FreeSpinsScreen({
       // Calculate won amount in active currency
       let wonAmount = 0;
       if (totalCoinsWon > 0) {
+        setWinStreak((prev) => prev + 1);
         const effectiveLineBet = lineBet != null ? lineBet : (betAmount / (linesCount || 15));
         wonAmount = isSC
           ? Number((totalCoinsWon * effectiveLineBet).toFixed(2))
@@ -283,6 +285,7 @@ export default function FreeSpinsScreen({
         // Play win celebration
         soundEngine.playWinCelebration(wonAmount >= betAmount * 5 ? 'big' : 'standard');
       } else {
+        setWinStreak(0);
         setLastSpinWin(0);
       }
 
@@ -348,6 +351,7 @@ export default function FreeSpinsScreen({
     setTotalSpinsAwarded(initialSpins);
     setTotalAccumulatedWin(0);
     setLastSpinWin(0);
+    setWinStreak(0);
     setIsCompleted(false);
     setCountdown(2);
 
@@ -460,6 +464,15 @@ export default function FreeSpinsScreen({
             <Sparkles size={16} />
           </div>
         )}
+
+        {/* Solar Frenzy Streak Callout Banner */}
+        {winStreak >= 2 && (
+          <div className="fs-solar-frenzy-badge">
+            <Flame size={18} className="frenzy-flame" />
+            <span>SOLAR FRENZY STREAK: {winStreak} CONSECUTIVE WINS!</span>
+            <Flame size={18} className="frenzy-flame" />
+          </div>
+        )}
       </header>
 
       {/* Center Reel Cabinet Only (No Guardians, Clean Pure Focus on Reels) */}
@@ -543,6 +556,15 @@ export default function FreeSpinsScreen({
                         >
                           {/* 3D Gold Extruded Bezel Frame */}
                           <div className="fs-tile-gold-bezel" />
+
+                          {/* Blazing Phoenix Wild Flame Wings Aura */}
+                          {sym.isWild && (
+                            <div className="fs-phoenix-wild-auras" aria-hidden="true">
+                              <div className="phoenix-wing-left" />
+                              <div className="phoenix-wing-right" />
+                              <div className="phoenix-core-flare" />
+                            </div>
+                          )}
 
                           {/* 3D Graphic Asset or 3D Sculpted Royal Letter */}
                           {sym.image ? (
