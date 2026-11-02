@@ -2388,10 +2388,8 @@ export default function App() {
                 <div className="guardian-martial-badge">{guardianMartialMove.badge}</div>
               </>
             )}
-            {/* Living Aura: Only lit at Stage 2+ */}
-            {guardianChargeLevel >= 2 && (
-              <div className="guardian-living-aura anubis-living-aura" />
-            )}
+            {/* Living Aura: Continuous hypnotic ambient pulsation */}
+            <div className="guardian-living-aura anubis-living-aura" />
             {/* Divine Eyes: Only lit at Stage 2+ */}
             {guardianChargeLevel >= 2 && (
               <div
@@ -2926,10 +2924,8 @@ export default function App() {
                 <div className="guardian-martial-badge">{guardianMartialMove.badge}</div>
               </>
             )}
-            {/* Living Aura: Only lit at Stage 2+ */}
-            {guardianChargeLevel >= 2 && (
-              <div className="guardian-living-aura bastet-living-aura" />
-            )}
+            {/* Living Aura: Continuous hypnotic ambient pulsation */}
+            <div className="guardian-living-aura bastet-living-aura" />
             {/* Divine Eyes: Only lit at Stage 2+ */}
             {guardianChargeLevel >= 2 && (
               <div
