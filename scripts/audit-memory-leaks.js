@@ -172,12 +172,72 @@ async function runMemoryLeakAudit() {
       returnByValue: true,
     });
     console.log(`Splash dismissal action: ${enterRes.result.value}`);
+    await sleep(3000);
+
+    // Warm-up cycle: Trigger initial spin and paytable modal toggle to ensure one-time
+    // module imports, AudioContext graphs, and React portals settle before establishing baseline.
+    console.log('Executing warm-up cycle for steady-state baseline...');
+    await cdp.send('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const btn = document.querySelector('.psd-spin-btn-graphic') ||
+                      document.querySelector('.mobile-dock-spin-btn') ||
+                      document.querySelector('button[aria-label*="Spin"]');
+          if (btn) btn.click();
+          const pBtn = document.querySelector('button[aria-label*="Paytable"]') ||
+                       document.querySelector('.paytable-btn');
+          if (pBtn) pBtn.click();
+          setTimeout(() => {
+            const closeBtn = document.querySelector('.modal-close-btn') ||
+                             document.querySelector('button[aria-label*="Close"]');
+            if (closeBtn) closeBtn.click();
+          }, 200);
+        })()
+      `,
+    });
     await sleep(1500);
 
     // Force GC to establish clean baseline
     console.log('\n--- 1. ESTABLISHING CLEAN GC BASELINE ---');
     await cdp.send('HeapProfiler.collectGarbage');
     await sleep(500);
+
+    // Instrument addEventListener right after baseline to pinpoint any listener leak
+    await cdp.send('Runtime.evaluate', {
+      expression: `
+        (() => {
+          window.__trackedAdds = [];
+          const origAdd = EventTarget.prototype.addEventListener;
+          const origRem = EventTarget.prototype.removeEventListener;
+          const registry = new Map();
+          
+          EventTarget.prototype.addEventListener = function(type, fn, opts) {
+            const stack = new Error().stack;
+            const targetName = this === window ? 'window' : (this === document ? 'document' : (this.tagName || this.constructor?.name || 'unknown'));
+            const key = { target: this, type, fn };
+            registry.set(fn, { targetName, type, stack });
+            return origAdd.call(this, type, fn, opts);
+          };
+
+          EventTarget.prototype.removeEventListener = function(type, fn, opts) {
+            registry.delete(fn);
+            return origRem.call(this, type, fn, opts);
+          };
+
+          window.__getLeakedListeners = () => {
+            const list = [];
+            for (const [fn, val] of registry.entries()) {
+              list.push({
+                target: val.targetName,
+                type: val.type,
+                stackTop: val.stack.split('\\n').slice(1, 4).join(' -> ')
+              });
+            }
+            return list;
+          };
+        })()
+      `,
+    });
 
     const baseMetricsRaw = await cdp.send('Performance.getMetrics');
     const baseMetrics = Object.fromEntries(baseMetricsRaw.metrics.map((m) => [m.name, m.value]));
@@ -229,9 +289,20 @@ async function runMemoryLeakAudit() {
       process.stdout.write(`Done.\n`);
     }
 
-    // Allow background audio and animations to settle
+    // Allow background audio, win animations, and celebration splash to settle
     console.log('\n--- 3. SETTLING & FORCING V8 GARBAGE COLLECTION ---');
-    await sleep(1500);
+    // Dismiss any active celebration overlays
+    await cdp.send('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const splash = document.querySelector('.win-splash-overlay');
+          if (splash) splash.click();
+          const bigWin = document.querySelector('.bigwin-collect-btn') || document.querySelector('.bigwin-modal-root');
+          if (bigWin) bigWin.click();
+        })()
+      `,
+    });
+    await sleep(3500);
     await cdp.send('HeapProfiler.collectGarbage');
     await sleep(600);
     await cdp.send('HeapProfiler.collectGarbage');
@@ -247,6 +318,19 @@ async function runMemoryLeakAudit() {
     console.log(`Final DOM Nodes:         ${finalDomCounters.nodes}`);
     console.log(`Final Documents:         ${finalDomCounters.documents}`);
     console.log(`Final EventListeners:    ${finalDomCounters.jsEventListeners}`);
+
+    const leakedListenersRes = await cdp.send('Runtime.evaluate', {
+      expression: `window.__getLeakedListeners ? window.__getLeakedListeners() : []`,
+      returnByValue: true,
+    });
+    const leakedList = leakedListenersRes.result.value || [];
+    if (leakedList.length > 0) {
+      console.log(`\nDetected ${leakedList.length} unremoved event listeners registered during audit:`);
+      leakedList.slice(0, 8).forEach((item, idx) => {
+        console.log(`  [#${idx + 1}] Target: ${item.target}, Event: ${item.type}`);
+        console.log(`      Origin: ${item.stackTop}`);
+      });
+    }
 
     // Diffs & Leaks Diagnosis
     const heapDiffMB = (finalMetrics.JSHeapUsedSize - baseMetrics.JSHeapUsedSize) / (1024 * 1024);

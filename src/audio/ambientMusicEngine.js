@@ -41,6 +41,7 @@ class AmbientMusicEngine {
     this.userVolume = 0.18;
     this.duckVolume = 0.04;
     this.hasUserInteracted = false;
+    this.wasPlayingBeforeHidden = false;
 
     if (typeof window !== 'undefined') {
       try {
@@ -52,6 +53,22 @@ class AmbientMusicEngine {
           }
         }
       } catch (_) {}
+
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) {
+            if (this.audio && !this.audio.paused) {
+              this.wasPlayingBeforeHidden = true;
+              this.audio.pause();
+            }
+          } else {
+            if (this.wasPlayingBeforeHidden && !this.isMuted) {
+              this.wasPlayingBeforeHidden = false;
+              this.audio.play().catch(() => {});
+            }
+          }
+        });
+      }
     }
   }
 

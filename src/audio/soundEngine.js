@@ -2,6 +2,10 @@
 // Since the RSG Free Pack includes no audio files, this engine synthesizes
 // rich mechanical reel ticks, Egyptian harp/chime win fanfares, Anubis fire whooshes,
 // and Big Win coin cascades using native Web Audio oscillators & noise buffers.
+//
+// Zero-Leak Architecture: Every synthesized voice auto-disconnects from destination
+// on playback completion, preventing DSP audio node accumulation, high CPU heat,
+// and audio thread starvation during long play sessions.
 
 class SoundEngine {
   constructor() {
@@ -11,6 +15,16 @@ class SoundEngine {
     this.ambientOscs = [];
     this.ambientStarted = true; // Disabled: prevent continuous synthetic drone
     this.lastTickMs = 0;
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && this.ctx && this.ctx.state === 'running') {
+          this.ctx.suspend().catch(() => {});
+        } else if (!document.hidden && this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      });
+    }
   }
 
   init() {
@@ -23,6 +37,33 @@ class SoundEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+  }
+
+  // Auto-disconnects audio nodes from the audio graph upon playback finish to eliminate memory leaks and DSP overload
+  playVoice(nodes, durationSeconds = 0.5) {
+    if (!this.ctx) return;
+    const terminalNode = nodes[nodes.length - 1];
+    if (terminalNode && typeof terminalNode.connect === 'function') {
+      terminalNode.connect(this.ctx.destination);
+    }
+    const osc = nodes.find((n) => n && typeof n.stop === 'function');
+    if (osc) {
+      osc.onended = () => {
+        nodes.forEach((n) => {
+          try {
+            if (n && typeof n.disconnect === 'function') n.disconnect();
+          } catch (_) {}
+        });
+      };
+    }
+    const fallbackMs = Math.max(60, Math.ceil(durationSeconds * 1000) + 100);
+    setTimeout(() => {
+      nodes.forEach((n) => {
+        try {
+          if (n && typeof n.disconnect === 'function') n.disconnect();
+        } catch (_) {}
+      });
+    }, fallbackMs);
   }
 
   stopAmbientDrone() {
@@ -95,7 +136,7 @@ class SoundEngine {
 
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(this.ctx.destination);
+    this.playVoice([osc, filter, gain], 0.05);
 
     osc.start(now);
     osc.stop(now + 0.05);
@@ -135,7 +176,7 @@ class SoundEngine {
 
     thudOsc.connect(thudFilter);
     thudFilter.connect(thudGain);
-    thudGain.connect(this.ctx.destination);
+    this.playVoice([thudOsc, thudFilter, thudGain], 0.095);
 
     thudOsc.start(now);
     thudOsc.stop(now + 0.095);
@@ -158,7 +199,7 @@ class SoundEngine {
 
     clickOsc.connect(clickFilter);
     clickFilter.connect(clickGain);
-    clickGain.connect(this.ctx.destination);
+    this.playVoice([clickOsc, clickFilter, clickGain], 0.022);
 
     clickOsc.start(now);
     clickOsc.stop(now + 0.022);
@@ -174,7 +215,7 @@ class SoundEngine {
     airGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
 
     airOsc.connect(airGain);
-    airGain.connect(this.ctx.destination);
+    this.playVoice([airOsc, airGain], 0.075);
 
     airOsc.start(now);
     airOsc.stop(now + 0.075);
@@ -203,7 +244,7 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      this.playVoice([osc, gain], 0.35 + idx * 0.04);
       osc.start(t);
       osc.stop(t + 0.34);
     });
@@ -228,7 +269,7 @@ class SoundEngine {
     subGain.gain.setValueAtTime(0.38, now);
     subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
     subOsc.connect(subGain);
-    subGain.connect(this.ctx.destination);
+    this.playVoice([subOsc, subGain], 0.25);
     subOsc.start(now);
     subOsc.stop(now + 0.25);
 
@@ -241,7 +282,7 @@ class SoundEngine {
     clickGain.gain.setValueAtTime(0.22, now);
     clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
     clickOsc.connect(clickGain);
-    clickGain.connect(this.ctx.destination);
+    this.playVoice([clickOsc, clickGain], 0.08);
     clickOsc.start(now);
     clickOsc.stop(now + 0.08);
 
@@ -253,7 +294,7 @@ class SoundEngine {
     chimeGain.gain.setValueAtTime(0.14, now + 0.01);
     chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
     chimeOsc.connect(chimeGain);
-    chimeGain.connect(this.ctx.destination);
+    this.playVoice([chimeOsc, chimeGain], 0.29);
     chimeOsc.start(now + 0.01);
     chimeOsc.stop(now + 0.29);
   }
@@ -279,7 +320,7 @@ class SoundEngine {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    this.playVoice([osc, gain], 0.5);
     osc.start(now);
     osc.stop(now + 0.5);
   }
@@ -333,7 +374,7 @@ class SoundEngine {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    this.playVoice([osc, gain], 0.16);
     osc.start(now);
     osc.stop(now + 0.16);
 
@@ -350,7 +391,7 @@ class SoundEngine {
       cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 
       chime.connect(cGain);
-      cGain.connect(this.ctx.destination);
+      this.playVoice([chime, cGain], 0.36);
       chime.start(now + 0.02);
       chime.stop(now + 0.36);
     }
@@ -376,7 +417,7 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      this.playVoice([osc, gain], 0.88);
       osc.start(now);
       osc.stop(now + 0.88);
     });
@@ -397,7 +438,7 @@ class SoundEngine {
     snapGain.gain.setValueAtTime(0.24, now);
     snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
     snapOsc.connect(snapGain);
-    snapGain.connect(this.ctx.destination);
+    this.playVoice([snapOsc, snapGain], 0.1);
     snapOsc.start(now);
     snapOsc.stop(now + 0.1);
 
@@ -410,7 +451,7 @@ class SoundEngine {
     boomGain.gain.setValueAtTime(0.35, now);
     boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
     boomOsc.connect(boomGain);
-    boomGain.connect(this.ctx.destination);
+    this.playVoice([boomOsc, boomGain], 0.72);
     boomOsc.start(now);
     boomOsc.stop(now + 0.72);
 
@@ -435,7 +476,7 @@ class SoundEngine {
     whooshGain.gain.linearRampToValueAtTime(0.28, now + 0.15);
     whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
     whooshOsc.connect(whooshGain);
-    whooshGain.connect(this.ctx.destination);
+    this.playVoice([whooshOsc, whooshGain], 0.62);
     whooshOsc.start(now);
     whooshOsc.stop(now + 0.62);
 
@@ -449,7 +490,7 @@ class SoundEngine {
     flareGain.gain.setValueAtTime(0.26, now + 0.14);
     flareGain.gain.exponentialRampToValueAtTime(0.001, now + 0.68);
     flareOsc.connect(flareGain);
-    flareGain.connect(this.ctx.destination);
+    this.playVoice([flareOsc, flareGain], 0.7);
     flareOsc.start(now + 0.12);
     flareOsc.stop(now + 0.7);
 
@@ -483,7 +524,7 @@ class SoundEngine {
 
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(this.ctx.destination);
+    this.playVoice([osc, filter, gain], 0.25);
 
     osc.start(now);
     osc.stop(now + 0.25);
@@ -508,7 +549,7 @@ class SoundEngine {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    this.playVoice([osc, gain], 0.15);
     osc.start(now);
     osc.stop(now + 0.15);
   }
@@ -551,7 +592,7 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      this.playVoice([osc, gain], 0.34 + idx * 0.035);
       osc.start(t);
       osc.stop(t + 0.34);
     });
@@ -613,7 +654,7 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, t + (tier === 'micro' ? 0.22 : 0.38));
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      this.playVoice([osc, gain], (tier === 'micro' ? 0.24 : 0.4) + i * stepInterval);
       osc.start(t);
       osc.stop(t + (tier === 'micro' ? 0.24 : 0.4));
     });
@@ -637,7 +678,7 @@ class SoundEngine {
       cGain.gain.exponentialRampToValueAtTime(0.001, ct + 0.07);
 
       cOsc.connect(cGain);
-      cGain.connect(this.ctx.destination);
+      this.playVoice([cOsc, cGain], 0.08 + c * 0.06);
       cOsc.start(ct);
       cOsc.stop(ct + 0.08);
     }
@@ -664,7 +705,7 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, t + (isBigWin ? 0.45 : 0.3));
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      this.playVoice([osc, gain], (isBigWin ? 0.48 : 0.32) + i * (isBigWin ? 0.09 : 0.075));
       osc.start(t);
       osc.stop(t + (isBigWin ? 0.48 : 0.32));
     });
@@ -693,7 +734,7 @@ class SoundEngine {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    this.playVoice([osc, gain], 0.06);
     osc.start(now);
     osc.stop(now + 0.06);
   }
@@ -715,7 +756,7 @@ class SoundEngine {
       gain.gain.setValueAtTime(0.22, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      this.playVoice([osc, gain], 0.58 + i * 0.075);
       osc.start(t);
       osc.stop(t + 0.58);
     });
@@ -737,7 +778,7 @@ class SoundEngine {
       gain.gain.setValueAtTime(0.18, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      this.playVoice([osc, gain], 0.35 + i * 0.055);
       osc.start(t);
       osc.stop(t + 0.35);
     });
@@ -758,7 +799,7 @@ class SoundEngine {
     gain.gain.setValueAtTime(0.14, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    this.playVoice([osc, gain], 0.045);
     osc.start(now);
     osc.stop(now + 0.045);
   }

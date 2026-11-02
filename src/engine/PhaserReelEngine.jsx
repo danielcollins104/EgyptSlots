@@ -622,6 +622,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       winningCells: winningCells || new Set(),
       activeWinLineIdx: activeWinLineIdx || 0,
     };
+    engineRef.current?.markDirty?.();
   }, [winningLines, winningCells, activeWinLineIdx]);
 
   useEffect(() => {
@@ -1190,8 +1191,11 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         });
     };
 
-    // Ultra-smooth 60/120 FPS Render Loop with Delta Smoothing & Integer Pixel Blitting
+    // Ultra-smooth 60/120 FPS Render Loop with Delta Smoothing & Intelligent Idle Throttling
     let lastTime = performance.now();
+    let isDirty = true;
+    const markDirty = () => { isDirty = true; };
+
     const tick = () => {
       if (isDisposed) return;
       const now = performance.now();
@@ -1200,18 +1204,36 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       // Clamp delta time to 30fps-120fps window to eliminate stutter spikes
       const dt = Math.min(0.033, Math.max(0.008, rawDt));
 
-      ctx.clearRect(0, 0, GAME_W, GAME_H);
-
-      if (sprites.staticBg) {
-        ctx.drawImage(sprites.staticBg, 0, 0);
-      }
-
       const {
         winningLines: wins,
         winningCells: winSet,
         activeWinLineIdx: winIdx,
       } = winStateRef.current;
       const anySpinning = reels.some((r) => r.state !== 'IDLE');
+      const hasActiveWins = !anySpinning && wins && wins.length > 0;
+      const hasParticles = particles.length > 0;
+      const hasTransitions = reels.some(
+        (r) => r.offsetY !== 0 || (r.tallAlpha > 0.001 && r.tallAlpha < 0.999)
+      );
+      const isActivelyAnimating = anySpinning || hasActiveWins || hasParticles || hasTransitions;
+
+      // Intelligent Idle Throttling: If no reels are spinning and no animations/wins/particles are active,
+      // draw the resting grid once and suspend drawing to yield 0% GPU load and eliminate thermal heat
+      if (!isActivelyAnimating) {
+        if (!isDirty) {
+          return;
+        }
+        isDirty = false;
+      } else {
+        isDirty = true;
+      }
+
+      ctx.clearRect(0, 0, GAME_W, GAME_H);
+
+      if (sprites.staticBg) {
+        ctx.drawImage(sprites.staticBg, 0, 0);
+      }
+
       // Independent 3D pop-out scale for winning artifacts vs their recessed tile frame!
       const framePulse = 1 + 0.03 * Math.sin(now * 0.0085);
       const popOutPulse = 1.12 + 0.09 * Math.sin(now * 0.011);
@@ -1488,11 +1510,23 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     };
 
     gsap.ticker.add(tick);
-    engineRef.current = { startSpin, instantStop };
+    engineRef.current = { startSpin, instantStop, markDirty };
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        gsap.ticker.remove(tick);
+      } else {
+        lastTime = performance.now();
+        isDirty = true;
+        gsap.ticker.add(tick);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       isDisposed = true;
       gsap.ticker.remove(tick);
+      document.removeEventListener('visibilitychange', handleVisibility);
       reels.forEach((r) => r.tweens.forEach((t) => t.kill()));
     };
   }, []);
