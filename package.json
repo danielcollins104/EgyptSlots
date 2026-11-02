@@ -8,6 +8,7 @@
     "build": "vite build",
     "sync": "cap sync",
     "build:all": "vite build && cap sync",
+    "deploy": "vite build && cap sync && wrangler deploy",
     "preview": "vite preview",
     "server": "node server/server.js",
     "security:audit": "node scripts/test-security-audit.js",
