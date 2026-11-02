@@ -282,7 +282,7 @@ export default function BonusGameModal({
       );
     } else {
       setVaultBanner(
-        `REVEALED ${target.title.toUpperCase()}: +${wonCoins.toLocaleString()} COINS (${nextMult}× MULT)!`
+        `REVEALED ${String(target?.title || 'RELIC').toUpperCase()}: +${wonCoins.toLocaleString()} COINS (${nextMult}× MULT)!`
       );
     }
   };

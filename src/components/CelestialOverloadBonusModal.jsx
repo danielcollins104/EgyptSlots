@@ -252,7 +252,7 @@ export default function CelestialOverloadBonusModal({
       setActiveMultiplier(nextMultiplier);
 
       setBannerMessage(
-        `⚡ ${target.title.toUpperCase()} STRUCK! +${winWithMultiplier.toLocaleString()} COINS AWARDED • MULTIPLIER BOOSTED TO ${nextMultiplier}×!`
+        `⚡ ${String(target?.title || 'DIVINE ALTAR').toUpperCase()} STRUCK! +${winWithMultiplier.toLocaleString()} COINS AWARDED • MULTIPLIER BOOSTED TO ${nextMultiplier}×!`
       );
 
       // Play coin tick
@@ -362,7 +362,7 @@ export default function CelestialOverloadBonusModal({
                 ) : (
                   /* Revealed Cosmic Prize */
                   <div className="altar-revealed-content">
-                    <div className="revealed-element-tag">{altar.element.toUpperCase()}</div>
+                    <div className="revealed-element-tag">{String(altar?.element || 'divine').toUpperCase()}</div>
                     <div className="revealed-icon">{altar.icon}</div>
                     <div className="revealed-title">{altar.name}</div>
                     <div className="revealed-win-amount">

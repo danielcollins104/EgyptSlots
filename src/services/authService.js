@@ -11,7 +11,16 @@ export const authService = {
   getCurrentUser() {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.USER_SESSION);
-      return raw ? JSON.parse(raw) : null;
+      if (!raw) return null;
+      const user = JSON.parse(raw);
+      if (user && typeof user === 'object') {
+        const method = user.method || user.provider || 'VIP';
+        const provider = user.provider || user.method || 'vip';
+        user.method = method;
+        user.provider = provider;
+        if (!user.name) user.name = 'VIP Player';
+      }
+      return user;
     } catch {
       return null;
     }
@@ -187,6 +196,7 @@ export const authService = {
       name: 'Google VIP Player',
       email: `player.${randomId}@gmail.com`,
       provider: 'google',
+      method: 'google',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80',
       isVerifiedSC: true,
       scEligibility: 'eligible',
@@ -199,16 +209,17 @@ export const authService = {
   // Sign in with Email / Password
   async loginWithEmail(email, password = '') {
     await new Promise((r) => setTimeout(r, 500));
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = email ? String(email).trim().toLowerCase() : '';
     if (!cleanEmail || !cleanEmail.includes('@')) {
       throw new Error('Please enter a valid email address.');
     }
-    const username = cleanEmail.split('@')[0];
+    const username = cleanEmail.split('@')[0] || 'player';
     const user = {
       id: `usr_em_${btoa(cleanEmail).substring(0, 8)}`,
-      name: username.charAt(0).toUpperCase() + username.slice(1),
+      name: (username.charAt(0).toUpperCase() + username.slice(1)) || 'VIP Player',
       email: cleanEmail,
       provider: 'email',
+      method: 'email',
       avatar: null,
       isVerifiedSC: true,
       scEligibility: 'eligible',
@@ -221,7 +232,7 @@ export const authService = {
   // Send Phone SMS OTP Verification Code
   async sendPhoneOtp(phoneNumber) {
     await new Promise((r) => setTimeout(r, 450));
-    const cleanPhone = phoneNumber.replace(/[^0-9+]/g, '');
+    const cleanPhone = String(phoneNumber || '').replace(/[^0-9+]/g, '');
     if (cleanPhone.length < 8) {
       throw new Error('Please enter a valid phone number with area code.');
     }
@@ -234,8 +245,8 @@ export const authService = {
   // Verify Phone Code and Complete Login
   async verifyPhoneOtp(phoneNumber, inputCode) {
     await new Promise((r) => setTimeout(r, 450));
-    const cleanPhone = phoneNumber.replace(/[^0-9+]/g, '');
-    const cleanCode = inputCode.trim();
+    const cleanPhone = String(phoneNumber || '').replace(/[^0-9+]/g, '');
+    const cleanCode = String(inputCode || '').trim();
     if (cleanCode !== '777777' && cleanCode.length !== 6) {
       throw new Error('Invalid verification code. Enter the 6-digit code or test code 777777.');
     }
@@ -245,6 +256,7 @@ export const authService = {
       phone: cleanPhone,
       email: null,
       provider: 'phone',
+      method: 'phone',
       avatar: null,
       isVerifiedSC: true,
       scEligibility: 'eligible',
@@ -263,6 +275,7 @@ export const authService = {
       email: 'highroller@dc-casino.vip',
       phone: '+1 (555) 777-VIP1',
       provider: 'vip_pass',
+      method: 'vip_pass',
       avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=120&h=120&q=80',
       isVerifiedSC: true,
       scEligibility: 'eligible',

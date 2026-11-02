@@ -17,7 +17,7 @@ export default function PaytableModal({ isOpen, onClose, level = 1, currencyMode
         <div className="paytable-header">
           <div>
             <div className="paytable-casino-tag">
-              {CASINO_BRAND.casinoFullTitle} • BY {CASINO_BRAND.creatorName.toUpperCase()}
+              {CASINO_BRAND.casinoFullTitle} • BY {String(CASINO_BRAND?.creatorName || 'DC Enterprises').toUpperCase()}
             </div>
             <h2 className="paytable-title">{THEME_COPY.paytableHeading}</h2>
           </div>

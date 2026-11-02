@@ -158,8 +158,9 @@ export default function PaymentModal({
     let provider = 'stripe';
     let providerLabel = 'Card / Stripe';
     if (paymentMethod === 'crypto') {
-      provider = `crypto_${activeCrypto.symbol.toLowerCase()}`;
-      providerLabel = `Crypto (${activeCrypto.symbol})`;
+      const cryptoSym = String(activeCrypto?.symbol || 'crypto').toLowerCase();
+      provider = `crypto_${cryptoSym}`;
+      providerLabel = `Crypto (${String(activeCrypto?.symbol || 'Crypto')})`;
     } else if (paymentMethod === 'klarna') {
       provider = 'klarna';
       providerLabel = 'Klarna (Pay in 4)';
@@ -212,7 +213,8 @@ export default function PaymentModal({
       soundEngine.playButtonClick(400);
       return;
     }
-    if (!redeemDestination.trim()) {
+    const dest = String(redeemDestination || '').trim();
+    if (!dest) {
       setRedeemError('Please provide your payout account details, routing number, or crypto wallet address.');
       soundEngine.playButtonClick(400);
       return;
@@ -225,17 +227,18 @@ export default function PaymentModal({
       onRedeemSuccess(amountNum);
     }
 
+    const safeMethod = String(redeemMethod || 'payout');
     // Log transaction
     paymentService.logTransaction({
       type: 'redemption',
-      provider: redeemMethod,
-      description: `Prize Redemption: ${amountNum.toFixed(2)} SC ($${amountNum.toFixed(2)} USD via ${redeemMethod.toUpperCase()} to ${redeemDestination.trim()})`,
+      provider: safeMethod,
+      description: `Prize Redemption: ${amountNum.toFixed(2)} SC ($${amountNum.toFixed(2)} USD via ${safeMethod.toUpperCase()} to ${dest})`,
       amountUsd: amountNum,
       status: 'Pending Liquidity Clearance (3-7 Business Days)',
     });
 
     setRedeemSuccessMsg(
-      `✓ Redemption of $${amountNum.toFixed(2)} USD queued! Disbursing to ${redeemDestination.trim()} per Emerging Operator Liquidity Schedule.`
+      `✓ Redemption of $${amountNum.toFixed(2)} USD queued! Disbursing to ${dest} per Emerging Operator Liquidity Schedule.`
     );
     setRedeemError('');
   };
@@ -969,7 +972,7 @@ export default function PaymentModal({
                             {tx.type === 'purchase' ? 'Purchase' : 'Redemption'}
                           </span>
                         </td>
-                        <td>{tx.provider ? tx.provider.toUpperCase().replace('_', ' ') : 'Stripe'}</td>
+                        <td>{typeof tx.provider === 'string' ? tx.provider.toUpperCase().replace(/_/g, ' ') : 'STRIPE'}</td>
                         <td className="tx-desc-cell">{tx.description}</td>
                         <td className="tx-amount-cell">
                           {tx.type === 'purchase'
@@ -977,7 +980,7 @@ export default function PaymentModal({
                             : `-$${Number(tx.amountUsd).toFixed(2)}`}
                         </td>
                         <td>
-                          <span className={`tx-status-badge ${tx.status.includes('pending') ? 'pending' : tx.status}`}>
+                          <span className={`tx-status-badge ${typeof tx.status === 'string' && tx.status.toLowerCase().includes('pending') ? 'pending' : (tx.status || 'completed')}`}>
                             {tx.status}
                           </span>
                         </td>

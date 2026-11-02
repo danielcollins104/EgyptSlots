@@ -499,7 +499,7 @@ export default function App() {
         setCurrencyMode('GC');
         setStatusMessage('GUEST SESSION • SWITCHED TO SOCIAL GOLD COINS (GC).');
       } else if (user) {
-        setStatusMessage(`WELCOME BACK, ${user.name.toUpperCase()}! VIP ACCOUNT DATA RESTORED.`);
+        setStatusMessage(`WELCOME BACK, ${String(user?.name || 'VIP Player').toUpperCase()}! VIP ACCOUNT DATA RESTORED.`);
       }
     });
     return unsubscribe;
@@ -1011,7 +1011,7 @@ export default function App() {
       if (totalSC > 0) {
         setBigWinAmount(totalSC);
         setStatusMessage(
-          `3D BONUS COMPLETED! ${CASINO_BRAND.creatorName.toUpperCase()} WON ${totalSC.toFixed(2)} SC ($${totalSC.toFixed(2)} USD PRIZE)!`
+          `3D BONUS COMPLETED! ${String(CASINO_BRAND?.creatorName || 'DC Enterprises').toUpperCase()} WON ${totalSC.toFixed(2)} SC ($${totalSC.toFixed(2)} USD PRIZE)!`
         );
       }
     } else {
@@ -1023,7 +1023,7 @@ export default function App() {
       if (totalBonusCoins > 0) {
         setBigWinAmount(totalBonusCoins);
         setStatusMessage(
-          `3D BONUS COMPLETED! ${CASINO_BRAND.creatorName.toUpperCase()} WON ${totalBonusCoins.toLocaleString()} TOTAL BONUS GOLD COINS!`
+          `3D BONUS COMPLETED! ${String(CASINO_BRAND?.creatorName || 'DC Enterprises').toUpperCase()} WON ${totalBonusCoins.toLocaleString()} TOTAL BONUS GOLD COINS!`
         );
       }
     }
@@ -1621,7 +1621,7 @@ export default function App() {
           <div className="dc-brand-titles">
             <span className="dc-casino-name">{CASINO_BRAND.casinoFullTitle}</span>
             <span className="dc-creator-tag">
-              <Crown size={12} /> CREATED BY {CASINO_BRAND.creatorName.toUpperCase()} •{' '}
+              <Crown size={12} /> CREATED BY {String(CASINO_BRAND?.creatorName || 'DC Enterprises').toUpperCase()} •{' '}
               {CASINO_BRAND.shortTitle}
             </span>
           </div>
@@ -1919,10 +1919,10 @@ export default function App() {
           </button>
 
           {currentUser ? (
-            <div className="topbar-user-badge" title={`Logged in as ${currentUser.name} (${currentUser.method})`}>
+            <div className="topbar-user-badge" title={`Logged in as ${currentUser.name || 'VIP Player'} (${currentUser.provider || currentUser.method || 'VIP'})`}>
               <User size={14} className="user-icon" />
               <div className="user-meta">
-                <span className="user-name">{currentUser.name}</span>
+                <span className="user-name">{currentUser.name || 'VIP Player'}</span>
                 <span className="user-tier">{currentUser.tier || 'VIP PLAYER'}</span>
               </div>
               <button
@@ -2014,8 +2014,8 @@ export default function App() {
               >
                 <User size={24} color="#ffd700" className="card-icon" />
                 <div className="card-txt" style={{ flex: 1 }}>
-                  <strong style={{ color: '#ffd700', fontSize: '0.9rem' }}>{currentUser.name} ({currentUser.tier || 'VIP'})</strong>
-                  <small style={{ color: '#00e5ff', display: 'block', marginTop: '2px' }}>Verified via {currentUser.method.toUpperCase()} • SC Active</small>
+                  <strong style={{ color: '#ffd700', fontSize: '0.9rem' }}>{currentUser?.name || 'VIP Player'} ({currentUser?.tier || 'VIP'})</strong>
+                  <small style={{ color: '#00e5ff', display: 'block', marginTop: '2px' }}>Verified via {String(currentUser?.provider || currentUser?.method || 'VIP').toUpperCase()} • SC Active</small>
                 </div>
                 <button
                   className="mobile-drawer-logout-btn"
@@ -2634,7 +2634,7 @@ export default function App() {
             <div className="cabinet-arch-engraving">
               <span>{CASINO_BRAND.casinoFullTitle}</span>
               <span className="arch-dot">⚡</span>
-              <span>CREATED BY {CASINO_BRAND.creatorName.toUpperCase()}</span>
+              <span>CREATED BY {String(CASINO_BRAND?.creatorName || 'DC Enterprises').toUpperCase()}</span>
               {flowStreak >= 3 && (
                 <div className="flow-streak-badge">
                   <Zap size={11} className="flow-badge-zap" />
@@ -2870,7 +2870,7 @@ export default function App() {
                         ? `$${formatCoinValue(sweepsCoins)}`
                         : goldCoins.toLocaleString()}
                     </div>
-                    <span className={`psd-curr-badge ${currencyMode.toLowerCase()}-badge`}>
+                    <span className={`psd-curr-badge ${String(currencyMode || 'gc').toLowerCase()}-badge`}>
                       {currencyMode}
                     </span>
                   </div>
@@ -3301,7 +3301,7 @@ export default function App() {
         onLoginSuccess={(user) => {
           setCurrentUser(user);
           setCurrencyMode('SC');
-          setStatusMessage(`VIP VERIFIED! WELCOME ${user.name.toUpperCase()} — SC UNLOCKED!`);
+          setStatusMessage(`VIP VERIFIED! WELCOME ${String(user?.name || 'VIP Player').toUpperCase()} — SC UNLOCKED!`);
         }}
       />
 
@@ -3352,7 +3352,7 @@ export default function App() {
         {/* Tier 1: Prominent Mobile Balance Display & Quick Refill Button */}
         <div className="mobile-dock-top-hud">
           <div
-            className={`mobile-dock-bal-card ${currencyMode.toLowerCase()}-mode-bal`}
+            className={`mobile-dock-bal-card ${String(currencyMode || 'gc').toLowerCase()}-mode-bal`}
             onClick={() => {
               soundEngine.playButtonClick(currencyMode === 'GC' ? 880 : 660);
               if (currencyMode === 'GC') {
