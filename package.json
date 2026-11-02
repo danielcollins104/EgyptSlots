@@ -12,6 +12,8 @@
     "server": "node server/server.js",
     "security:audit": "node scripts/test-security-audit.js",
     "test:all": "node scripts/test-all-aspects.js",
+    "test:memory": "node scripts/audit-memory-leaks.js",
+    "profile": "node scripts/profile-web-runtime.js",
     "setup:stripe": "node scripts/setup-stripe.js",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
