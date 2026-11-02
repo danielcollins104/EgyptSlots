@@ -803,6 +803,54 @@ class SoundEngine {
     osc.start(now);
     osc.stop(now + 0.045);
   }
+
+  playCollectorFullFanfare() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // Ascending royal Egyptian fanfare with crystalline harmonics & triumphant chord
+    const melody = [
+      { freq: 261.63, time: 0.00, dur: 0.25 }, // C4
+      { freq: 329.63, time: 0.10, dur: 0.25 }, // E4
+      { freq: 392.00, time: 0.20, dur: 0.25 }, // G4
+      { freq: 523.25, time: 0.30, dur: 0.35 }, // C5
+      { freq: 659.25, time: 0.42, dur: 0.35 }, // E5
+      { freq: 783.99, time: 0.54, dur: 0.50 }, // G5
+      { freq: 1046.50, time: 0.68, dur: 0.95 }, // C6 (High Peak)
+    ];
+
+    melody.forEach((note) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      const t = now + note.time;
+      osc.frequency.setValueAtTime(note.freq, t);
+      gain.gain.setValueAtTime(0.24, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + note.dur);
+      osc.connect(gain);
+      this.playVoice([osc, gain], note.time + note.dur);
+      osc.start(t);
+      osc.stop(t + note.dur);
+    });
+
+    // Crystalline chime cascade
+    const chimes = [1318.51, 1567.98, 2093.00, 2637.02];
+    chimes.forEach((freq, idx) => {
+      const cOsc = this.ctx.createOscillator();
+      const cGain = this.ctx.createGain();
+      cOsc.type = 'sine';
+      const t = now + 0.75 + idx * 0.08;
+      cOsc.frequency.setValueAtTime(freq, t);
+      cGain.gain.setValueAtTime(0.18, t);
+      cGain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+      cOsc.connect(cGain);
+      this.playVoice([cOsc, cGain], 0.75 + idx * 0.08 + 0.6);
+      cOsc.start(t);
+      cOsc.stop(t + 0.6);
+    });
+  }
 }
 
 export const soundEngine = new SoundEngine();

@@ -58,6 +58,7 @@ import WinCelebrationSplash from './components/WinCelebrationSplash';
 import PaytableModal from './components/PaytableModal';
 import BonusGameModal from './components/BonusGameModal';
 import FreeSpinsScreen from './components/FreeSpinsScreen';
+import CollectorCelebrationModal from './components/CollectorCelebrationModal';
 import CelestialOverloadBonusModal from './components/CelestialOverloadBonusModal';
 import PsdGoldNumber from './components/PsdGoldNumber';
 import NeonKeyedImage from './components/NeonKeyedImage';
@@ -268,6 +269,7 @@ export default function App() {
   const [autoPlayCount, setAutoPlayCount] = useState(0);
   const [paytableOpen, setPaytableOpen] = useState(false);
   const [bonusMeter, setBonusMeter] = useState(4);
+  const [collectorCelebrationOpen, setCollectorCelebrationOpen] = useState(false);
   const [bonusSession, setBonusSession] = useState(null);
   const [celestialBonusOpen, setCelestialBonusOpen] = useState(false);
   const [celestialBonusBet, setCelestialBonusBet] = useState(15);
@@ -707,7 +709,7 @@ export default function App() {
       const nextVal = prev + meterChargesEarned;
       if (nextVal >= BONUS_METER_GOAL && bonusCount < 3) {
         meterTriggeredBonus = true;
-        return 0;
+        return BONUS_METER_GOAL;
       }
       return Math.min(BONUS_METER_GOAL, nextVal);
     });
@@ -935,16 +937,11 @@ export default function App() {
     } else if (meterTriggeredBonus) {
       setAutoPlayCount(0);
       setTimeout(() => {
-        soundEngine.playBonusTrigger();
-        setBonusSession({
-          triggerReason: BONUS_CONFIG.meterTriggerName,
-          initialPicks: 4,
-          wheelSpins: 1,
-          startingMultiplier: 2,
-          scatterWinCoins: 0,
-          defaultGame: 'vault',
-        });
-      }, 750);
+        setCollectorCelebrationOpen(true);
+        setStatusMessage(
+          `⚡ 36/36 ROYAL BONUS COLLECTOR FULL! 2× MULTIPLIER UNLOCKED! WRATH OF KEMET UNLEASHED!`
+        );
+      }, 700);
     } else {
       // Flow-Safe Low-Balance / Rescue Refill Check:
       // Triggered if player's SC or GC runs critically low/out after a spin completes.
@@ -978,6 +975,28 @@ export default function App() {
       }
     }
   }, [evaluateGridWins, currencyMode, turboFlow, flowStreak, sweepsCoins, goldCoins, freeSpinsOpen, bonusSession]);
+
+  const handleEnterBonusFromCollector = () => {
+    setCollectorCelebrationOpen(false);
+    setBonusMeter(0);
+    setBonusSession({
+      triggerReason: BONUS_CONFIG.meterTriggerName,
+      initialPicks: 4,
+      wheelSpins: 1,
+      startingMultiplier: 2,
+      scatterWinCoins: 0,
+      defaultGame: 'vault',
+    });
+  };
+
+  const handleCollectorClick = () => {
+    if (isSpinning) return;
+    if (bonusMeter >= BONUS_METER_GOAL) {
+      setCollectorCelebrationOpen(true);
+    } else {
+      openBonusGamesManually('vault');
+    }
+  };
 
   const openBonusGamesManually = (defaultGame = 'vault') => {
     if (isSpinning) return;
@@ -1856,6 +1875,19 @@ export default function App() {
                 ? '3: Orbs'
                 : '4: Apex'}
             </span>
+          </button>
+
+          <button
+            className="dc-action-btn special-collector-demo"
+            onClick={() => {
+              soundEngine.playButtonClick(660);
+              setBonusMeter(BONUS_METER_GOAL);
+              setCollectorCelebrationOpen(true);
+            }}
+            title="Demo the 3D Royal Bonus Collector 36/36 Celebration Animation!"
+          >
+            <Gem size={15} />
+            <span>Fill Collector (36)</span>
           </button>
 
           <button
@@ -2886,9 +2918,9 @@ export default function App() {
           {/* 3D Bonus Collector Meter & Live Verified Winning Combination Pill */}
           <div className="cabinet-bonus-and-win-bar">
             <div
-              className="scarab-collector-meter"
-              onClick={() => openBonusGamesManually('vault')}
-              title="Land Wilds (+1) or 3D Bonus Symbols (+2) to charge! Click anytime to preview the 3D Bonus Games!"
+              className={`scarab-collector-meter ${bonusMeter >= BONUS_METER_GOAL || collectorCelebrationOpen ? 'full-celebration' : ''}`}
+              onClick={handleCollectorClick}
+              title="Land Wilds (+1) or 3D Bonus Symbols (+2) to charge! Click anytime to preview the 3D Bonus Games or Celebration!"
             >
               <img
                 src={THEME_COPY.collectorMeterIcon}
@@ -2900,7 +2932,7 @@ export default function App() {
                 <div className="meter-header-row">
                   <span className="meter-title">{THEME_COPY.collectorMeterTitle}</span>
                   <span className="meter-count">
-                    {bonusMeter} / {BONUS_METER_GOAL} {THEME_COPY.collectorMeterUnit} (2× MULT AT {BONUS_METER_GOAL})
+                    {bonusMeter} / {BONUS_METER_GOAL} {THEME_COPY.collectorMeterUnit} {bonusMeter >= BONUS_METER_GOAL ? '• FULL!' : `(2× MULT AT ${BONUS_METER_GOAL})`}
                   </span>
                 </div>
                 <div className="meter-gem-pips">
@@ -3295,6 +3327,15 @@ export default function App() {
         coinValue={coinValue}
         currencyMode={currencyMode}
         onComplete={handleCompleteFreeSpins}
+      />
+
+      {/* 3D Royal Bonus Collector Full Celebration Animation */}
+      <CollectorCelebrationModal
+        isOpen={collectorCelebrationOpen}
+        onClose={() => setCollectorCelebrationOpen(false)}
+        onEnterBonus={handleEnterBonusFromCollector}
+        currencyMode={currencyMode}
+        currentBet={currentBet}
       />
 
       {/* Player Authentication & VIP Verification Modal for Sweeps Coins (SC) */}

@@ -4474,6 +4474,410 @@ body {
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.75);
 }
 
+/* 3D Bonus Collector Overcharged & Celebration States */
+.scarab-collector-meter.full-celebration {
+  border-color: #fde047;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.85), 0 0 45px rgba(16, 185, 129, 0.65), inset 0 0 15px rgba(254, 240, 138, 0.4);
+  animation: meterFullGlowPulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes meterFullGlowPulse {
+  0% {
+    transform: scale(1);
+    border-color: #f59e0b;
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.6), 0 0 30px rgba(16, 185, 129, 0.4);
+  }
+  100% {
+    transform: scale(1.025);
+    border-color: #fef08a;
+    box-shadow: 0 0 32px rgba(254, 240, 138, 0.95), 0 0 55px rgba(16, 185, 129, 0.85);
+  }
+}
+
+/* ==========================================================================
+   3D ROYAL BONUS COLLECTOR CELEBRATION MODAL ANIMATION
+   ========================================================================== */
+.collector-celebration-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: radial-gradient(circle at 50% 50%, rgba(10, 22, 54, 0.94) 0%, rgba(2, 6, 18, 0.98) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: celebrationBackdropFade 0.35s ease-out;
+  cursor: pointer;
+}
+
+@keyframes celebrationBackdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.collector-celebration-card {
+  position: relative;
+  width: min(580px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 26px 22px 22px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(16, 28, 64, 0.98) 0%, rgba(8, 14, 34, 0.99) 100%);
+  border: 2.5px solid #f59e0b;
+  box-shadow: 0 0 50px rgba(245, 158, 11, 0.5), 0 0 90px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(254, 240, 138, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: default;
+  animation: celebrationCardPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes celebrationCardPop {
+  0% { opacity: 0; transform: scale(0.85) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.collector-sunburst-rays {
+  position: absolute;
+  inset: -60%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(251, 191, 36, 0.12) 0deg 15deg,
+    transparent 15deg 30deg
+  );
+  animation: spinSunburst 28s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes spinSunburst {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.collector-radial-glow {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, rgba(245, 158, 11, 0.2) 50%, transparent 75%);
+  pointer-events: none;
+  z-index: 2;
+  animation: radialGlowPulse 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes radialGlowPulse {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.15); opacity: 1; }
+}
+
+.collector-particles-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.c-floating-particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fef08a 0%, #10b981 70%, transparent 100%);
+  box-shadow: 0 0 10px #10b981, 0 0 16px #f59e0b;
+  animation: floatParticle 3.2s ease-in-out infinite alternate;
+}
+
+.c-floating-particle.p-0 { width: 10px; height: 10px; background: #34d399; }
+.c-floating-particle.p-1 { width: 7px; height: 7px; background: #fbbf24; }
+.c-floating-particle.p-2 { width: 9px; height: 9px; background: #fef08a; }
+.c-floating-particle.p-3 { width: 6px; height: 6px; background: #6ee7b7; }
+.c-floating-particle.p-4 { width: 11px; height: 11px; background: #eab308; }
+.c-floating-particle.p-5 { width: 8px; height: 8px; background: #a7f3d0; }
+
+@keyframes floatParticle {
+  0% { transform: translateY(0) scale(0.8); opacity: 0.4; }
+  50% { transform: translateY(-16px) scale(1.1); opacity: 0.9; }
+  100% { transform: translateY(-32px) scale(0.6); opacity: 0.2; }
+}
+
+.collector-top-pill {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  color: #fde047;
+  font-family: var(--font-royal);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+.collector-beacon-stage {
+  position: relative;
+  z-index: 3;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0 10px;
+}
+
+.collector-solar-halo {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.5) 0%, rgba(245, 158, 11, 0.35) 60%, transparent 80%);
+  animation: haloBreathe 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes haloBreathe {
+  0% { transform: scale(0.92); opacity: 0.7; }
+  100% { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 16px #10b981); }
+}
+
+.collector-laser-ring {
+  position: absolute;
+  width: 125px;
+  height: 125px;
+  border-radius: 50%;
+  border: 2px dashed #fef08a;
+  animation: laserRingSpin 8s linear infinite;
+  box-shadow: 0 0 14px rgba(254, 240, 138, 0.7);
+}
+
+@keyframes laserRingSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.collector-scarab-hero-img {
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+  position: relative;
+  z-index: 4;
+  filter: drop-shadow(0 0 18px rgba(16, 185, 129, 0.95)) drop-shadow(0 0 32px rgba(251, 191, 36, 0.8));
+  animation: scarabLevitate 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes scarabLevitate {
+  0% { transform: translateY(0) scale(1) rotate(-3deg); }
+  100% { transform: translateY(-10px) scale(1.08) rotate(3deg); }
+}
+
+.collector-badge-surge {
+  position: absolute;
+  bottom: -6px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #10b981;
+  color: #042f2e;
+  font-family: var(--font-royal);
+  font-weight: 900;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+  animation: badgePop 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes badgePop {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.06); }
+}
+
+.collector-headline-block {
+  position: relative;
+  z-index: 3;
+  margin-bottom: 12px;
+}
+
+.collector-celebration-title {
+  margin: 0 0 6px 0;
+  font-family: var(--font-royal);
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 18px rgba(254, 240, 138, 0.85), 0 3px 6px rgba(0, 0, 0, 0.9);
+  background: linear-gradient(135deg, #ffffff 0%, #fef08a 40%, #fbbf24 80%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.collector-multiplier-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.25) 0%, rgba(16, 185, 129, 0.3) 50%, rgba(245, 158, 11, 0.25) 100%);
+  border: 1.5px solid #10b981;
+  color: #6ee7b7;
+  font-family: var(--font-royal);
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.45);
+  margin-bottom: 8px;
+}
+
+.collector-multiplier-ribbon .mult-text {
+  color: #fef08a;
+  text-shadow: 0 0 10px rgba(254, 240, 138, 0.7);
+}
+
+.collector-subtitle {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+  max-width: 440px;
+}
+
+.collector-pips-board {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  background: rgba(5, 10, 24, 0.85);
+  border: 1.5px solid rgba(251, 191, 36, 0.35);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.pips-board-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-royal);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fde047;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.collector-pips-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 5px;
+}
+
+.celebration-pip {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  transition: all 0.2s ease;
+}
+
+.celebration-pip.ignited {
+  background: radial-gradient(circle at 35% 30%, #a7f3d0 0%, #10b981 55%, #065f46 100%);
+  border-color: #fef08a;
+  box-shadow: 0 0 10px #10b981, 0 0 18px rgba(254, 240, 138, 0.7);
+  animation: pipSurge 0.4s ease-out;
+}
+
+@keyframes pipSurge {
+  0% { transform: scale(0.6); opacity: 0.3; }
+  60% { transform: scale(1.4); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.collector-perks-row {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.collector-perk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.collector-perk-badge.highlight {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #a7f3d0;
+}
+
+.collector-action-wrap {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.enter-bonus-vault-btn {
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+  border: 2px solid #fef08a;
+  color: #0b0616;
+  font-family: var(--font-royal);
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.65), 0 4px 12px rgba(0, 0, 0, 0.6);
+  transition: all 0.2s ease;
+  animation: enterBtnPulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes enterBtnPulse {
+  0% { transform: scale(1); box-shadow: 0 0 16px rgba(245, 158, 11, 0.5); }
+  100% { transform: scale(1.02); box-shadow: 0 0 32px rgba(254, 240, 138, 0.95); }
+}
+
+.enter-bonus-vault-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  transform: translateY(-2px) scale(1.03);
+}
+
+.collector-auto-countdown {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
 .verified-win-pill {
   display: flex;
   align-items: center;
@@ -10952,7 +11356,7 @@ body {
     min-height: 20px !important;
     max-height: 24px !important;
     padding: 0 4px !important;
-    margin: 1px auto 1px auto !important;
+    margin: 1px auto 4px auto !important;
     z-index: 25 !important;
     flex-shrink: 0 !important;
   }
@@ -11032,7 +11436,7 @@ body {
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
-    max-height: calc(100dvh - 58px) !important;
+    max-height: calc(100dvh - 66px) !important;
     position: relative !important;
     display: flex !important;
     align-items: center !important;
@@ -12622,6 +13026,126 @@ body {
   }
   .pay-tab-text-short {
     display: inline !important;
+  }
+
+  /* 3D Royal Bonus Collector Celebration Mobile */
+  .collector-celebration-card {
+    width: 95vw;
+    padding: 18px 14px 16px;
+    border-radius: 18px;
+    max-height: 92vh;
+  }
+
+  .collector-celebration-title {
+    font-size: 1.25rem;
+  }
+
+  .collector-multiplier-ribbon {
+    font-size: 0.78rem;
+    padding: 4px 12px;
+  }
+
+  .collector-beacon-stage {
+    width: 110px;
+    height: 110px;
+    margin: 2px 0 6px;
+  }
+
+  .collector-scarab-hero-img {
+    width: 85px;
+    height: 85px;
+  }
+
+  .collector-solar-halo {
+    width: 110px;
+    height: 110px;
+  }
+
+  .collector-laser-ring {
+    width: 98px;
+    height: 98px;
+  }
+
+  .collector-pips-board {
+    padding: 8px 10px;
+    margin-bottom: 10px;
+  }
+
+  .collector-pips-grid {
+    gap: 3px;
+  }
+
+  .celebration-pip {
+    height: 8px;
+  }
+
+  .enter-bonus-vault-btn {
+    min-height: 48px;
+    font-size: 0.82rem;
+    padding: 11px 14px;
+    white-space: normal;
+  }
+
+  @media (max-height: 520px) and (orientation: landscape) {
+    .collector-celebration-card {
+      padding: 12px 16px;
+      max-height: 96vh;
+    }
+
+    .collector-beacon-stage {
+      width: 75px;
+      height: 75px;
+      margin: 0 0 4px;
+    }
+
+    .collector-scarab-hero-img {
+      width: 60px;
+      height: 60px;
+    }
+
+    .collector-solar-halo {
+      width: 75px;
+      height: 75px;
+    }
+
+    .collector-laser-ring {
+      width: 68px;
+      height: 68px;
+    }
+
+    .collector-headline-block {
+      margin-bottom: 4px;
+    }
+
+    .collector-celebration-title {
+      font-size: 1.1rem;
+      margin-bottom: 2px;
+    }
+
+    .collector-multiplier-ribbon {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      margin-bottom: 2px;
+    }
+
+    .collector-subtitle {
+      display: none;
+    }
+
+    .collector-pips-board {
+      margin-bottom: 6px;
+      padding: 6px 10px;
+    }
+
+    .collector-perks-row {
+      margin-bottom: 6px;
+    }
+
+    .enter-bonus-vault-btn {
+      min-height: 40px;
+      padding: 8px 12px;
+      font-size: 0.78rem;
+    }
   }
 
   /* Store Tab Content */
