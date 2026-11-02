@@ -10,9 +10,17 @@
     "server": "node server/server.js",
     "security:audit": "node scripts/test-security-audit.js",
     "test:all": "node scripts/test-all-aspects.js",
-    "setup:stripe": "node scripts/setup-stripe.js"
+    "setup:stripe": "node scripts/setup-stripe.js",
+    "cap:sync": "cap sync",
+    "cap:android": "cap open android",
+    "cap:ios": "cap open ios",
+    "desktop": "electron electron/main.cjs",
+    "desktop:dev": "electron electron/main.cjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
     "gsap": "^3.15.0",
     "lucide-react": "^0.460.0",
     "pixi.js": "^8.22.0",
@@ -20,7 +28,9 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^45.2.1",
     "vite": "^6.4.5"
   },
   "allowScripts": {

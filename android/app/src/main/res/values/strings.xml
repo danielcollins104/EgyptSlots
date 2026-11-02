@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Egypt Slots - Crowns of Kemet</string>
+    <string name="title_activity_main">Egypt Slots - Crowns of Kemet</string>
+    <string name="package_name">com.dcenterprises.egyptslots</string>
+    <string name="custom_url_scheme">com.dcenterprises.egyptslots</string>
+</resources>
