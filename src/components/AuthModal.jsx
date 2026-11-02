@@ -12,9 +12,11 @@ import {
   Crown,
   KeyRound,
   Zap,
+  Scale,
 } from 'lucide-react';
 import { authService } from '../services/authService';
 import { soundEngine } from '../audio/soundEngine';
+import PrivacyTermsModal from './PrivacyTermsModal';
 
 export default function AuthModal({
   isOpen,
@@ -31,6 +33,14 @@ export default function AuthModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successUser, setSuccessUser] = useState(null);
+  const [termsAgreed, setTermsAgreed] = useState(() => {
+    try {
+      return localStorage.getItem('dc_terms_agreed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -41,7 +51,20 @@ export default function AuthModal({
     onClose();
   };
 
+  const checkTermsAgreement = () => {
+    if (!termsAgreed) {
+      setErrorMsg('Please review and check the agreement box for Terms, Privacy Policy & Liquidity Rules to proceed.');
+      soundEngine.playButtonClick(400);
+      return false;
+    }
+    try {
+      localStorage.setItem('dc_terms_agreed', 'true');
+    } catch (_) {}
+    return true;
+  };
+
   const handleGoogleLogin = async () => {
+    if (!checkTermsAgreement()) return;
     try {
       soundEngine.playButtonClick(720);
       setLoading(true);
@@ -57,6 +80,7 @@ export default function AuthModal({
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
+    if (!checkTermsAgreement()) return;
     try {
       soundEngine.playButtonClick(700);
       setLoading(true);
@@ -72,6 +96,7 @@ export default function AuthModal({
 
   const handleSendPhoneOtp = async (e) => {
     e.preventDefault();
+    if (!checkTermsAgreement()) return;
     try {
       soundEngine.playButtonClick(700);
       setLoading(true);
@@ -88,6 +113,7 @@ export default function AuthModal({
 
   const handleVerifyPhoneOtp = async (e) => {
     e.preventDefault();
+    if (!checkTermsAgreement()) return;
     try {
       soundEngine.playButtonClick(760);
       setLoading(true);
@@ -102,6 +128,7 @@ export default function AuthModal({
   };
 
   const handleQuickVipLogin = async () => {
+    if (!checkTermsAgreement()) return;
     try {
       soundEngine.playButtonClick(880);
       setLoading(true);
@@ -427,6 +454,39 @@ export default function AuthModal({
               </div>
             )}
 
+            {/* Mandatory Explicit Terms, Privacy & Emerging Operator Liquidity Agreement */}
+            <div className={`auth-terms-agreement-card ${!termsAgreed && errorMsg ? 'highlight-req' : ''}`}>
+              <label className="auth-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={termsAgreed}
+                  onChange={(e) => {
+                    setTermsAgreed(e.target.checked);
+                    if (e.target.checked) {
+                      setErrorMsg('');
+                      try { localStorage.setItem('dc_terms_agreed', 'true'); } catch (_) {}
+                    }
+                  }}
+                  className="auth-terms-checkbox"
+                />
+                <span className="auth-checkbox-text">
+                  I confirm I am 18+ (19+ in AL/NE, 21+ in MS) and agree to the{' '}
+                  <button
+                    type="button"
+                    className="auth-legal-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setPrivacyModalOpen(true);
+                    }}
+                  >
+                    Privacy Policy, Terms of Service &amp; Payout Liquidity Policy
+                  </button>
+                  . I understand that as an emerging studio, prize redemptions are fulfilled on a rolling liquidity schedule as merchant clearing funds settle.
+                </span>
+              </label>
+            </div>
+
             {/* Quick VIP Instant Demo Pass Divider */}
             <div className="auth-or-divider">
               <span>OR 1-CLICK INSTANT PASS</span>
@@ -446,11 +506,21 @@ export default function AuthModal({
 
             {/* Regulatory Compliance Footer */}
             <p className="auth-legal-footer">
-              By signing in, you confirm you are 18+ years of age (19+ in AL/NE, 21+ in MS) and agree to our
-              Sweepstakes Rules and Terms of Service. No purchase necessary to play or win.
+              No purchase necessary to enter or win. Sweepstakes entries (Sweeps Coins) carry 1× rollover. Void where prohibited by law.
             </p>
           </>
         )}
+
+        {/* Full Terms, Privacy & Liquidity Schedule Modal */}
+        <PrivacyTermsModal
+          isOpen={privacyModalOpen}
+          onClose={() => setPrivacyModalOpen(false)}
+          onAccept={() => {
+            setTermsAgreed(true);
+            setErrorMsg('');
+            try { localStorage.setItem('dc_terms_agreed', 'true'); } catch (_) {}
+          }}
+        />
       </div>
     </div>
   );

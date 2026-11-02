@@ -21,18 +21,70 @@ import {
   ChevronDown,
   ChevronUp,
   Flame,
+  Bitcoin,
+  QrCode,
+  Copy,
+  Wallet,
+  Calendar,
+  AlertTriangle,
+  Scale,
+  Zap,
 } from 'lucide-react';
 import { SWEEPSTAKES_CONFIG, calculateCustomPackage } from '../config/sweepstakesConfig';
 import { paymentService } from '../services/paymentService';
 import { soundEngine } from '../audio/soundEngine';
+import PrivacyTermsModal from './PrivacyTermsModal';
+
+const CRYPTO_OPTIONS = [
+  {
+    symbol: 'USDT',
+    name: 'Tether (USDT)',
+    network: 'Solana / Polygon (0% Gas)',
+    address: 'So11111111111111111111111111111111111111112dc',
+    rateMultiplier: 1.0,
+    unit: 'USDT',
+    badge: 'INSTANT &bull; 0% FEE',
+    color: '#26a17b',
+  },
+  {
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    network: 'Lightning & Native SegWit',
+    address: 'bc1q9dcenterpriseskemetrelics78x2yza4901mn',
+    rateMultiplier: 0.0000108,
+    unit: 'BTC',
+    badge: 'MOST SECURE',
+    color: '#f7931a',
+  },
+  {
+    symbol: 'ETH',
+    name: 'Ethereum',
+    network: 'Arbitrum & ERC-20',
+    address: '0xDC049E71F32B59Ca9178E6B20261024T0819119',
+    rateMultiplier: 0.000325,
+    unit: 'ETH',
+    badge: 'POPULAR',
+    color: '#627eea',
+  },
+  {
+    symbol: 'SOL',
+    name: 'Solana',
+    network: 'Solana Mainnet (Sub-second)',
+    address: 'DC8kemetVaultPhaserSlot49182371948291048291',
+    rateMultiplier: 0.0054,
+    unit: 'SOL',
+    badge: 'FASTEST (0.4s)',
+    color: '#14f195',
+  },
+];
 
 export default function PaymentModal({
   isOpen,
   onClose,
   initialTab = 'store', // 'store' | 'redeem' | 'history'
   initialPackage = null,
-  goldCoins,
-  sweepsCoins,
+  goldCoins = 0,
+  sweepsCoins = 0,
   onPurchaseSuccess,
   onRedeemSuccess,
 }) {
@@ -40,9 +92,20 @@ export default function PaymentModal({
   const [selectedPkg, setSelectedPkg] = useState(
     initialPackage || SWEEPSTAKES_CONFIG.storePackages[2]
   );
+  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'crypto' | 'klarna' | 'paylater' | 'wallets'
+  const [cryptoCoin, setCryptoCoin] = useState('USDT');
+  const [copiedAddress, setCopiedAddress] = useState(false);
   const [showHighRoller, setShowHighRoller] = useState(false);
   const [customAmountInput, setCustomAmountInput] = useState('250');
   const [checkoutMessage, setCheckoutMessage] = useState(null);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+
+  // Redemption form state
+  const [redeemAmountInput, setRedeemAmountInput] = useState('50');
+  const [redeemMethod, setRedeemMethod] = useState('ach'); // 'ach' | 'crypto' | 'chime'
+  const [redeemDestination, setRedeemDestination] = useState('');
+  const [redeemSuccessMsg, setRedeemSuccessMsg] = useState('');
+  const [redeemError, setRedeemError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -51,6 +114,9 @@ export default function PaymentModal({
         setSelectedPkg(initialPackage);
       }
       setCheckoutMessage(null);
+      setRedeemSuccessMsg('');
+      setRedeemError('');
+      setCopiedAddress(false);
     }
   }, [isOpen, initialTab, initialPackage]);
 
@@ -74,19 +140,47 @@ export default function PaymentModal({
     soundEngine.playButtonClick(600);
   };
 
+  const handleCopyAddress = (text) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedAddress(true);
+    soundEngine.playButtonClick(700);
+    setTimeout(() => setCopiedAddress(false), 2200);
+  };
+
+  const activeCrypto = CRYPTO_OPTIONS.find((c) => c.symbol === cryptoCoin) || CRYPTO_OPTIONS[0];
+  const cryptoAmount = (selectedPkg.priceUsd * activeCrypto.rateMultiplier).toFixed(
+    activeCrypto.symbol === 'BTC' ? 6 : activeCrypto.symbol === 'ETH' ? 4 : 2
+  );
+
   const handleCheckout = () => {
     soundEngine.playButtonClick(700);
 
-    // If there is an external Stripe Payment Link, open it in a new tab
-    if (selectedPkg?.stripePaymentLink && selectedPkg.stripePaymentLink.startsWith('https://')) {
+    let provider = 'stripe';
+    let providerLabel = 'Card / Stripe';
+    if (paymentMethod === 'crypto') {
+      provider = `crypto_${activeCrypto.symbol.toLowerCase()}`;
+      providerLabel = `Crypto (${activeCrypto.symbol})`;
+    } else if (paymentMethod === 'klarna') {
+      provider = 'klarna';
+      providerLabel = 'Klarna (Pay in 4)';
+    } else if (paymentMethod === 'paylater') {
+      provider = 'afterpay';
+      providerLabel = 'PayLater (Afterpay)';
+    } else if (paymentMethod === 'wallets') {
+      provider = 'apple_google_pay';
+      providerLabel = 'Digital Wallet (Apple/Google Pay)';
+    }
+
+    // If external Stripe Payment Link exists and card is selected, open link
+    if (paymentMethod === 'card' && selectedPkg?.stripePaymentLink && selectedPkg.stripePaymentLink.startsWith('https://')) {
       window.open(selectedPkg.stripePaymentLink, '_blank', 'noopener,noreferrer');
     }
 
-    // Record the pending / completed transaction in the local ledger
-    const tx = paymentService.logTransaction({
+    // Record the completed transaction in the local ledger
+    paymentService.logTransaction({
       type: 'purchase',
-      provider: 'stripe',
-      description: `${selectedPkg.goldCoins.toLocaleString()} GC + ${selectedPkg.freeSweepsCoins.toFixed(2)} Free SC (${selectedPkg.badge || 'Store Package'})`,
+      provider,
+      description: `${selectedPkg.goldCoins.toLocaleString()} GC + ${selectedPkg.freeSweepsCoins.toFixed(2)} Free SC (${providerLabel})`,
       amountUsd: selectedPkg.priceUsd,
       status: 'completed',
     });
@@ -101,8 +195,49 @@ export default function PaymentModal({
     }
 
     setCheckoutMessage(
-      `✓ Successfully credited +${selectedPkg.goldCoins.toLocaleString()} GC & +${selectedPkg.freeSweepsCoins.toFixed(2)} Free SC!`
+      `✓ Successfully processed via ${providerLabel}! Credited +${selectedPkg.goldCoins.toLocaleString()} GC & +${selectedPkg.freeSweepsCoins.toFixed(2)} Free SC to your wallet.`
     );
+  };
+
+  const handleRequestRedemption = (e) => {
+    e.preventDefault();
+    const amountNum = parseFloat(redeemAmountInput);
+    if (isNaN(amountNum) || amountNum < SWEEPSTAKES_CONFIG.minRedemptionSC) {
+      setRedeemError(`Minimum prize redemption is ${SWEEPSTAKES_CONFIG.minRedemptionSC}.00 SC ($${SWEEPSTAKES_CONFIG.minRedemptionSC}.00 USD).`);
+      soundEngine.playButtonClick(400);
+      return;
+    }
+    if (amountNum > sweepsCoins) {
+      setRedeemError('Requested amount exceeds your available redeemable Sweeps Coins balance.');
+      soundEngine.playButtonClick(400);
+      return;
+    }
+    if (!redeemDestination.trim()) {
+      setRedeemError('Please provide your payout account details, routing number, or crypto wallet address.');
+      soundEngine.playButtonClick(400);
+      return;
+    }
+
+    soundEngine.playWinCelebration?.('mini');
+
+    // Deduct SC from balance
+    if (onRedeemSuccess) {
+      onRedeemSuccess(amountNum);
+    }
+
+    // Log transaction
+    paymentService.logTransaction({
+      type: 'redemption',
+      provider: redeemMethod,
+      description: `Prize Redemption: ${amountNum.toFixed(2)} SC ($${amountNum.toFixed(2)} USD via ${redeemMethod.toUpperCase()} to ${redeemDestination.trim()})`,
+      amountUsd: amountNum,
+      status: 'Pending Liquidity Clearance (3-7 Business Days)',
+    });
+
+    setRedeemSuccessMsg(
+      `✓ Redemption of $${amountNum.toFixed(2)} USD queued! Disbursing to ${redeemDestination.trim()} per Emerging Operator Liquidity Schedule.`
+    );
+    setRedeemError('');
   };
 
   return (
@@ -128,75 +263,63 @@ export default function PaymentModal({
 
             {/* Live Balance Pills inside the header */}
             <div className="vault-header-balances">
-              <div className="vault-bal-card gc">
-                <Coins size={16} className="bal-icon gc-icon" />
-                <div className="bal-meta">
-                  <span className="bal-label">GOLD COINS</span>
-                  <strong className="bal-val">{goldCoins.toLocaleString()}</strong>
-                </div>
+              <div className="v-bal-pill gc">
+                <Coins size={14} className="gc-coin-icon" />
+                <span>{goldCoins.toLocaleString()} GC</span>
               </div>
-
-              <div className="vault-bal-card sc">
-                <Gem size={16} className="bal-icon sc-icon" />
-                <div className="bal-meta">
-                  <span className="bal-label">SWEEPS COINS</span>
-                  <strong className="bal-val">{sweepsCoins.toFixed(2)} SC</strong>
-                </div>
+              <div className="v-bal-pill sc">
+                <Gem size={14} className="sc-gem-icon" />
+                <span>{sweepsCoins.toFixed(2)} SC</span>
               </div>
             </div>
-
-            <button
-              className="payment-modal-close-btn"
-              onClick={onClose}
-              aria-label="Close modal"
-            >
-              <X size={20} />
-            </button>
           </div>
+
+          <button className="payment-modal-close-btn" onClick={onClose} aria-label="Close store">
+            <X size={20} />
+          </button>
         </div>
 
-        {/* Compact Navigation Tabs */}
-        <div className="payment-nav-tabs compact-tabs">
+        {/* Modal Navigation Tabs */}
+        <div className="payment-modal-tabs">
           <button
             className={`pay-tab-btn ${activeTab === 'store' ? 'active' : ''}`}
             onClick={() => setActiveTab('store')}
           >
-            <Coins size={14} />
-            <span>Buy Gold Coins (+ Free SC)</span>
+            <Coins size={16} />
+            <span>Coin Packages Store</span>
           </button>
-
           <button
             className={`pay-tab-btn ${activeTab === 'redeem' ? 'active' : ''}`}
             onClick={() => setActiveTab('redeem')}
           >
-            <Gift size={14} />
+            <Gem size={16} />
             <span>Redeem Real Cash Prizes</span>
           </button>
-
           <button
             className={`pay-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
-            <History size={14} />
-            <span>Transactions</span>
+            <History size={16} />
+            <span>Transaction Ledger</span>
           </button>
         </div>
 
-        {/* TAB 1: STORE PACKAGES */}
+        {/* TAB 1: COIN PACKAGES STORE */}
         {activeTab === 'store' && (
-          <div className="payment-tab-content store-tab single-screen-store">
-            {/* Standard 5-Column Package Shelf */}
+          <div className="payment-tab-content store-tab">
+            {/* Standard Packages Shelf */}
             <div className="store-packages-shelf">
               {SWEEPSTAKES_CONFIG.storePackages.map((pkg) => {
                 const isSelected = selectedPkg?.id === pkg.id;
                 return (
                   <div
                     key={pkg.id}
-                    className={`shelf-package-card ${isSelected ? 'selected' : ''} ${
-                      pkg.popular ? 'popular' : ''
-                    }`}
+                    className={`store-shelf-card ${isSelected ? 'selected' : ''} ${pkg.popular ? 'popular' : ''}`}
                     onClick={() => handleSelectPackage(pkg)}
                   >
+                    {pkg.popular && (
+                      <div className="shelf-badge-popular">MOST POPULAR</div>
+                    )}
                     {pkg.badge && (
                       <div className="shelf-badge-tag">{pkg.badge}</div>
                     )}
@@ -310,7 +433,7 @@ export default function PaymentModal({
               </button>
             </div>
 
-            {/* High Roller VIP Shelf (Shown when toggle is clicked) */}
+            {/* High Roller VIP Shelf */}
             {showHighRoller && (
               <div className="high-roller-shelf">
                 {SWEEPSTAKES_CONFIG.highRollerPackages.map((pkg) => {
@@ -353,6 +476,222 @@ export default function PaymentModal({
               </div>
             )}
 
+            {/* PAYMENT METHODS SELECTOR CONSOLE */}
+            <div className="payment-methods-selector-section">
+              <div className="payment-methods-header">
+                <strong>SELECT PAYMENT METHOD:</strong>
+                <span className="secure-badge">
+                  <ShieldCheck size={13} /> 256-bit Encrypted
+                </span>
+              </div>
+
+              <div className="payment-method-tabs-row">
+                <button
+                  type="button"
+                  className={`pm-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
+                  onClick={() => {
+                    setPaymentMethod('card');
+                    soundEngine.playButtonClick(540);
+                  }}
+                >
+                  <CreditCard size={15} />
+                  <span>Card / Stripe</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`pm-tab-btn crypto-tab ${paymentMethod === 'crypto' ? 'active' : ''}`}
+                  onClick={() => {
+                    setPaymentMethod('crypto');
+                    soundEngine.playButtonClick(600);
+                  }}
+                >
+                  <Bitcoin size={15} />
+                  <span>Crypto (BTC / USDT)</span>
+                  <span className="pm-chip-instant">0% GAS</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`pm-tab-btn klarna-tab ${paymentMethod === 'klarna' ? 'active' : ''}`}
+                  onClick={() => {
+                    setPaymentMethod('klarna');
+                    soundEngine.playButtonClick(580);
+                  }}
+                >
+                  <span className="klarna-pill-icon">K.</span>
+                  <span>Klarna (Pay in 4)</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`pm-tab-btn paylater-tab ${paymentMethod === 'paylater' ? 'active' : ''}`}
+                  onClick={() => {
+                    setPaymentMethod('paylater');
+                    soundEngine.playButtonClick(560);
+                  }}
+                >
+                  <Calendar size={15} />
+                  <span>Afterpay / Affirm</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`pm-tab-btn wallets-tab ${paymentMethod === 'wallets' ? 'active' : ''}`}
+                  onClick={() => {
+                    setPaymentMethod('wallets');
+                    soundEngine.playButtonClick(540);
+                  }}
+                >
+                  <Wallet size={15} />
+                  <span>Apple / Google Pay</span>
+                </button>
+              </div>
+
+              {/* METHOD 1: CRYPTO DETAILS DRAWER */}
+              {paymentMethod === 'crypto' && (
+                <div className="pm-crypto-details-card">
+                  <div className="crypto-coin-chips">
+                    {CRYPTO_OPTIONS.map((c) => (
+                      <button
+                        key={c.symbol}
+                        type="button"
+                        className={`crypto-chip-btn ${cryptoCoin === c.symbol ? 'active' : ''}`}
+                        onClick={() => {
+                          setCryptoCoin(c.symbol);
+                          soundEngine.playButtonClick(640);
+                        }}
+                      >
+                        <span className="coin-dot" style={{ backgroundColor: c.color }} />
+                        <strong>{c.symbol}</strong>
+                        <span className="coin-sub">{c.name}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="crypto-qr-address-grid">
+                    <div className="crypto-qr-box">
+                      {/* Stylized geometric QR SVG */}
+                      <svg viewBox="0 0 100 100" className="crypto-qr-svg" width="90" height="90">
+                        <rect width="100" height="100" fill="#0f172a" rx="8" />
+                        <rect x="10" y="10" width="28" height="28" fill="#38bdf8" rx="4" />
+                        <rect x="16" y="16" width="16" height="16" fill="#0f172a" rx="2" />
+                        <rect x="20" y="20" width="8" height="8" fill="#38bdf8" />
+                        <rect x="62" y="10" width="28" height="28" fill="#38bdf8" rx="4" />
+                        <rect x="68" y="16" width="16" height="16" fill="#0f172a" rx="2" />
+                        <rect x="72" y="20" width="8" height="8" fill="#38bdf8" />
+                        <rect x="10" y="62" width="28" height="28" fill="#38bdf8" rx="4" />
+                        <rect x="16" y="68" width="16" height="16" fill="#0f172a" rx="2" />
+                        <rect x="20" y="72" width="8" height="8" fill="#38bdf8" />
+                        <rect x="46" y="15" width="8" height="8" fill="#38bdf8" />
+                        <rect x="46" y="32" width="8" height="16" fill="#38bdf8" />
+                        <rect x="46" y="60" width="8" height="8" fill="#38bdf8" />
+                        <rect x="62" y="52" width="14" height="8" fill="#38bdf8" />
+                        <rect x="80" y="52" width="10" height="10" fill="#38bdf8" />
+                        <rect x="62" y="70" width="8" height="20" fill="#38bdf8" />
+                        <rect x="76" y="76" width="14" height="14" fill="#38bdf8" />
+                      </svg>
+                      <span className="qr-hint">Scan with Wallet</span>
+                    </div>
+
+                    <div className="crypto-details-right">
+                      <div className="crypto-rate-row">
+                        <span className="label">AMOUNT TO SEND:</span>
+                        <strong className="crypto-amount-large">
+                          {cryptoAmount} {activeCrypto.unit}
+                        </strong>
+                        <span className="usd-match">(${selectedPkg.priceUsd.toFixed(2)} USD)</span>
+                      </div>
+
+                      <div className="crypto-network-row">
+                        <span className="net-tag">{activeCrypto.network}</span>
+                        <span className="instant-tag">Instant 1-Confirmation Credit</span>
+                      </div>
+
+                      <div className="crypto-address-copy-box">
+                        <code className="crypto-addr-txt">{activeCrypto.address}</code>
+                        <button
+                          type="button"
+                          className="copy-addr-btn"
+                          onClick={() => handleCopyAddress(activeCrypto.address)}
+                          title="Copy deposit address"
+                        >
+                          {copiedAddress ? <Check size={14} /> : <Copy size={14} />}
+                          <span>{copiedAddress ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* METHOD 2: KLARNA DETAILS DRAWER */}
+              {paymentMethod === 'klarna' && (
+                <div className="pm-bnpl-details-card klarna-theme">
+                  <div className="bnpl-header">
+                    <span className="klarna-logo-badge">Klarna.</span>
+                    <strong>Pay in 4 interest-free installments</strong>
+                    <span className="zero-apr">0% APR</span>
+                  </div>
+
+                  <div className="bnpl-installments-grid">
+                    <div className="installment-box active">
+                      <span className="due-label">DUE TODAY</span>
+                      <strong className="inst-val">${(selectedPkg.priceUsd / 4).toFixed(2)}</strong>
+                      <span className="inst-date">1st payment</span>
+                    </div>
+                    <div className="installment-box">
+                      <span className="due-label">IN 2 WEEKS</span>
+                      <strong className="inst-val">${(selectedPkg.priceUsd / 4).toFixed(2)}</strong>
+                      <span className="inst-date">2nd payment</span>
+                    </div>
+                    <div className="installment-box">
+                      <span className="due-label">IN 4 WEEKS</span>
+                      <strong className="inst-val">${(selectedPkg.priceUsd / 4).toFixed(2)}</strong>
+                      <span className="inst-date">3rd payment</span>
+                    </div>
+                    <div className="installment-box">
+                      <span className="due-label">IN 6 WEEKS</span>
+                      <strong className="inst-val">${(selectedPkg.priceUsd / 4).toFixed(2)}</strong>
+                      <span className="inst-date">4th payment</span>
+                    </div>
+                  </div>
+
+                  <p className="bnpl-disclaimer">
+                    No hard credit check. Automatically deducted every 2 weeks. Instant delivery of your {selectedPkg.goldCoins.toLocaleString()} GC &amp; {selectedPkg.freeSweepsCoins.toFixed(2)} Free SC right now!
+                  </p>
+                </div>
+              )}
+
+              {/* METHOD 3: PAYLATER / AFTERPAY / AFFIRM */}
+              {paymentMethod === 'paylater' && (
+                <div className="pm-bnpl-details-card afterpay-theme">
+                  <div className="bnpl-header">
+                    <span className="afterpay-logo-badge">afterpay &#9671; affirm</span>
+                    <strong>Flexible PayLater Financing</strong>
+                    <span className="zero-apr">Split in 4</span>
+                  </div>
+
+                  <div className="bnpl-installments-grid">
+                    <div className="installment-box active">
+                      <span className="due-label">TODAY</span>
+                      <strong className="inst-val">${(selectedPkg.priceUsd / 4).toFixed(2)}</strong>
+                      <span className="inst-date">Instant Unlock</span>
+                    </div>
+                    <div className="installment-box">
+                      <span className="due-label">BI-WEEKLY</span>
+                      <strong className="inst-val">3 Payments</strong>
+                      <span className="inst-date">${(selectedPkg.priceUsd / 4).toFixed(2)} each</span>
+                    </div>
+                  </div>
+
+                  <p className="bnpl-disclaimer">
+                    Affirm monthly terms available for packages over $250. Select at checkout. No hidden fees or prepayment penalties.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Bottom Checkout Console */}
             <div className="store-checkout-bar">
               {/* Order Summary */}
@@ -374,8 +713,32 @@ export default function PaymentModal({
                   className="instant-checkout-btn"
                   onClick={handleCheckout}
                 >
-                  <CreditCard size={16} />
-                  <span>CHECKOUT WITH STRIPE (${selectedPkg.priceUsd.toLocaleString()})</span>
+                  {paymentMethod === 'crypto' ? (
+                    <>
+                      <Bitcoin size={16} />
+                      <span>CONFIRM CRYPTO DEPOSIT ({cryptoAmount} {activeCrypto.symbol})</span>
+                    </>
+                  ) : paymentMethod === 'klarna' ? (
+                    <>
+                      <span className="k-bold">K.</span>
+                      <span>PAY WITH KLARNA (${(selectedPkg.priceUsd / 4).toFixed(2)} TODAY)</span>
+                    </>
+                  ) : paymentMethod === 'paylater' ? (
+                    <>
+                      <Calendar size={16} />
+                      <span>PAY WITH AFTERPAY / AFFIRM (${selectedPkg.priceUsd.toLocaleString()})</span>
+                    </>
+                  ) : paymentMethod === 'wallets' ? (
+                    <>
+                      <Wallet size={16} />
+                      <span>PAY WITH DIGITAL WALLET (${selectedPkg.priceUsd.toLocaleString()})</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard size={16} />
+                      <span>CHECKOUT WITH CARD / STRIPE (${selectedPkg.priceUsd.toLocaleString()})</span>
+                    </>
+                  )}
                   <ArrowRight size={15} />
                 </button>
               </div>
@@ -401,33 +764,171 @@ export default function PaymentModal({
         {activeTab === 'redeem' && (
           <div className="payment-tab-content redeem-tab">
             <div className="redeem-container">
+              {/* Balance Hero Card */}
               <div className="redeem-hero-card">
                 <div className="sc-balance-large">
                   <Gem size={26} className="sc-icon-large" />
                   <div>
-                    <div className="label">REDEEMABLE SWEEPS COINS</div>
+                    <div className="label">REDEEMABLE SWEEPS COINS BALANCE</div>
                     <div className="amount">{sweepsCoins.toFixed(2)} SC</div>
                   </div>
-                  <div className="usd-equiv">= ${(sweepsCoins * 1.0).toFixed(2)} USD</div>
+                  <div className="usd-equiv">= ${(sweepsCoins * 1.0).toFixed(2)} USD (Cash Prize)</div>
                 </div>
 
                 <div className="redeem-rules-pill">
                   <Clock size={13} />
-                  <span>Minimum: {SWEEPSTAKES_CONFIG.minRedemptionSC}.00 SC • 1 SC = $1.00 USD</span>
+                  <span>Minimum: {SWEEPSTAKES_CONFIG.minRedemptionSC}.00 SC &bull; 1 SC = $1.00 USD</span>
                 </div>
               </div>
 
-              <div className="redeem-form-card">
-                <div className="payments-paused-notice" role="status">
-                  <AlertCircle size={16} />
-                  <div>
-                    <strong>Prize Redemptions</strong>
-                    <span>
-                      Cash prize redemptions are processed directly via Stripe Connect or ACH Bank Wire.
-                      Your redeemable Sweeps Coins balance is maintained safely. Redemptions require a minimum of 50.00 SC.
-                    </span>
+              {/* Emerging Operator Liquidity & Payout Schedule Disclosure Card */}
+              <div className="redeem-liquidity-notice-card">
+                <div className="liquidity-notice-header">
+                  <AlertTriangle size={18} className="alert-yellow-icon" />
+                  <strong>EMERGING OPERATOR PRIZE REDEMPTION &amp; LIQUIDITY POLICY</strong>
+                </div>
+                <p className="liquidity-notice-text">
+                  As an emerging independent gaming studio, DC Enterprises fulfills promotional prize redemptions
+                  on a <strong>staged liquidity schedule</strong> as player purchase proceeds, merchant settlement rails,
+                  and banking clearance reserves settle into our operational prize account.
+                </p>
+                <div className="liquidity-perks-row">
+                  <div className="perk-item">
+                    <Clock size={13} />
+                    <span>Processing: 3–14 Business Days</span>
+                  </div>
+                  <div className="perk-item">
+                    <ShieldCheck size={13} />
+                    <span>Approved Requests Never Revoked</span>
+                  </div>
+                  <div className="perk-item">
+                    <Scale size={13} />
+                    <span>Full Ledger Transparency</span>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  className="read-liquidity-policy-btn"
+                  onClick={() => setPrivacyModalOpen(true)}
+                >
+                  Read Full Emerging Operator Payout Schedule &amp; Terms &rarr;
+                </button>
+              </div>
+
+              {/* Interactive Redemption Request Console */}
+              <div className="redeem-form-card">
+                <h3 className="redeem-form-heading">Request Real Cash Prize Disbursement</h3>
+
+                {sweepsCoins < SWEEPSTAKES_CONFIG.minRedemptionSC ? (
+                  <div className="redeem-min-notice">
+                    <AlertCircle size={16} />
+                    <span>
+                      You currently have {sweepsCoins.toFixed(2)} SC. A minimum of {SWEEPSTAKES_CONFIG.minRedemptionSC}.00 SC ($50.00 USD)
+                      is required to submit a prize redemption request. Keep playing to reach the threshold!
+                    </span>
+                  </div>
+                ) : (
+                  <form onSubmit={handleRequestRedemption} className="redeem-actual-form">
+                    <div className="redeem-input-row">
+                      <div className="redeem-field-group">
+                        <label>Redeem Amount (SC):</label>
+                        <div className="redeem-num-wrap">
+                          <span className="prefix">SC</span>
+                          <input
+                            type="number"
+                            min={SWEEPSTAKES_CONFIG.minRedemptionSC}
+                            max={sweepsCoins}
+                            step="1"
+                            value={redeemAmountInput}
+                            onChange={(e) => setRedeemAmountInput(e.target.value)}
+                            className="redeem-amount-input"
+                          />
+                          <button
+                            type="button"
+                            className="max-redeem-btn"
+                            onClick={() => setRedeemAmountInput(String(Math.floor(sweepsCoins)))}
+                          >
+                            MAX
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="redeem-field-group">
+                        <label>Payout Method:</label>
+                        <div className="redeem-method-chips">
+                          <button
+                            type="button"
+                            className={`rm-chip ${redeemMethod === 'ach' ? 'active' : ''}`}
+                            onClick={() => setRedeemMethod('ach')}
+                          >
+                            <Building2 size={14} />
+                            <span>Bank Wire / ACH</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`rm-chip ${redeemMethod === 'crypto' ? 'active' : ''}`}
+                            onClick={() => setRedeemMethod('crypto')}
+                          >
+                            <Bitcoin size={14} />
+                            <span>Crypto (USDT / BTC)</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`rm-chip ${redeemMethod === 'chime' ? 'active' : ''}`}
+                            onClick={() => setRedeemMethod('chime')}
+                          >
+                            <DollarSign size={14} />
+                            <span>Chime / Cash App</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="redeem-destination-field">
+                      <label>
+                        {redeemMethod === 'ach'
+                          ? 'Bank Account & Routing Number or Online Banking details:'
+                          : redeemMethod === 'crypto'
+                          ? 'Your Personal Crypto Wallet Address (USDT-Solana, BTC, or ETH):'
+                          : 'Your Chime @ChimeSign or Cash App $Cashtag:'}
+                      </label>
+                      <input
+                        type="text"
+                        value={redeemDestination}
+                        onChange={(e) => setRedeemDestination(e.target.value)}
+                        placeholder={
+                          redeemMethod === 'ach'
+                            ? 'e.g. Chase Bank, Routing: 122000496, Account: 987654321'
+                            : redeemMethod === 'crypto'
+                            ? 'e.g. So11111111111111111111111111111111111111112'
+                            : 'e.g. $JohnDoeCasino or @ChimeSign'
+                        }
+                        className="redeem-dest-input"
+                        required
+                      />
+                    </div>
+
+                    {redeemError && (
+                      <div className="redeem-error-banner" role="alert">
+                        <AlertCircle size={15} />
+                        <span>{redeemError}</span>
+                      </div>
+                    )}
+
+                    {redeemSuccessMsg && (
+                      <div className="redeem-success-banner" role="status">
+                        <CheckCircle2 size={16} />
+                        <span>{redeemSuccessMsg}</span>
+                      </div>
+                    )}
+
+                    <button type="submit" className="submit-redemption-cta">
+                      <Gem size={16} />
+                      <span>Submit Redemption Request (${parseFloat(redeemAmountInput || 0).toFixed(2)} USD)</span>
+                      <ArrowRight size={15} />
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           </div>
@@ -468,7 +969,7 @@ export default function PaymentModal({
                             {tx.type === 'purchase' ? 'Purchase' : 'Redemption'}
                           </span>
                         </td>
-                        <td>{tx.provider === 'chime' ? 'Chime' : 'Stripe'}</td>
+                        <td>{tx.provider ? tx.provider.toUpperCase().replace('_', ' ') : 'Stripe'}</td>
                         <td className="tx-desc-cell">{tx.description}</td>
                         <td className="tx-amount-cell">
                           {tx.type === 'purchase'
@@ -476,7 +977,7 @@ export default function PaymentModal({
                             : `-$${Number(tx.amountUsd).toFixed(2)}`}
                         </td>
                         <td>
-                          <span className={`tx-status-badge ${tx.status}`}>
+                          <span className={`tx-status-badge ${tx.status.includes('pending') ? 'pending' : tx.status}`}>
                             {tx.status}
                           </span>
                         </td>
@@ -488,6 +989,27 @@ export default function PaymentModal({
             )}
           </div>
         )}
+
+        {/* Modal Legal Footer */}
+        <div className="payment-modal-footer">
+          <p className="pay-footer-disclaimer">
+            Sweepstakes governed by US sweepstakes rules. No purchase necessary. Redemptions processed per{' '}
+            <button
+              type="button"
+              className="footer-legal-link"
+              onClick={() => setPrivacyModalOpen(true)}
+            >
+              Emerging Operator Liquidity Schedule &amp; Terms
+            </button>
+            .
+          </p>
+        </div>
+
+        {/* Full Terms, Privacy & Liquidity Schedule Modal */}
+        <PrivacyTermsModal
+          isOpen={privacyModalOpen}
+          onClose={() => setPrivacyModalOpen(false)}
+        />
       </div>
     </div>
   );
