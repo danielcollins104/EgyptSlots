@@ -189,14 +189,14 @@ export const authService = {
   // Sign in with Google (OAuth / One-Click Credential)
   async loginWithGoogle() {
     // Simulated realistic Google Auth handshake (can plug into real Google Identity Services Client ID)
-    await new Promise((r) => setTimeout(r, 650));
-    const randomId = Math.random().toString(36).substring(2, 8);
+    await new Promise((r) => setTimeout(r, 450));
     const user = {
-      id: `usr_g_${randomId}`,
+      id: 'usr_google_vip_player',
       name: 'Google VIP Player',
-      email: `player.${randomId}@gmail.com`,
+      email: 'vip.player@gmail.com',
       provider: 'google',
       method: 'google',
+      tier: 'GOLD VIP',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80',
       isVerifiedSC: true,
       scEligibility: 'eligible',
@@ -206,20 +206,73 @@ export const authService = {
     return user;
   },
 
-  // Sign in with Email / Password
-  async loginWithEmail(email, password = '') {
-    await new Promise((r) => setTimeout(r, 500));
+  // Sign in with Apple ID (1-Click iOS / macOS / Web Credential)
+  async loginWithApple() {
+    await new Promise((r) => setTimeout(r, 450));
+    const user = {
+      id: 'usr_apple_vip_player',
+      name: 'Apple VIP Player',
+      email: 'vip.player@icloud.com',
+      provider: 'apple',
+      method: 'apple',
+      tier: 'GOLD VIP',
+      avatar: null,
+      isVerifiedSC: true,
+      scEligibility: 'eligible',
+      joinedAt: new Date().toISOString(),
+    };
+    this.saveSession(user);
+    return user;
+  },
+
+  // Sign in or Register with Email / Password (integrates with /api/auth/login & /api/auth/register + instant client fallback)
+  async loginWithEmail(email, password = '', name = '') {
     const cleanEmail = email ? String(email).trim().toLowerCase() : '';
     if (!cleanEmail || !cleanEmail.includes('@')) {
       throw new Error('Please enter a valid email address.');
     }
-    const username = cleanEmail.split('@')[0] || 'player';
+    const username = name ? String(name).trim() : (cleanEmail.split('@')[0] || 'Player');
+    const displayName = username.charAt(0).toUpperCase() + username.slice(1);
+
+    // Optional server-side sync if backend is reachable and password >= 8 chars
+    let serverToken = null;
+    if (password && password.length >= 8 && typeof fetch === 'function') {
+      try {
+        const loginRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, password }),
+        });
+        if (loginRes.ok) {
+          const data = await loginRes.json();
+          serverToken = data.token;
+        } else {
+          const regRes = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: cleanEmail, password, name: displayName }),
+          });
+          if (regRes.ok) {
+            const data = await regRes.json();
+            serverToken = data.token;
+          }
+        }
+      } catch {
+        // Offline / client-only fallback
+      }
+    } else {
+      await new Promise((r) => setTimeout(r, 350));
+    }
+
+    const safeHash = cleanEmail.replace(/[^a-z0-9]/g, '_').slice(0, 16);
     const user = {
-      id: `usr_em_${btoa(cleanEmail).substring(0, 8)}`,
-      name: (username.charAt(0).toUpperCase() + username.slice(1)) || 'VIP Player',
+      id: `usr_em_${safeHash}`,
+      name: displayName || 'VIP Player',
       email: cleanEmail,
       provider: 'email',
       method: 'email',
+      tier: 'VIP MEMBER',
+      token: serverToken,
       avatar: null,
       isVerifiedSC: true,
       scEligibility: 'eligible',

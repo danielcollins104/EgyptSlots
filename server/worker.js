@@ -2,9 +2,14 @@ import { ApiRouter } from './apiRouter.js';
 
 let routerInstance = null;
 
-function getRouter() {
+function getRouter(env) {
   if (!routerInstance) {
-    routerInstance = new ApiRouter();
+    routerInstance = new ApiRouter({
+      stripeSecretKey: env?.STRIPE_SECRET_KEY || '',
+      ledgerSecret: env?.DC_LEDGER_SECRET,
+      signingKey: env?.DC_SPIN_SIGNING_KEY,
+      adminSecret: env?.DC_ADMIN_SECRET,
+    });
   }
   return routerInstance;
 }
@@ -14,13 +19,14 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith('/api/')) {
-      const router = getRouter();
+      const router = getRouter(env);
       const headers = Object.fromEntries(request.headers.entries());
-      const body = (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS')
-        ? await request.text()
-        : '';
+      const body =
+        request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS'
+          ? await request.text()
+          : '';
 
-      const response = await router.handleRequest(request.method, url.pathname, headers, body);
+      const response = await router.handleRequest(request.method, url.pathname, headers, body, env);
       return new Response(response.body !== null ? JSON.stringify(response.body) : null, {
         status: response.status,
         headers: response.headers,

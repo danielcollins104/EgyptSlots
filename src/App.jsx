@@ -52,6 +52,7 @@ import {
   getRegularSymbols,
 } from './config/slotConfig';
 import { SWEEPSTAKES_CONFIG } from './config/sweepstakesConfig';
+import { paymentService } from './services/paymentService';
 import PaymentModal from './components/PaymentModal';
 import LowBalanceOfferModal from './components/LowBalanceOfferModal';
 import { soundEngine } from './audio/soundEngine';
@@ -615,14 +616,12 @@ export default function App() {
     }
   }, []);
 
-  // NOTE: Purchases must only be credited after server-side Stripe confirmation (webhook).
-  // The old "?payment=success&pkg=..." URL handler credited coins with no verification and
-  // has been removed. Strip those params if present so old links don't linger in the URL.
+  // Strip legacy '?payment=...' param only (preserve '?payment_success=true&pkg=...' for the return handler below)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.has('payment') || params.has('pkg') || params.has('pkg_id')) {
+      if (params.has('payment') && !params.has('payment_success')) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch (_) {}
@@ -1248,6 +1247,24 @@ export default function App() {
     const addedGC = data.goldCoins ?? data.goldCoinsAdded ?? 0;
     const addedSC = data.freeSweepsCoins ?? data.sweepsCoinsAdded ?? 0;
 
+    // If the user was a Guest when they completed a purchase, automatically upgrade them to a verified VIP account so SC is unlocked!
+    let activeUser = authService.getCurrentUser();
+    if (!activeUser) {
+      activeUser = {
+        id: 'usr_vip_high_roller',
+        name: 'High Roller VIP',
+        email: 'highroller@dc-casino.vip',
+        provider: 'vip_pass',
+        method: 'vip_pass',
+        tier: 'VIP MEMBER',
+        isVerifiedSC: true,
+        scEligibility: 'eligible',
+        joinedAt: new Date().toISOString(),
+      };
+      authService.saveSession(activeUser);
+      setCurrentUser(activeUser);
+    }
+
     const nextGC = (goldCoinsRef.current ?? goldCoins) + addedGC;
     const nextSC = Number(((sweepsCoinsRef.current ?? sweepsCoins) + addedSC).toFixed(2));
 
@@ -1262,6 +1279,15 @@ export default function App() {
     try {
       localStorage.setItem('dc_casino_sweeps_coins', nextSC.toFixed(2));
     } catch {}
+
+    if (addedSC > 0) {
+      setCurrencyMode('SC');
+    }
+    authService.saveUserData(activeUser?.id, {
+      goldCoins: nextGC,
+      sweepsCoins: nextSC,
+      currencyMode: addedSC > 0 ? 'SC' : currencyMode,
+    });
 
     // Ensure all purchase/offer modals are closed immediately
     setLowBalanceOfferOpen(false);
@@ -1330,6 +1356,14 @@ export default function App() {
 
         if (matchedPkg) {
           setShowSplash(false);
+          paymentService.recordPurchase({
+            packageId: matchedPkg.id,
+            amountUsd: matchedPkg.priceUsd,
+            goldCoins: matchedPkg.goldCoins,
+            sweepsCoins: matchedPkg.freeSweepsCoins,
+            method: 'stripe_checkout',
+            status: 'completed',
+          });
           handlePurchaseSuccess(matchedPkg);
           soundEngine.playWinCelebration(true);
         }

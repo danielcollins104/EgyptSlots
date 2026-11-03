@@ -1,11 +1,37 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { ApiRouter } from './apiRouter.js';
+
+function loadEnvLocal() {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env.local');
+    if (!fs.existsSync(envPath)) return {};
+    const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+    const out = {};
+    for (const line of lines) {
+      const idx = line.indexOf('=');
+      if (idx > 0) {
+        const key = line.slice(0, idx).trim();
+        const val = line.slice(idx + 1).trim();
+        out[key] = val;
+        if (!process.env[key]) process.env[key] = val;
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
 
 /**
  * Vite Dev Server Middleware Plugin
  * Directly mounts the DC Enterprises Server-Authoritative Security Engine into Vite
  */
 export function securityApiPlugin() {
-  const router = new ApiRouter();
+  const envLocal = loadEnvLocal();
+  const router = new ApiRouter({
+    stripeSecretKey: envLocal.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY || '',
+  });
 
   return {
     name: 'security-api-plugin',

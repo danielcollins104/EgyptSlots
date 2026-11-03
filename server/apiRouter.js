@@ -1,4 +1,5 @@
 import { SecurityServer } from './SecurityServer.js';
+import { SWEEPSTAKES_CONFIG } from '../src/config/sweepstakesConfig.js';
 
 /**
  * Universal API Request Handler for DC Enterprises Casino
@@ -7,11 +8,149 @@ import { SecurityServer } from './SecurityServer.js';
 export class ApiRouter {
   constructor(options = {}) {
     this.server = new SecurityServer({
-      ledgerSecret: process.env.DC_LEDGER_SECRET || 'dc_kemet_ledger_master_secret_2026_salt_99x',
-      signingKey: process.env.DC_SPIN_SIGNING_KEY || 'dc_spin_master_signing_key_kemet_777',
-      adminSecret: process.env.DC_ADMIN_SECRET || 'dc_admin_super_secret_kemet_999!',
+      ledgerSecret:
+        options.ledgerSecret ||
+        (typeof process !== 'undefined' && process.env?.DC_LEDGER_SECRET) ||
+        'dc_kemet_ledger_master_secret_2026_salt_99x',
+      signingKey:
+        options.signingKey ||
+        (typeof process !== 'undefined' && process.env?.DC_SPIN_SIGNING_KEY) ||
+        'dc_spin_master_signing_key_kemet_777',
+      adminSecret:
+        options.adminSecret ||
+        (typeof process !== 'undefined' && process.env?.DC_ADMIN_SECRET) ||
+        'dc_admin_super_secret_kemet_999!',
       initialAccounts: options.initialAccounts || {},
     });
+    this.stripeSecretKey =
+      options.stripeSecretKey ||
+      (typeof process !== 'undefined' && process.env?.STRIPE_SECRET_KEY) ||
+      '';
+  }
+
+  /**
+   * Creates a live Stripe Checkout Session via the Stripe REST API (fetch-based, 100% Cloudflare Workers & Node compatible)
+   */
+  async createStripeCheckoutSession({ packageId, paymentMethod = 'card', origin = 'https://oopsiwon.com', customerEmail = '', userId = '' }) {
+    const allPackages = [
+      ...(SWEEPSTAKES_CONFIG.storePackages || []),
+      ...(SWEEPSTAKES_CONFIG.highRollerPackages || []),
+      ...(SWEEPSTAKES_CONFIG.rescuePackages || []),
+    ];
+    const pkg = allPackages.find((p) => p.id === packageId) || SWEEPSTAKES_CONFIG.storePackages[2];
+    const secretKey =
+      this.stripeSecretKey ||
+      (typeof process !== 'undefined' && process.env?.STRIPE_SECRET_KEY) ||
+      '';
+
+    const cleanOrigin = origin.replace(/\/$/, '');
+    const successUrl = `${cleanOrigin}/?payment_success=true&pkg=${encodeURIComponent(pkg.id)}&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${cleanOrigin}/?payment_cancelled=true&pkg=${encodeURIComponent(pkg.id)}`;
+
+    // If Stripe Secret Key is available, create a real Stripe Checkout Session via api.stripe.com
+    if (secretKey && (secretKey.startsWith('sk_') || secretKey.startsWith('rk_'))) {
+      try {
+        const params = new URLSearchParams();
+        params.append('mode', 'payment');
+        params.append('success_url', successUrl);
+        params.append('cancel_url', cancelUrl);
+        params.append('client_reference_id', pkg.id);
+
+        // Request payment method types
+        if (paymentMethod === 'cashapp') {
+          params.append('payment_method_types[0]', 'cashapp');
+          params.append('payment_method_types[1]', 'card');
+        } else {
+          params.append('payment_method_types[0]', 'card');
+        }
+
+        if (customerEmail && customerEmail.includes('@')) {
+          params.append('customer_email', customerEmail);
+        }
+
+        const unitAmountCents = Math.round(Number(pkg.priceUsd) * 100);
+        params.append('line_items[0][price_data][currency]', 'usd');
+        params.append('line_items[0][price_data][unit_amount]', String(unitAmountCents));
+        params.append(
+          'line_items[0][price_data][product_data][name]',
+          `${pkg.goldCoins.toLocaleString()} Gold Coins + ${pkg.freeSweepsCoins.toFixed(2)} Free SC Bonus`
+        );
+        params.append(
+          'line_items[0][price_data][product_data][description]',
+          `Crowns of Kemet Social Casino Bundle — Includes ${pkg.goldCoins.toLocaleString()} Gold Coins (GC) + ${pkg.freeSweepsCoins.toFixed(2)} Free Promotional Sweeps Coins (SC)`
+        );
+        params.append('line_items[0][quantity]', '1');
+
+        params.append('metadata[packageId]', pkg.id);
+        params.append('metadata[goldCoins]', String(pkg.goldCoins));
+        params.append('metadata[freeSweepsCoins]', String(pkg.freeSweepsCoins));
+        if (userId) {
+          params.append('metadata[userId]', userId);
+        }
+
+        const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: params.toString(),
+        });
+
+        const sessionData = await stripeRes.json();
+        if (stripeRes.ok && sessionData.url) {
+          return {
+            success: true,
+            url: sessionData.url,
+            sessionId: sessionData.id,
+            mode: 'stripe_checkout_session',
+            package: pkg,
+          };
+        }
+
+        // If cashapp wasn't enabled on the Stripe account, retry with card-only
+        if (!stripeRes.ok && paymentMethod === 'cashapp') {
+          params.delete('payment_method_types[0]');
+          params.delete('payment_method_types[1]');
+          params.append('payment_method_types[0]', 'card');
+          const retryRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${secretKey}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: params.toString(),
+          });
+          const retryData = await retryRes.json();
+          if (retryRes.ok && retryData.url) {
+            return {
+              success: true,
+              url: retryData.url,
+              sessionId: retryData.id,
+              mode: 'stripe_checkout_session',
+              package: pkg,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Stripe Checkout Session Error]:', err.message);
+      }
+    }
+
+    // Fallback to configured Stripe Payment Link with return_url
+    const fallbackLink = pkg.stripePaymentLink || '';
+    const sep = fallbackLink.includes('?') ? '&' : '?';
+    const url = fallbackLink
+      ? `${fallbackLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`
+      : `${cleanOrigin}/?payment_success=true&pkg=${encodeURIComponent(pkg.id)}`;
+
+    return {
+      success: true,
+      url,
+      sessionId: `cs_link_${Date.now()}`,
+      mode: 'payment_link',
+      package: pkg,
+    };
   }
 
   /**
@@ -20,9 +159,14 @@ export class ApiRouter {
    * @param {string} path - URL path (e.g. '/api/spin')
    * @param {object} headers - HTTP request headers
    * @param {object|string} body - Parsed JSON body or raw string
+   * @param {object} env - Optional Cloudflare Worker env bindings
    * @returns {Promise<{ status: number, headers: object, body: any }>}
    */
-  async handleRequest(method, path, headers = {}, body = {}) {
+  async handleRequest(method, path, headers = {}, body = {}, env = {}) {
+    if (env && env.STRIPE_SECRET_KEY && !this.stripeSecretKey) {
+      this.stripeSecretKey = env.STRIPE_SECRET_KEY;
+    }
+
     // Standard CORS headers
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
@@ -39,7 +183,12 @@ export class ApiRouter {
     const authHeader = headers['authorization'] || headers['Authorization'] || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (authHeader || null);
 
-    const parsedBody = typeof body === 'string' && body.length > 0 ? JSON.parse(body) : (body || {});
+    let parsedBody = {};
+    try {
+      parsedBody = typeof body === 'string' && body.length > 0 ? JSON.parse(body) : (body || {});
+    } catch {
+      parsedBody = {};
+    }
 
     try {
       // 1. GAME OUTCOME & SPIN
@@ -111,7 +260,20 @@ export class ApiRouter {
         return { status: 200, headers: corsHeaders, body: { success: true, message: 'Logged out' } };
       }
 
-      // 5. ADMINISTRATOR ENDPOINTS
+      // 5. STRIPE CHECKOUT SESSION CREATION
+      if ((path === '/api/checkout/create-session' || path === '/api/stripe/create-checkout-session') && method === 'POST') {
+        const reqOrigin = headers['origin'] || headers['Origin'] || parsedBody.origin || 'https://oopsiwon.com';
+        const sessionRes = await this.createStripeCheckoutSession({
+          packageId: parsedBody.packageId,
+          paymentMethod: parsedBody.paymentMethod || 'card',
+          origin: reqOrigin,
+          customerEmail: parsedBody.email || '',
+          userId: parsedBody.userId || '',
+        });
+        return { status: 200, headers: corsHeaders, body: sessionRes };
+      }
+
+      // 6. ADMINISTRATOR ENDPOINTS
       if (path === '/api/admin/login' && method === 'POST') {
         const { adminKey } = parsedBody;
         const res = this.server.adminLogin(adminKey);
@@ -131,25 +293,30 @@ export class ApiRouter {
         return { status: 200, headers: corsHeaders, body: { success: true, chain, integrity } };
       }
 
-      // 6. PROVABLY FAIR PUBLIC COMMITMENT
+      // 7. PROVABLY FAIR PUBLIC COMMITMENT
       if (path === '/api/provably-fair' && method === 'GET') {
         const commitment = this.server.getProvablyFairCommitment();
         return { status: 200, headers: corsHeaders, body: { success: true, ...commitment } };
       }
 
-      // 7. STRIPE PAYMENT WEBHOOK
+      // 8. STRIPE PAYMENT WEBHOOK
       if (path === '/api/webhooks/stripe' && method === 'POST') {
         const signature = headers['stripe-signature'] || headers['Stripe-Signature'];
-        const res = await this.server.handlePaymentWebhook(parsedBody, signature);
+        const res = await this.server.handleStripeWebhook({
+          eventId: parsedBody.id || parsedBody.eventId || `evt_${Date.now()}`,
+          eventType: parsedBody.type || parsedBody.eventType || 'checkout.session.completed',
+          dataObject: parsedBody.data?.object || parsedBody.dataObject || {},
+          signatureHeader: signature,
+        });
         return { status: 200, headers: corsHeaders, body: res };
       }
 
-      // 8. HEALTH CHECK
+      // 9. HEALTH CHECK
       if (path === '/api/health') {
         return {
           status: 200,
           headers: corsHeaders,
-          body: { status: 'healthy', version: '2.0.0-hardened', timestamp: new Date().toISOString() },
+          body: { status: 'healthy', version: '2.1.0-stripe-cashier', timestamp: new Date().toISOString() },
         };
       }
 
