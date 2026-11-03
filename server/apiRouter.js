@@ -56,12 +56,14 @@ export class ApiRouter {
         params.append('cancel_url', cancelUrl);
         params.append('client_reference_id', pkg.id);
 
-        // Request payment method types (explicitly 'card' or 'cashapp' so Stripe Link passkey prompt is never shown)
+        // Use dedicated Payment Method Configuration so:
+        // - 'cashapp' opens the Cash App Pay ONLY checkout (pmc_1UXhpsPDpwmSIl1L5VgVrY0C)
+        // - 'card' opens the Card ONLY checkout (pmc_1UXhqOPDpwmSIl1LZIkmCt4R)
+        // and Stripe Link passkey prompts are completely disabled on both!
         if (paymentMethod === 'cashapp') {
-          params.append('payment_method_types[0]', 'cashapp');
-          params.append('payment_method_types[1]', 'card');
+          params.append('payment_method_configuration', 'pmc_1UXhpsPDpwmSIl1L5VgVrY0C');
         } else {
-          params.append('payment_method_types[0]', 'card');
+          params.append('payment_method_configuration', 'pmc_1UXhqOPDpwmSIl1LZIkmCt4R');
         }
 
         const unitAmountCents = Math.round(Number(pkg.priceUsd) * 100);
@@ -80,6 +82,7 @@ export class ApiRouter {
         params.append('metadata[packageId]', pkg.id);
         params.append('metadata[goldCoins]', String(pkg.goldCoins));
         params.append('metadata[freeSweepsCoins]', String(pkg.freeSweepsCoins));
+        params.append('metadata[paymentMethod]', paymentMethod);
         if (userId) {
           params.append('metadata[userId]', userId);
         }
@@ -103,38 +106,16 @@ export class ApiRouter {
             package: pkg,
           };
         }
-
-        // If cashapp wasn't enabled on the Stripe account, retry with card-only
-        if (!stripeRes.ok && paymentMethod === 'cashapp') {
-          params.delete('payment_method_types[0]');
-          params.delete('payment_method_types[1]');
-          params.append('payment_method_types[0]', 'card');
-          const retryRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${secretKey}`,
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: params.toString(),
-          });
-          const retryData = await retryRes.json();
-          if (retryRes.ok && retryData.url) {
-            return {
-              success: true,
-              url: retryData.url,
-              sessionId: retryData.id,
-              mode: 'stripe_checkout_session',
-              package: pkg,
-            };
-          }
-        }
       } catch (err) {
         console.warn('[Stripe Checkout Session Error]:', err.message);
       }
     }
 
-    // Fallback to configured Stripe Payment Link with return_url
-    const fallbackLink = pkg.stripePaymentLink || '';
+    // Fallback to dedicated Cash App Pay or Card Stripe Payment Link with return_url
+    const fallbackLink =
+      paymentMethod === 'cashapp'
+        ? pkg.cashAppStripePaymentLink || pkg.stripePaymentLink || ''
+        : pkg.stripePaymentLink || '';
     const sep = fallbackLink.includes('?') ? '&' : '?';
     const url = fallbackLink
       ? `${fallbackLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`
