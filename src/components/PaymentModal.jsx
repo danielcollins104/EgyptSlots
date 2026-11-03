@@ -35,6 +35,7 @@ const CRYPTO_PAYMENT_OPTIONS = [
     name: 'Tether (USDT)',
     network: 'Solana / Polygon (0% Fee)',
     address: 'So11111111111111111111111111111111111111112dc',
+    uriScheme: 'solana',
     rateMultiplier: 1.0,
     unit: 'USDT',
     color: '#26a17b',
@@ -44,6 +45,7 @@ const CRYPTO_PAYMENT_OPTIONS = [
     name: 'Bitcoin (BTC)',
     network: 'Bitcoin Network',
     address: 'bc1q9dcenterpriseskemetrelics78x2yza4901mn',
+    uriScheme: 'bitcoin',
     rateMultiplier: 0.0000108,
     unit: 'BTC',
     color: '#f7931a',
@@ -53,6 +55,7 @@ const CRYPTO_PAYMENT_OPTIONS = [
     name: 'Ethereum (ETH)',
     network: 'ERC-20 / Arbitrum',
     address: '0xDC049E71F32B59Ca9178E6B20261024T0819119',
+    uriScheme: 'ethereum',
     rateMultiplier: 0.000325,
     unit: 'ETH',
     color: '#627eea',
@@ -62,11 +65,23 @@ const CRYPTO_PAYMENT_OPTIONS = [
     name: 'Solana (SOL)',
     network: 'Solana Mainnet',
     address: 'DC8kemetVaultPhaserSlot49182371948291048291',
+    uriScheme: 'solana',
     rateMultiplier: 0.0054,
     unit: 'SOL',
     color: '#14f195',
   },
 ];
+
+function buildCryptoPaymentUri(cryptoObj, amount) {
+  if (!cryptoObj) return '';
+  if (cryptoObj.uriScheme === 'bitcoin') {
+    return `bitcoin:${cryptoObj.address}?amount=${amount}`;
+  }
+  if (cryptoObj.uriScheme === 'ethereum') {
+    return `ethereum:${cryptoObj.address}?value=${amount}`;
+  }
+  return `solana:${cryptoObj.address}?amount=${amount}`;
+}
 
 export default function PaymentModal({
   isOpen,
@@ -245,6 +260,11 @@ export default function PaymentModal({
         currentCryptoObj.symbol === 'USDT' ? 2 : 6
       )
     : '0';
+
+  const cryptoPaymentUri = buildCryptoPaymentUri(currentCryptoObj, calculatedCryptoAmount);
+  const cryptoQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(
+    cryptoPaymentUri
+  )}`;
 
   const txHistory = paymentService.getTransactionHistory();
 
@@ -567,21 +587,45 @@ export default function PaymentModal({
                       </div>
 
                       <div className="sc-crypto-details">
-                        <div className="sc-crypto-amount-line">
-                          Send <strong>{calculatedCryptoAmount} {currentCryptoObj.unit}</strong> on{' '}
-                          <span>{currentCryptoObj.network}</span>:
-                        </div>
+                        <div className="sc-crypto-qr-layout">
+                          <div className="sc-crypto-qr-frame">
+                            <img
+                              src={cryptoQrUrl}
+                              alt={`Scan to pay ${calculatedCryptoAmount} ${currentCryptoObj.unit}`}
+                              className="sc-crypto-qr-img"
+                            />
+                            <span className="sc-crypto-qr-caption">
+                              SCAN WITH WALLET APP
+                            </span>
+                          </div>
 
-                        <div className="sc-crypto-address-bar">
-                          <code>{currentCryptoObj.address}</code>
-                          <button
-                            type="button"
-                            className="sc-copy-btn"
-                            onClick={() => handleCopyCryptoAddress(currentCryptoObj.address)}
-                          >
-                            {copiedAddress ? <Check size={14} /> : <Copy size={14} />}
-                            <span>{copiedAddress ? 'Copied' : 'Copy'}</span>
-                          </button>
+                          <div className="sc-crypto-info-col">
+                            <div className="sc-crypto-amount-line">
+                              Send <strong>{calculatedCryptoAmount} {currentCryptoObj.unit}</strong> on{' '}
+                              <span>{currentCryptoObj.network}</span>:
+                            </div>
+
+                            <div className="sc-crypto-address-bar">
+                              <code>{currentCryptoObj.address}</code>
+                              <button
+                                type="button"
+                                className="sc-copy-btn"
+                                onClick={() => handleCopyCryptoAddress(currentCryptoObj.address)}
+                              >
+                                {copiedAddress ? <Check size={14} /> : <Copy size={14} />}
+                                <span>{copiedAddress ? 'Copied' : 'Copy'}</span>
+                              </button>
+                            </div>
+
+                            <a
+                              href={cryptoPaymentUri}
+                              className="sc-open-wallet-link"
+                              onClick={() => soundEngine.playButtonClick(540)}
+                            >
+                              <ExternalLink size={14} />
+                              <span>Open in Crypto Wallet App</span>
+                            </a>
+                          </div>
                         </div>
 
                         <button
