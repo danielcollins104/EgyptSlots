@@ -1305,6 +1305,47 @@ export default function App() {
     );
   };
 
+  // Automatic Game Return Listener for Cash App Pay and Stripe Checkout (?payment_success=true&pkg=...)
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      const isSuccess = params.get('payment_success') === 'true' || params.get('success') === 'true';
+      const pkgId =
+        params.get('pkg') ||
+        params.get('client_reference_id') ||
+        localStorage.getItem('dc_pending_purchase_pkg');
+
+      if (isSuccess) {
+        let matchedPkg = null;
+        if (pkgId) {
+          matchedPkg =
+            SWEEPSTAKES_CONFIG.storePackages.find((p) => p.id === pkgId) ||
+            SWEEPSTAKES_CONFIG.highRollerPackages.find((p) => p.id === pkgId) ||
+            SWEEPSTAKES_CONFIG.rescuePackages.find((p) => p.id === pkgId);
+        }
+        if (!matchedPkg) {
+          matchedPkg = SWEEPSTAKES_CONFIG.storePackages[2]; // Fallback to Silver Bundle
+        }
+
+        if (matchedPkg) {
+          setShowSplash(false);
+          handlePurchaseSuccess(matchedPkg);
+          soundEngine.playWinCelebration(true);
+        }
+
+        // Clean query params so refresh doesn't trigger duplicate credit
+        try {
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+          localStorage.removeItem('dc_pending_purchase_pkg');
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Payment return redirect check error:', err);
+    }
+  }, []);
+
   const triggerSpin = useCallback(
     (forcedMode = null, overrideBet = null) => {
       // PRELOAD GUARD: Player cannot spin until 100% of game assets are pre-cached

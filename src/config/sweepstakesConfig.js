@@ -28,6 +28,13 @@ export function getCashAppPaymentLink(priceUsd) {
   return `https://cash.app/${cleanHandle}/${formatted}`;
 }
 
+export function getPaymentReturnUrl(pkgId) {
+  if (typeof window !== 'undefined' && window.location) {
+    return `${window.location.origin}${window.location.pathname}?payment_success=true&pkg=${encodeURIComponent(pkgId || '')}`;
+  }
+  return `https://oopsiwon.com/?payment_success=true&pkg=${encodeURIComponent(pkgId || '')}`;
+}
+
 export function getStripePaymentLink(pkg) {
   if (!pkg) return '';
   const pkgId = String(pkg.id || '').replace('pkg_', '').toUpperCase();
@@ -36,6 +43,18 @@ export function getStripePaymentLink(pkg) {
     return import.meta.env[envKey];
   }
   return pkg.stripePaymentLink || '';
+}
+
+export function getCashAppPayCheckoutLink(pkg) {
+  if (!pkg) return '';
+  // Cash App Pay is powered through Stripe hosted checkout / Payment Links with return_url redirect back to the game
+  const baseLink = getStripePaymentLink(pkg);
+  const returnUrl = getPaymentReturnUrl(pkg.id);
+  if (baseLink) {
+    const sep = baseLink.includes('?') ? '&' : '?';
+    return `${baseLink}${sep}return_url=${encodeURIComponent(returnUrl)}&client_reference_id=${encodeURIComponent(pkg.id)}`;
+  }
+  return returnUrl;
 }
 
 export const SWEEPSTAKES_CONFIG = {
