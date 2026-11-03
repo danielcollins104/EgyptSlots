@@ -56,16 +56,12 @@ export class ApiRouter {
         params.append('cancel_url', cancelUrl);
         params.append('client_reference_id', pkg.id);
 
-        // Request payment method types
+        // Request payment method types (explicitly 'card' or 'cashapp' so Stripe Link passkey prompt is never shown)
         if (paymentMethod === 'cashapp') {
           params.append('payment_method_types[0]', 'cashapp');
           params.append('payment_method_types[1]', 'card');
         } else {
           params.append('payment_method_types[0]', 'card');
-        }
-
-        if (customerEmail && customerEmail.includes('@')) {
-          params.append('customer_email', customerEmail);
         }
 
         const unitAmountCents = Math.round(Number(pkg.priceUsd) * 100);

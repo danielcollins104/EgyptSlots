@@ -1359,7 +1359,7 @@ export default function App() {
             status: 'completed',
           });
           handlePurchaseSuccess(matchedPkg);
-          soundEngine.playWinCelebration(true);
+          soundEngine.playWinCelebration('big');
         }
 
         // Clean query params so refresh doesn't trigger duplicate credit
