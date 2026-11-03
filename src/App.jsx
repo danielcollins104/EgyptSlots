@@ -336,14 +336,12 @@ export default function App() {
       '🔥 ANUBIS LEVEL 4 • APEX OVERCHARGE',
     ];
 
-    if (next === 1) soundEngine.playAnubisExpand?.();
-    else if (next === 2) soundEngine.playAnticipationRiser?.();
+    if (next === 1) soundEngine.playQiGather?.();
+    else if (next === 2) soundEngine.playQiGather?.();
     else if (next === 3) {
-      soundEngine.playQiGather?.();
-      setTimeout(() => soundEngine.playThunderStrike?.(), 200);
+      soundEngine.playThunderStrike?.();
     } else if (next >= 4) {
       soundEngine.playThunderStrike?.();
-      setTimeout(() => soundEngine.playBonusTrigger?.(), 250);
     }
 
     setAnubisPowerUp({ level: next, badge: badges[next], title: titles[next], id: Date.now() });
@@ -375,13 +373,12 @@ export default function App() {
       '🔥 BASTET LEVEL 4 • APEX OVERCHARGE',
     ];
 
-    if (next === 1) soundEngine.playAnubisExpand?.();
-    else if (next === 2) soundEngine.playAnticipationRiser?.();
+    if (next === 1) soundEngine.playQiGather?.();
+    else if (next === 2) soundEngine.playQiGather?.();
     else if (next === 3) {
       soundEngine.playSolarFireball?.();
     } else if (next >= 4) {
       soundEngine.playSolarFireball?.();
-      setTimeout(() => soundEngine.playBonusTrigger?.(), 250);
     }
 
     setBastetPowerUp({ level: next, badge: badges[next], title: titles[next], id: Date.now() });
@@ -1054,7 +1051,7 @@ export default function App() {
       }
     }
 
-    // Psychological Flow State Momentum Tracking
+    // Psychological Flow State Momentum Tracking & Music Synchronization
     const nowMs = performance.now();
     const intervalSinceLastSpin = nowMs - lastSpinEndTimeRef.current;
     lastSpinEndTimeRef.current = nowMs;
@@ -1063,14 +1060,14 @@ export default function App() {
     if (intervalSinceLastSpin < (turboFlow ? 3500 : 5500)) {
       nextStreak = flowStreak + 1;
       setFlowStreak(nextStreak);
-      if (nextStreak >= 3) {
+      ambientMusicEngine.setFlowMomentum?.(nextStreak);
+      if (nextStreak >= 3 && totalCoinsWon === 0) {
         soundEngine.playFlowStreak(nextStreak);
-        if (totalCoinsWon === 0) {
-          setStatusMessage(`⚡ FLOW MOMENTUM ACTIVE (${nextStreak}X RHYTHM CHAIN) • IN THE ZONE!`);
-        }
+        setStatusMessage(`⚡ FLOW MOMENTUM ACTIVE (${nextStreak}X RHYTHM CHAIN) • IN THE ZONE!`);
       }
     } else {
       setFlowStreak(1);
+      ambientMusicEngine.setFlowMomentum?.(1);
     }
 
     // Continuous Hold-to-Spin Flow Loop

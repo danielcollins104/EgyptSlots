@@ -1009,11 +1009,11 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         reel.velocity = 0;
         reel.landingQueue = null;
         reel.isTurbo = isTurbo;
-        reel.anticipation = specialCountSoFar >= 1 && c >= 2 && !isTurbo;
+        reel.anticipation = specialCountSoFar >= 2 && c >= 2 && !isTurbo;
 
         if (
           reel.willExpand ||
-          targetGrid[c].some((s) => s.isWild || s.isBonus || s.isExpanding || s.isTopHigh)
+          targetGrid[c].some((s) => s.isBonus)
         ) {
           specialCountSoFar++;
         }
@@ -1037,7 +1037,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             reel.state = 'SPINNING';
             reel.offsetY = 0;
             reel.velocity = isTurbo ? 900 : 650;
-            if (reel.anticipation && !isTurbo) {
+            if (reel.anticipation && !isTurbo && c === 4) {
               soundEngine.playAnticipationRiser();
             }
           })
