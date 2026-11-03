@@ -990,6 +990,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
 
     // Spin Controller with Turbo Flow Mode support
     const startSpin = (targetGrid, targetExpanded, isTurbo = false) => {
+      isDirty = true;
+      lastTime = performance.now();
       reels.forEach((reel) => {
         reel.tweens.forEach((t) => t.kill());
         reel.tweens = [];
@@ -1017,31 +1019,31 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         }
 
         const spinDurationSec = isTurbo
-          ? 0.12 + c * 0.07
-          : 0.28 + c * 0.21 + (reel.anticipation ? 0.34 : 0);
-        const peakVelocity = reel.anticipation ? 2750 : (isTurbo ? 2950 : 2350);
+          ? 0.08 + c * 0.05
+          : 0.18 + c * 0.12 + (reel.anticipation ? 0.25 : 0);
+        const peakVelocity = reel.anticipation ? 2600 : (isTurbo ? 2800 : 2200);
 
         reel.state = 'WINDUP';
 
-        const tl = gsap.timeline({ delay: isTurbo ? c * 0.02 : c * 0.04 });
+        const tl = gsap.timeline({ delay: isTurbo ? c * 0.015 : c * 0.03 });
         reel.tweens.push(tl);
 
         tl.to(reel, {
-          offsetY: isTurbo ? -10 : -20,
-          duration: isTurbo ? 0.05 : 0.11,
+          offsetY: isTurbo ? -8 : -14,
+          duration: isTurbo ? 0.04 : 0.08,
           ease: 'power2.out',
         })
           .call(() => {
             reel.state = 'SPINNING';
             reel.offsetY = 0;
-            reel.velocity = isTurbo ? 550 : 380;
+            reel.velocity = isTurbo ? 900 : 650;
             if (reel.anticipation && !isTurbo) {
               soundEngine.playAnticipationRiser();
             }
           })
           .to(reel, {
             velocity: peakVelocity,
-            duration: isTurbo ? 0.08 : 0.19,
+            duration: isTurbo ? 0.06 : 0.12,
             ease: 'power2.in',
           })
           .to(reel, {
@@ -1051,13 +1053,9 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             onComplete: () => {
               const buf0 = randomSymbol();
               const buf1 = randomSymbol();
-              const buf2 = randomSymbol();
-              const buf3 = randomSymbol();
               reel.landingQueue = [
                 buf0,
                 buf1,
-                buf2,
-                buf3,
                 reel.targetSymbols[0],
                 reel.targetSymbols[1],
                 reel.targetSymbols[2],
@@ -1201,8 +1199,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       const now = performance.now();
       const rawDt = (now - lastTime) / 1000;
       lastTime = now;
-      // Clamp delta time to 30fps-120fps window to eliminate stutter spikes
-      const dt = Math.min(0.033, Math.max(0.008, rawDt));
+      // High-precision frame delta bounded to [1ms, 45ms] to prevent stutter or physics lag
+      const dt = Math.min(0.045, Math.max(0.001, rawDt));
 
       const {
         winningLines: wins,
@@ -1258,10 +1256,10 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 triggerReelLandingBounce(reel);
                 break;
               } else {
-                // Smooth progressive deceleration into the landing stop
-                const decelMultipliers = [0.22, 0.35, 0.48, 0.62, 0.76, 0.88];
-                const mult = decelMultipliers[Math.min(decelMultipliers.length - 1, remaining - 1)] || 0.5;
-                reel.velocity = Math.max(reel.isTurbo ? 450 : 260, (reel.anticipation ? 2750 : (reel.isTurbo ? 2950 : 2350)) * mult);
+                // Brisk, crisp progressive landing curve (never drag or crawl below 1350 px/s)
+                const decelMultipliers = [0.65, 0.76, 0.88, 0.96];
+                const mult = decelMultipliers[Math.min(decelMultipliers.length - 1, remaining - 1)] || 0.75;
+                reel.velocity = Math.max(reel.isTurbo ? 1800 : 1350, (reel.anticipation ? 2600 : (reel.isTurbo ? 2800 : 2200)) * mult);
               }
             } else {
               reel.strip.unshift(randomSymbol());

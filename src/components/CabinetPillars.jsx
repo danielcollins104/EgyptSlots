@@ -385,7 +385,7 @@ export default function CabinetPillars({ isSpinning = false, hasWin = false, sid
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [isSpinning, hasWin]);
+  }, []);
 
   return (
     <>
