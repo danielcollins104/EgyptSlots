@@ -964,13 +964,10 @@ export default function App() {
         setTimeout(() => soundEngine.playBonusTrigger(), 450);
 
         setStatusMessage(
-          `⚡ GRAND CELESTIAL STRIKE UNLEASHED! 3 SCATTERS TRIGGER THE WRATH OF THE GODS BONUS!`
+          `⚡ GRAND CELESTIAL STRIKE UNLEASHED! ${bonusCount} SCATTERS TRIGGER CELESTIAL SOLAR FREE SPINS!`
         );
 
-        // Unleash the Grand Celestial Overload Bonus Round
         setTimeout(() => {
-          setCelestialBonusBet(spinBet);
-          setCelestialBonusOpen(true);
           setGuardianAction(false);
         }, 1600);
       } else if (isSelectCombination || wins.length > 0) {

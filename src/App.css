@@ -7752,28 +7752,31 @@ body {
 
 .fs-cosmic-rays {
   position: absolute;
+  z-index: 0;
   width: 150vw;
   height: 150vh;
   object-fit: cover;
   pointer-events: none;
   mix-blend-mode: screen;
-  opacity: 0.65;
+  opacity: 0.25;
   animation: spinRaysContinuous 24s linear infinite;
 }
 
 .fs-cosmic-sparks {
   position: absolute;
+  z-index: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   pointer-events: none;
   mix-blend-mode: screen;
-  opacity: 0.8;
+  opacity: 0.35;
   animation: pulseSparks 2s ease-in-out infinite alternate;
 }
 
 .fs-embers-wrap {
   position: absolute;
+  z-index: 1;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
@@ -8013,65 +8016,65 @@ body {
 /* Center Reel Cabinet Only Stage */
 .fs-cabinet-stage {
   position: relative;
-  z-index: 5;
+  z-index: 15;
   width: 100%;
-  max-width: 1040px;
+  max-width: 980px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   margin: auto 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .fs-cabinet-frame-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 850 / 530;
+  max-height: 100%;
   border-radius: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.95));
-}
-
-.fs-cabinet-frame-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-  pointer-events: none;
-  z-index: 4;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(20, 14, 38, 0.98) 0%, rgba(8, 6, 18, 0.99) 100%);
+  border: 2.5px solid #fbbf24;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.95), 0 0 30px rgba(245, 158, 11, 0.4), inset 0 0 18px rgba(251, 191, 36, 0.2);
+  box-sizing: border-box;
 }
 
 .fs-top-arch-badge {
-  position: absolute;
-  top: 2%;
-  z-index: 10;
+  position: relative;
+  z-index: 12;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 4px 16px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: 999px;
+  background: rgba(6, 10, 26, 0.95);
+  border: 1.5px solid rgba(251, 191, 36, 0.75);
   font-family: var(--font-royal);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.14em;
   color: #fef08a;
   text-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+  flex-shrink: 0;
 }
 
 .fs-reel-window {
-  position: absolute;
-  inset: 13% 7% 17% 7%;
-  z-index: 3;
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  aspect-ratio: 16 / 9.4;
+  max-height: 54vh;
   overflow: hidden;
-  border-radius: 12px;
-  background: rgba(4, 6, 14, 0.95);
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.95);
+  border-radius: 14px;
+  background: #040714;
+  border: 2px solid rgba(251, 191, 36, 0.65);
+  box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.95), 0 0 20px rgba(245, 158, 11, 0.25);
 }
 
 .fs-grid-layout {
@@ -8081,6 +8084,7 @@ body {
   height: 100%;
   gap: 8px;
   padding: 8px;
+  box-sizing: border-box;
 }
 
 .fs-reel-column {
@@ -8113,7 +8117,7 @@ body {
   gap: 8px;
   animation: fsStripScroll 0.22s linear infinite;
   will-change: transform;
-  filter: blur(1.5px) brightness(1.12);
+  filter: brightness(1.1);
 }
 
 @keyframes fsStripScroll {
@@ -8121,141 +8125,115 @@ body {
   100% { transform: translateY(-50%); }
 }
 
-/* Symbols inside Free Spins */
+/* Symbols inside Free Spins — Maximum Contrast & Zero Text Obstruction */
 .fs-symbol-tile {
   position: relative;
+  z-index: 5;
   border-radius: 12px;
-  border: 1.5px solid rgba(251, 191, 36, 0.65);
+  border: 2px solid rgba(251, 191, 36, 0.85);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 4px;
   user-select: none;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.75), inset 0 0 12px rgba(0, 0, 0, 0.8);
+  opacity: 1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.85), inset 0 0 10px rgba(0, 0, 0, 0.65);
   transition: transform 0.2s ease, filter 0.2s ease;
   overflow: hidden;
 }
 
 .fs-symbol-tile.strip-tile {
-  height: 98px;
+  height: 104px;
   flex-shrink: 0;
 }
 
 .fs-symbol-tile.winning-tile {
-  transform: scale(1.05);
-  z-index: 5;
-  filter: brightness(1.22) drop-shadow(0 0 14px #ffd700);
+  transform: scale(1.04);
+  z-index: 8;
+  filter: brightness(1.2) drop-shadow(0 0 14px #ffd700);
   animation: pulseWinTile 0.9s ease-in-out infinite alternate;
 }
 
 @keyframes pulseWinTile {
-  0% { transform: scale(1.02); }
-  100% { transform: scale(1.08); }
+  0% { transform: scale(1.01); }
+  100% { transform: scale(1.06); }
 }
 
 .fs-tile-gold-bezel {
   position: absolute;
   inset: 2px;
-  border-radius: 10px;
-  border: 1px solid rgba(254, 240, 138, 0.35);
+  border-radius: 9px;
+  border: 1px solid rgba(254, 240, 138, 0.45);
   pointer-events: none;
+  z-index: 2;
 }
 
 .fs-tile-3d-art {
-  width: 72%;
-  height: 72%;
+  position: relative;
+  z-index: 6;
+  width: 88%;
+  height: 88%;
   object-fit: contain;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.95));
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.95)) brightness(1.12) contrast(1.08) saturate(1.15);
   pointer-events: none;
   transition: transform 0.25s ease;
 }
 
 .fs-royal-letter-wrap {
+  position: relative;
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 72%;
+  height: 100%;
 }
 
 .fs-royal-letter-3d {
   font-family: var(--font-royal);
-  font-size: clamp(1.4rem, 2.6vw, 2.4rem);
+  font-size: clamp(1.85rem, 3.8vw, 3.1rem);
   font-weight: 900;
   line-height: 1;
   color: #fef08a;
-  background: linear-gradient(180deg, #fef08a 0%, #fbbf24 35%, #d97706 70%, #78350f 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 10px rgba(245, 158, 11, 0.6));
-}
-
-.fs-tile-label-bar {
-  position: absolute;
-  bottom: 3px;
-  left: 4px;
-  right: 4px;
-  text-align: center;
-  pointer-events: none;
-}
-
-.fs-tile-name-txt {
-  font-family: var(--font-royal);
-  font-size: clamp(0.48rem, 0.72vw, 0.62rem);
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  text-shadow: 0 2px 4px #000, 0 0 6px rgba(0, 0, 0, 0.9);
-}
-
-.fs-symbol-icon {
-  font-size: clamp(1.2rem, 2.4vw, 2.1rem);
-  line-height: 1;
-}
-
-.fs-symbol-name {
-  font-family: var(--font-royal);
-  font-size: clamp(0.55rem, 0.9vw, 0.74rem);
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  margin-top: 2px;
-  text-align: center;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.95));
 }
 
 .fs-tile-badge {
   position: absolute;
-  top: 3px;
+  bottom: 3px;
   right: 3px;
-  font-size: 0.48rem;
+  z-index: 9;
+  font-size: 0.5rem;
   font-weight: 900;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 4px;
   letter-spacing: 0.05em;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+  pointer-events: none;
 }
 
 .fs-winning-border-glow {
   position: absolute;
   inset: -2px;
+  z-index: 9;
   border-radius: 12px;
-  border: 2px solid #ffd700;
-  box-shadow: 0 0 14px #ffd700;
+  border: 2.5px solid #ffd700;
+  box-shadow: 0 0 16px #ffd700;
   pointer-events: none;
   animation: rotateBorderGlow 1.2s linear infinite;
 }
 
-/* Running Auto-Status Bar at Bottom */
+/* Running Auto-Status Bar at Bottom (Outside the reel window) */
 .fs-running-status-bar {
-  position: absolute;
-  bottom: 2%;
-  z-index: 10;
-  width: 86%;
-  padding: 6px 18px;
+  position: relative;
+  z-index: 12;
+  width: 100%;
+  padding: 6px 16px;
   border-radius: 10px;
-  background: rgba(8, 14, 36, 0.94);
-  border: 1.5px solid rgba(251, 191, 36, 0.4);
+  background: rgba(8, 14, 36, 0.96);
+  border: 1.5px solid rgba(251, 191, 36, 0.5);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -8263,7 +8241,9 @@ body {
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.06em;
-  color: #cbd5e1;
+  color: #e2e8f0;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .fs-status-left {
@@ -8483,11 +8463,27 @@ body {
     gap: 8px;
   }
   .fs-metric-card {
-    min-width: 130px;
-    padding: 6px 12px;
+    min-width: 120px;
+    padding: 6px 10px;
   }
   .fs-cabinet-frame-wrap {
-    aspect-ratio: 850 / 580;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .fs-reel-window {
+    aspect-ratio: 5 / 3.5;
+    max-height: 55vh;
+  }
+  .fs-grid-layout {
+    gap: 5px;
+    padding: 5px;
+  }
+  .fs-reel-column {
+    gap: 5px;
+  }
+  .fs-running-status-bar {
+    font-size: 0.65rem;
+    padding: 5px 10px;
   }
 }
 
@@ -15667,7 +15663,7 @@ body {
   position: absolute;
   inset: -6px;
   pointer-events: none;
-  z-index: 12;
+  z-index: 1;
 }
 
 .phoenix-wing-left {

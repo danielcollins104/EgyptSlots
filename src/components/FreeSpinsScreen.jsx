@@ -478,22 +478,14 @@ export default function FreeSpinsScreen({
       {/* Center Reel Cabinet Only (No Guardians, Clean Pure Focus on Reels) */}
       <main className="fs-cabinet-stage">
         <div className="fs-cabinet-frame-wrap">
-          {/* Reel Frame Image Asset */}
-          <img
-            src={THEME_ASSETS.reelFrameImage}
-            alt=""
-            className="fs-cabinet-frame-img"
-            draggable={false}
-          />
-
-          {/* Top Arch Solar Plaque */}
+          {/* Top Arch Solar Plaque (Outside the reel grid so it never blocks symbols) */}
           <div className="fs-top-arch-badge">
-            <Sparkles size={15} />
+            <Sparkles size={14} />
             <span>DC ENTERPRISES • {multiplier}× SOLAR ARENA</span>
-            <Sparkles size={15} />
+            <Sparkles size={14} />
           </div>
 
-          {/* 5×3 Free Spins Grid Window */}
+          {/* 5×3 Free Spins Grid Window — High Contrast, Unobstructed Symbol Stage */}
           <div className="fs-reel-window">
             <div className="fs-grid-layout">
               {currentGrid.map((col, colIdx) => {
@@ -512,7 +504,7 @@ export default function FreeSpinsScreen({
                             key={rIdx}
                             className="fs-symbol-tile strip-tile"
                             style={{
-                              background: `radial-gradient(circle at 45% 40%, ${sym.tileBgStart} 0%, ${sym.tileBgEnd} 100%)`,
+                              background: `radial-gradient(circle at 50% 45%, ${sym.tileBgStart} 0%, ${sym.tileBgEnd} 100%)`,
                               borderColor: sym.accentColor || '#fbbf24',
                             }}
                           >
@@ -526,7 +518,15 @@ export default function FreeSpinsScreen({
                               />
                             ) : (
                               <div className="fs-royal-letter-wrap">
-                                <span className="fs-royal-letter-3d">{sym.letter}</span>
+                                <span
+                                  className="fs-royal-letter-3d"
+                                  style={{
+                                    color: sym.gemHighlight || '#fef08a',
+                                    textShadow: `0 2px 6px rgba(0,0,0,0.95), 0 0 12px ${sym.gemColor || '#f59e0b'}`,
+                                  }}
+                                >
+                                  {sym.letter}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -550,14 +550,14 @@ export default function FreeSpinsScreen({
                             sym.isWild ? 'wild-tile' : sym.isScatter ? 'scatter-tile' : ''
                           } ${isWinning ? 'winning-tile' : ''}`}
                           style={{
-                            background: `radial-gradient(circle at 45% 40%, ${sym.tileBgStart} 0%, ${sym.tileBgEnd} 100%)`,
+                            background: `radial-gradient(circle at 50% 45%, ${sym.tileBgStart} 0%, ${sym.tileBgEnd} 100%)`,
                             borderColor: sym.accentColor || '#fbbf24',
                           }}
                         >
                           {/* 3D Gold Extruded Bezel Frame */}
                           <div className="fs-tile-gold-bezel" />
 
-                          {/* Blazing Phoenix Wild Flame Wings Aura */}
+                          {/* Blazing Phoenix Wild Flame Wings Aura (Behind symbol so it never dims it) */}
                           {sym.isWild && (
                             <div className="fs-phoenix-wild-auras" aria-hidden="true">
                               <div className="phoenix-wing-left" />
@@ -566,7 +566,7 @@ export default function FreeSpinsScreen({
                             </div>
                           )}
 
-                          {/* 3D Graphic Asset or 3D Sculpted Royal Letter */}
+                          {/* Unobstructed Full-Size 3D Graphic Asset or 3D Sculpted Royal Letter */}
                           {sym.image ? (
                             <img
                               src={sym.image}
@@ -579,7 +579,8 @@ export default function FreeSpinsScreen({
                               <span
                                 className="fs-royal-letter-3d"
                                 style={{
-                                  filter: `drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 10px ${sym.gemColor || 'rgba(245, 158, 11, 0.6)'})`,
+                                  color: sym.gemHighlight || '#fef08a',
+                                  textShadow: `0 3px 8px rgba(0, 0, 0, 0.95), 0 0 14px ${sym.gemColor || '#f59e0b'}`,
                                 }}
                               >
                                 {sym.letter}
@@ -587,18 +588,8 @@ export default function FreeSpinsScreen({
                             </div>
                           )}
 
-                          {/* Symbol Name Label */}
-                          <div className="fs-tile-label-bar">
-                            <span
-                              className="fs-tile-name-txt"
-                              style={{ color: sym.gemHighlight || '#fef08a' }}
-                            >
-                              {sym.name}
-                            </span>
-                          </div>
-
-                          {/* Special Badges (3× WILD or +3 SPINS) */}
-                          {sym.badge && (
+                          {/* Minimal Corner Tag ONLY for Wild or Scatter */}
+                          {(sym.isWild || sym.isScatter) && sym.badge && (
                             <div
                               className="fs-tile-badge"
                               style={{
@@ -620,14 +611,6 @@ export default function FreeSpinsScreen({
               })}
             </div>
 
-            {/* In-Game Win Celebration Animation Banner */}
-            <WinCelebrationSplash
-              winAmount={lastSpinWin}
-              currencyMode={currencyMode}
-              betAmount={betAmount}
-              onClose={() => setLastSpinWin(0)}
-            />
-
             {/* Initial Countdown Splash */}
             {countdown > 0 && (
               <div className="fs-intro-countdown-overlay">
@@ -643,7 +626,7 @@ export default function FreeSpinsScreen({
             )}
           </div>
 
-          {/* Running Auto-Status Bar at Bottom of Cabinet */}
+          {/* Running Auto-Status Bar Below Reel Grid (Outside the reel window) */}
           <div className="fs-running-status-bar">
             <div className="fs-status-left">
               <span className="status-dot-pulse" />
