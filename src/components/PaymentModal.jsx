@@ -20,6 +20,10 @@ import {
   Check,
   Flame,
   Zap,
+  Bitcoin,
+  Copy,
+  Wallet,
+  QrCode,
 } from 'lucide-react';
 import {
   SWEEPSTAKES_CONFIG,
@@ -30,6 +34,49 @@ import {
 import { paymentService } from '../services/paymentService';
 import { soundEngine } from '../audio/soundEngine';
 import PrivacyTermsModal from './PrivacyTermsModal';
+
+const CRYPTO_PAYMENT_OPTIONS = [
+  {
+    symbol: 'USDT',
+    name: 'Tether (USDT)',
+    network: 'Solana / Polygon (0% Gas)',
+    address: 'So11111111111111111111111111111111111111112dc',
+    rateMultiplier: 1.0,
+    unit: 'USDT',
+    badge: 'INSTANT • 0% FEE',
+    color: '#26a17b',
+  },
+  {
+    symbol: 'BTC',
+    name: 'Bitcoin (BTC)',
+    network: 'Lightning & Native SegWit',
+    address: 'bc1q9dcenterpriseskemetrelics78x2yza4901mn',
+    rateMultiplier: 0.0000108,
+    unit: 'BTC',
+    badge: 'MOST SECURE',
+    color: '#f7931a',
+  },
+  {
+    symbol: 'ETH',
+    name: 'Ethereum (ETH)',
+    network: 'Arbitrum & ERC-20',
+    address: '0xDC049E71F32B59Ca9178E6B20261024T0819119',
+    rateMultiplier: 0.000325,
+    unit: 'ETH',
+    badge: 'POPULAR',
+    color: '#627eea',
+  },
+  {
+    symbol: 'SOL',
+    name: 'Solana (SOL)',
+    network: 'Solana Mainnet (Sub-second)',
+    address: 'DC8kemetVaultPhaserSlot49182371948291048291',
+    rateMultiplier: 0.0054,
+    unit: 'SOL',
+    badge: 'FASTEST (0.4s)',
+    color: '#14f195',
+  },
+];
 
 export default function PaymentModal({
   isOpen,
@@ -47,8 +94,9 @@ export default function PaymentModal({
   const [selectedPkg, setSelectedPkg] = useState(
     initialPackage || SWEEPSTAKES_CONFIG.storePackages[2] // Default Silver ($19.99)
   );
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [waitingForReturn, setWaitingForReturn] = useState(false);
+  const [showCryptoView, setShowCryptoView] = useState(false);
+  const [selectedCrypto, setSelectedCrypto] = useState('USDT');
+  const [copiedAddress, setCopiedAddress] = useState(false);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
 
   // Redemption state
@@ -67,8 +115,8 @@ export default function PaymentModal({
       } else {
         setStep(1);
       }
-      setWaitingForReturn(false);
-      setIsProcessing(false);
+      setShowCryptoView(false);
+      setCopiedAddress(false);
       setRedeemSuccessMsg('');
       setRedeemError('');
     }
@@ -79,56 +127,85 @@ export default function PaymentModal({
   const handleSelectPackageAndContinue = (pkg) => {
     setSelectedPkg(pkg);
     setStep(2);
+    setShowCryptoView(false);
     soundEngine.playButtonClick(540);
   };
 
-  const handleInitiatePayment = (method) => {
+  // 1. Pay with Card -> Takes player directly to the Stripe payment page
+  const handlePayWithCard = () => {
     if (!selectedPkg) return;
     soundEngine.playButtonClick(620);
-    setIsProcessing(true);
 
-    // Save pending purchase into localStorage so return redirect or reloads know which package was chosen
     try {
       localStorage.setItem('dc_pending_purchase_pkg', selectedPkg.id);
       localStorage.setItem('dc_pending_purchase_time', String(Date.now()));
     } catch {}
 
+    const baseStripe = getStripePaymentLink(selectedPkg);
     const returnUrl = getPaymentReturnUrl(selectedPkg.id);
-    let checkoutUrl = '';
-
-    if (method === 'cashapp') {
-      checkoutUrl = getCashAppPayCheckoutLink(selectedPkg);
+    let checkoutUrl = baseStripe;
+    if (baseStripe) {
+      const sep = baseStripe.includes('?') ? '&' : '?';
+      checkoutUrl = `${baseStripe}${sep}return_url=${encodeURIComponent(returnUrl)}&client_reference_id=${encodeURIComponent(selectedPkg.id)}`;
     } else {
-      const baseStripe = getStripePaymentLink(selectedPkg);
-      if (baseStripe) {
-        const sep = baseStripe.includes('?') ? '&' : '?';
-        checkoutUrl = `${baseStripe}${sep}return_url=${encodeURIComponent(returnUrl)}&client_reference_id=${encodeURIComponent(selectedPkg.id)}`;
-      } else {
-        checkoutUrl = returnUrl;
-      }
+      checkoutUrl = returnUrl;
     }
 
-    setWaitingForReturn(true);
-    setIsProcessing(false);
-
-    // Open checkout flow
-    if (checkoutUrl) {
-      // If mobile or standalone app, navigate directly; on desktop, open checkout
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.location.href = checkoutUrl;
-      } else {
-        window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
-      }
-    }
+    // Direct navigation to Stripe Payment Page
+    window.location.href = checkoutUrl;
   };
 
-  const handleSimulateReturn = () => {
+  // 2. Pay with Cash App Pay -> Takes player to Cash App Pay checkout
+  const handlePayWithCashApp = () => {
+    if (!selectedPkg) return;
+    soundEngine.playButtonClick(620);
+
+    try {
+      localStorage.setItem('dc_pending_purchase_pkg', selectedPkg.id);
+      localStorage.setItem('dc_pending_purchase_time', String(Date.now()));
+    } catch {}
+
+    const checkoutUrl = getCashAppPayCheckoutLink(selectedPkg);
+    window.location.href = checkoutUrl;
+  };
+
+  // 3. Pay with Crypto -> Open crypto wallet address and payment flow
+  const handleToggleCrypto = () => {
+    soundEngine.playButtonClick(500);
+    setShowCryptoView((prev) => !prev);
+  };
+
+  const handleCopyCryptoAddress = (addr) => {
+    navigator.clipboard?.writeText(addr);
+    setCopiedAddress(true);
+    soundEngine.playButtonClick(700);
+    setTimeout(() => setCopiedAddress(false), 2200);
+  };
+
+  const handleConfirmCryptoSent = () => {
+    if (!selectedPkg) return;
+    soundEngine.playWin(true);
+
+    paymentService.recordPurchase({
+      packageId: selectedPkg.id,
+      amountUsd: selectedPkg.priceUsd,
+      goldCoins: selectedPkg.goldCoins,
+      sweepsCoins: selectedPkg.freeSweepsCoins,
+      method: `crypto_${selectedCrypto.toLowerCase()}`,
+      status: 'completed',
+    });
+
+    if (onPurchaseSuccess) {
+      onPurchaseSuccess(selectedPkg);
+    }
+    onClose();
+  };
+
+  const handleSimulateReturnDemo = () => {
     soundEngine.playWin(true);
     if (onPurchaseSuccess && selectedPkg) {
       onPurchaseSuccess(selectedPkg);
     }
-    setWaitingForReturn(false);
     onClose();
   };
 
@@ -169,6 +246,16 @@ export default function PaymentModal({
     }
   };
 
+  const currentCryptoObj =
+    CRYPTO_PAYMENT_OPTIONS.find((c) => c.symbol === selectedCrypto) ||
+    CRYPTO_PAYMENT_OPTIONS[0];
+
+  const calculatedCryptoAmount = selectedPkg
+    ? (selectedPkg.priceUsd * currentCryptoObj.rateMultiplier).toFixed(
+        currentCryptoObj.symbol === 'USDT' ? 2 : 6
+      )
+    : '0';
+
   const txHistory = paymentService.getTransactionHistory();
 
   return (
@@ -193,8 +280,8 @@ export default function PaymentModal({
               <p className="text-xs text-amber-200/80 font-medium">
                 {activeTab === 'store'
                   ? step === 1
-                    ? 'Screen 1 of 2: Choose a Package'
-                    : 'Screen 2 of 2: Choose Payment Method'
+                    ? 'Step 1: Choose Your Package for SC & GC'
+                    : 'Step 2: Pay with Card, Cash App Pay, or Crypto'
                   : activeTab === 'redeem'
                   ? 'Redeem Sweeps Coins for Real Cash (1 SC = $1 USD)'
                   : 'Recent Purchases & Cashouts'}
@@ -284,10 +371,10 @@ export default function PaymentModal({
                     <div>
                       <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-[#ffd700]" />
-                        Select Your Coin Bundle
+                        Select a Package for SC & GC
                       </h3>
                       <p className="text-xs text-white/70">
-                        Choose any bundle below. Every package includes FREE Bonus Sweeps Coins!
+                        Choose any package below. Every bundle includes promotional Sweeps Coins (SC) redeemable for real cash prizes!
                       </p>
                     </div>
                     <span className="text-xs font-bold px-2.5 py-1 rounded bg-[#ffd700]/20 text-[#ffd700] border border-[#ffd700]/40">
@@ -298,7 +385,6 @@ export default function PaymentModal({
                   {/* Package Cards List */}
                   <div className="grid grid-cols-1 gap-3">
                     {SWEEPSTAKES_CONFIG.storePackages.map((pkg) => {
-                      const isSelected = selectedPkg?.id === pkg.id;
                       return (
                         <div
                           key={pkg.id}
@@ -318,20 +404,17 @@ export default function PaymentModal({
 
                           <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ffd700]/20 to-[#ff9900]/10 border border-[#ffd700]/30 flex items-center justify-center shrink-0">
-                              <Coins className="w-6 h-6 text-[#ffd700]" />
+                              <Gem className="w-6 h-6 text-emerald-400" />
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="text-lg font-black text-white">
-                                  {pkg.goldCoins.toLocaleString()} Gold Coins
+                                <span className="text-lg font-black text-emerald-400 flex items-center gap-1">
+                                  +{pkg.freeSweepsCoins.toFixed(2)} Sweeps Coins (SC)
                                 </span>
                               </div>
-                              <div className="text-sm font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
-                                <Gem className="w-4 h-4" />
-                                +{pkg.freeSweepsCoins.toFixed(2)} FREE Sweeps Coins
-                                <span className="text-xs text-white/50 font-normal">
-                                  (${pkg.freeSweepsCoins.toFixed(2)} USD Value)
-                                </span>
+                              <div className="text-sm font-bold text-amber-300 flex items-center gap-1 mt-0.5">
+                                <Coins className="w-4 h-4 text-[#ffd700]" />
+                                +{pkg.goldCoins.toLocaleString()} Free Gold Coins
                               </div>
                               <div className="text-[11px] text-white/60 mt-0.5">{pkg.tagline}</div>
                             </div>
@@ -363,21 +446,21 @@ export default function PaymentModal({
                   <div className="text-center pt-2">
                     <p className="text-[11px] text-white/50 flex items-center justify-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      100% US Sweepstakes Compliant &bull; Instant Delivery &bull; Safe & Secure
+                      100% US Sweepstakes Compliant &bull; 1 SC = $1.00 USD Value &bull; Instant Delivery
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* STEP 2: CHOOSE PAYMENT METHOD */}
+              {/* STEP 2: CHOOSE PAYMENT METHOD (Card, Cash App Pay, or Crypto) */}
               {step === 2 && (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {/* Top Bar with Back Button */}
                   <div className="flex items-center justify-between">
                     <button
                       onClick={() => {
                         setStep(1);
-                        setWaitingForReturn(false);
+                        setShowCryptoView(false);
                         soundEngine.playButtonClick(400);
                       }}
                       className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#ffd700] hover:text-amber-200 transition-colors py-1 px-2.5 rounded-lg bg-white/5 hover:bg-white/10"
@@ -385,7 +468,7 @@ export default function PaymentModal({
                       <ArrowLeft className="w-4 h-4" />
                       Change Package
                     </button>
-                    <span className="text-xs font-bold px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded bg-[#ffd700]/20 text-[#ffd700] border border-[#ffd700]/40">
                       STEP 2 OF 2: CHOOSE PAYMENT METHOD
                     </span>
                   </div>
@@ -394,117 +477,129 @@ export default function PaymentModal({
                   <div className="p-4 rounded-xl bg-gradient-to-r from-[#ffd700]/10 via-black/40 to-black/60 border border-[#ffd700]/40 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-[#ffd700]/20 border border-[#ffd700]/40 flex items-center justify-center">
-                        <Coins className="w-5 h-5 text-[#ffd700]" />
+                        <Gem className="w-5 h-5 text-emerald-400" />
                       </div>
                       <div>
                         <div className="text-xs uppercase tracking-wider text-amber-300 font-bold">
                           Selected Package:
                         </div>
                         <div className="text-sm sm:text-base font-black text-white">
-                          {selectedPkg?.goldCoins?.toLocaleString()} Gold Coins +{' '}
                           <span className="text-emerald-400">
-                            {selectedPkg?.freeSweepsCoins?.toFixed(2)} FREE SC
-                          </span>
+                            +{selectedPkg?.freeSweepsCoins?.toFixed(2)} Sweeps Coins (SC)
+                          </span>{' '}
+                          + {selectedPkg?.goldCoins?.toLocaleString()} GC
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg sm:text-2xl font-black text-[#ffe875]">
+                      <div className="text-xl sm:text-2xl font-black text-[#ffe875]">
                         ${selectedPkg?.priceUsd?.toFixed(2)} USD
                       </div>
                     </div>
                   </div>
 
-                  {/* If waiting for return / payment link opened */}
-                  {waitingForReturn ? (
-                    <div className="p-5 rounded-2xl bg-gradient-to-b from-black/80 to-black/95 border-2 border-emerald-500/50 text-center space-y-4 animate-fade-in shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                      <div className="w-14 h-14 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center mx-auto animate-pulse">
-                        <Zap className="w-7 h-7 text-emerald-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-black text-white">Checkout Opened!</h4>
-                        <p className="text-xs sm:text-sm text-white/80 max-w-md mx-auto mt-1">
-                          Complete your payment in Cash App Pay or Stripe. Upon completion, you will be automatically redirected back to Crowns of Kemet to receive your coins!
-                        </p>
+                  <div className="text-sm font-bold text-white/90">
+                    How would you like to pay? Choose an option:
+                  </div>
+
+                  {/* THE 3 PAYMENT METHODS */}
+                  <div className="space-y-3">
+                    {/* OPTION 1: PAY WITH CARD (Stripe) */}
+                    <div
+                      onClick={handlePayWithCard}
+                      className="group cursor-pointer relative p-4 sm:p-5 rounded-2xl border-2 border-indigo-500/40 hover:border-indigo-400 bg-gradient-to-r from-indigo-500/15 via-black/50 to-black/70 hover:from-indigo-500/25 transition-all duration-200 shadow-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
+                          <CreditCard className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                            Pay with Card
+                            <span className="text-[10px] font-bold text-indigo-300 px-2 py-0.5 rounded bg-indigo-500/20 border border-indigo-400/30">
+                              Stripe Checkout
+                            </span>
+                          </div>
+                          <p className="text-xs text-white/70 mt-0.5">
+                            Visa, Mastercard, Amex, Apple Pay & Google Pay. Secure Stripe checkout page.
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                        <button
-                          onClick={handleSimulateReturn}
-                          className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          Simulate Payment Return (Demo)
-                        </button>
-                        <button
-                          onClick={() => setWaitingForReturn(false)}
-                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-semibold text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
-                        >
-                          Choose Different Payment Method
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePayWithCard();
+                        }}
+                        className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-95 shrink-0"
+                      >
+                        Pay ${selectedPkg?.priceUsd?.toFixed(2)} with Card
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
                     </div>
-                  ) : (
-                    /* The 2 Payment Methods */
-                    <div className="space-y-3">
-                      {/* METHOD 1: CASH APP PAY (Primary / Highlighted) */}
-                      <div
-                        onClick={() => handleInitiatePayment('cashapp')}
-                        className="group cursor-pointer relative p-5 rounded-2xl border-2 border-[#00D632] bg-gradient-to-r from-[#00D632]/15 via-black/50 to-black/70 hover:from-[#00D632]/25 hover:border-[#00ff3c] transition-all duration-200 shadow-[0_0_25px_rgba(0,214,50,0.25)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-                      >
-                        <div className="absolute -top-2.5 right-4 px-3 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-[#00D632] text-black shadow-md flex items-center gap-1">
-                          <Zap className="w-3 h-3 fill-black" />
-                          RECOMMENDED &bull; INSTANT REDIRECT
-                        </div>
 
-                        <div className="flex items-center gap-4">
-                          {/* Cash App Logo / Icon */}
-                          <div className="w-14 h-14 rounded-2xl bg-[#00D632] flex items-center justify-center text-black font-black text-2xl shadow-[0_0_20px_rgba(0,214,50,0.5)] shrink-0">
-                            $
-                          </div>
-                          <div>
-                            <div className="text-lg font-black text-white flex items-center gap-2">
-                              Cash App Pay
-                              <span className="text-xs font-bold text-[#00D632] px-2 py-0.5 rounded bg-[#00D632]/10 border border-[#00D632]/30">
-                                1-Tap Mobile
-                              </span>
-                            </div>
-                            <p className="text-xs text-white/80 mt-0.5">
-                              Pay instantly with Cash App Pay. Automatically returns to game when finished!
-                            </p>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleInitiatePayment('cashapp');
-                          }}
-                          className="w-full sm:w-auto px-5 py-3 rounded-xl font-black text-sm bg-[#00D632] hover:bg-[#00ff3c] text-black shadow-[0_0_20px_rgba(0,214,50,0.4)] flex items-center justify-center gap-2 transition-transform active:scale-95 shrink-0"
-                        >
-                          Pay ${selectedPkg?.priceUsd?.toFixed(2)} with Cash App Pay
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
+                    {/* OPTION 2: CASH APP PAY */}
+                    <div
+                      onClick={handlePayWithCashApp}
+                      className="group cursor-pointer relative p-4 sm:p-5 rounded-2xl border-2 border-[#00D632] bg-gradient-to-r from-[#00D632]/15 via-black/50 to-black/70 hover:from-[#00D632]/25 hover:border-[#00ff3c] transition-all duration-200 shadow-[0_0_20px_rgba(0,214,50,0.2)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                    >
+                      <div className="absolute -top-2.5 right-4 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-[#00D632] text-black shadow-md flex items-center gap-1">
+                        <Zap className="w-3 h-3 fill-black" />
+                        POPULAR &bull; INSTANT
                       </div>
 
-                      {/* METHOD 2: DEBIT / CREDIT CARD & DIGITAL WALLETS (Stripe) */}
-                      <div
-                        onClick={() => handleInitiatePayment('stripe')}
-                        className="group cursor-pointer relative p-5 rounded-2xl border-2 border-white/15 hover:border-[#ffd700]/70 bg-gradient-to-r from-white/5 via-black/40 to-black/60 hover:from-black/60 transition-all duration-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-[#00D632] flex items-center justify-center text-black font-black text-xl shadow-[0_0_15px_rgba(0,214,50,0.4)] shrink-0">
+                          $
+                        </div>
+                        <div>
+                          <div className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                            Cash App Pay
+                            <span className="text-[10px] font-bold text-[#00D632] px-2 py-0.5 rounded bg-[#00D632]/10 border border-[#00D632]/30">
+                              1-Tap Mobile
+                            </span>
+                          </div>
+                          <p className="text-xs text-white/70 mt-0.5">
+                            Fast payment with Cash App Pay. Automatically returns to game when complete!
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePayWithCashApp();
+                        }}
+                        className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm bg-[#00D632] hover:bg-[#00ff3c] text-black shadow-[0_0_15px_rgba(0,214,50,0.4)] flex items-center justify-center gap-1.5 transition-transform active:scale-95 shrink-0"
                       >
+                        Pay with Cash App Pay
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* OPTION 3: PAY WITH CRYPTO */}
+                    <div
+                      onClick={handleToggleCrypto}
+                      className={`group cursor-pointer relative p-4 sm:p-5 rounded-2xl border-2 transition-all duration-200 flex flex-col gap-4 ${
+                        showCryptoView
+                          ? 'border-[#f7931a] bg-gradient-to-r from-[#f7931a]/20 via-black/50 to-black/70 shadow-[0_0_20px_rgba(247,147,26,0.2)]'
+                          : 'border-white/15 hover:border-[#f7931a]/60 bg-gradient-to-r from-white/5 via-black/40 to-black/60 hover:from-black/60'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-600/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
-                            <CreditCard className="w-7 h-7" />
+                          <div className="w-12 h-12 rounded-xl bg-[#f7931a]/20 border border-[#f7931a]/40 flex items-center justify-center text-[#f7931a] shrink-0">
+                            <Bitcoin className="w-6 h-6" />
                           </div>
                           <div>
-                            <div className="text-lg font-black text-white flex items-center gap-2">
-                              Debit / Credit Card
-                              <span className="text-[10px] font-bold text-white/70 px-2 py-0.5 rounded bg-white/10">
-                                Apple Pay &bull; Google Pay
+                            <div className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                              Pay with Crypto
+                              <span className="text-[10px] font-bold text-[#f7931a] px-2 py-0.5 rounded bg-[#f7931a]/15 border border-[#f7931a]/30">
+                                USDT &bull; BTC &bull; ETH &bull; SOL
                               </span>
                             </div>
                             <p className="text-xs text-white/70 mt-0.5">
-                              Visa, Mastercard, Amex, Apple Pay, Google Pay via Stripe secure checkout.
+                              Anonymous, instant crypto deposit with 0% extra merchant fees.
                             </p>
                           </div>
                         </div>
@@ -512,26 +607,106 @@ export default function PaymentModal({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleInitiatePayment('stripe');
+                            handleToggleCrypto();
                           }}
-                          className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/20 border border-white/20 hover:border-[#ffd700] text-white shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 shrink-0"
+                          className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-[#f7931a]/20 hover:bg-[#f7931a]/30 border border-[#f7931a]/50 text-[#f7931a] shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-95 shrink-0"
                         >
-                          Pay with Card / Apple Pay
-                          <ArrowRight className="w-4 h-4" />
+                          <Wallet className="w-4 h-4" />
+                          {showCryptoView ? 'Hide Crypto Details' : 'Pay with Crypto'}
                         </button>
                       </div>
-                    </div>
-                  )}
 
-                  {/* Security Footer Notice */}
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-[11px] text-white/60 space-y-1">
-                    <div className="flex items-center gap-1.5 font-bold text-white/80">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      Automatic Game Return & Instant Coin Credit
+                      {/* Crypto Deposit Drawer */}
+                      {showCryptoView && (
+                        <div
+                          className="pt-4 border-t border-[#f7931a]/30 space-y-4 animate-fade-in"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-white/80 mb-2">
+                              Choose Cryptocurrency:
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {CRYPTO_PAYMENT_OPTIONS.map((c) => (
+                                <button
+                                  key={c.symbol}
+                                  onClick={() => {
+                                    setSelectedCrypto(c.symbol);
+                                    soundEngine.playButtonClick(450);
+                                  }}
+                                  className={`p-2.5 rounded-xl font-bold text-xs border flex items-center justify-center gap-2 transition-all ${
+                                    selectedCrypto === c.symbol
+                                      ? 'border-[#f7931a] bg-[#f7931a]/25 text-white shadow-md'
+                                      : 'border-white/10 hover:border-white/30 text-white/60 hover:text-white'
+                                  }`}
+                                >
+                                  <span style={{ color: c.color }}>{c.symbol}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl bg-black/60 border border-white/15 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-white/60">Amount to Send:</span>
+                              <span className="font-black text-white text-sm">
+                                {calculatedCryptoAmount} {currentCryptoObj.unit}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-white/60">Network:</span>
+                              <span className="font-bold text-emerald-400">
+                                {currentCryptoObj.network}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="text-[11px] text-white/60 mb-1">
+                                Send to Deposit Address:
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 px-3 py-2 rounded-lg bg-black/80 border border-white/20 font-mono text-[11px] text-amber-200 truncate select-all">
+                                  {currentCryptoObj.address}
+                                </div>
+                                <button
+                                  onClick={() => handleCopyCryptoAddress(currentCryptoObj.address)}
+                                  className="px-3 py-2 rounded-lg bg-[#f7931a]/20 hover:bg-[#f7931a]/30 border border-[#f7931a]/40 text-[#f7931a] text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0"
+                                >
+                                  {copiedAddress ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                      Copied!
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3.5 h-3.5" />
+                                      Copy
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={handleConfirmCryptoSent}
+                            className="w-full py-3 rounded-xl font-black text-sm bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            I Have Sent Crypto &bull; Verify & Credit SC
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      When your payment completes, the payment provider will automatically redirect your browser back to Crowns of Kemet, where your Gold Coins and FREE Sweeps Coins will be credited to your top balance instantly!
-                    </div>
+                  </div>
+
+                  {/* Test Demo Button */}
+                  <div className="pt-2 text-center">
+                    <button
+                      onClick={handleSimulateReturnDemo}
+                      className="text-[11px] text-white/40 hover:text-white/70 underline transition-colors"
+                    >
+                      Developer Test: Simulate Instant Return Credit (Demo)
+                    </button>
                   </div>
                 </div>
               )}
