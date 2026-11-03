@@ -151,27 +151,13 @@ export default function FreeSpinsScreen({
       let retriggeredSpins = 0;
       if (scatterCells.length >= 3) {
         retriggeredSpins = scatterCells.length >= 4 ? 5 : 3;
-        scatterWinCoins = (scatterCells.length >= 4 ? 180 : 60) * multiplier;
+        scatterWinCoins = (scatterCells.length >= 4 ? 40 : 15) * multiplier;
         totalCoinsWon += scatterWinCoins;
         scatterCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
         wins.unshift({
           line: { id: 'SCATTER', name: `${scatterCells.length}× Sun God Ra`, rows: [1, 1, 1, 1, 1], color: '#fbbf24' },
           symbol: { id: 'fs_retrigger', name: 'Sun God Ra Aureole' },
           matchCount: scatterCells.length,
-          lineWin: scatterWinCoins,
-          hasWild: false,
-          isScatter: true,
-          cells: scatterCells,
-        });
-      } else if (scatterCells.length === 2) {
-        // 2 Scatters awards a nice coin payout, but no extra spins
-        scatterWinCoins = 15 * multiplier;
-        totalCoinsWon += scatterWinCoins;
-        scatterCells.forEach(([c, r]) => winCoordSet.add(`${c}-${r}`));
-        wins.unshift({
-          line: { id: 'SCATTER', name: '2× Sun God Ra Scatters', rows: [1, 1, 1, 1, 1], color: '#fbbf24' },
-          symbol: { id: 'fs_retrigger', name: 'Sun God Ra Aureole' },
-          matchCount: 2,
           lineWin: scatterWinCoins,
           hasWild: false,
           isScatter: true,

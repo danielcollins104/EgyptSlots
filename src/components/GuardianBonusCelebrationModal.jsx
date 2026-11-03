@@ -13,7 +13,7 @@ export default function GuardianBonusCelebrationModal({
   onStartFreeSpins,
   onEnterBonusVault,
   onClose,
-  initialSpins = 10,
+  initialSpins = 6,
 }) {
   const [countdown, setCountdown] = useState(4);
 
@@ -120,7 +120,7 @@ export default function GuardianBonusCelebrationModal({
           <div className="guardian-bonus-feature-chip chip-mult">
             <Zap size={16} className="chip-icon" />
             <div className="chip-text">
-              <strong>3× MULTIPLIER</strong>
+              <strong>2× MULTIPLIER</strong>
               <small>Solar Win Surge</small>
             </div>
           </div>

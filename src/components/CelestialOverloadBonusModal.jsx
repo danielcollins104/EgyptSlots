@@ -19,7 +19,7 @@ export default function CelestialOverloadBonusModal({
 
   // 6 Celestial Altars
   const [altars, setAltars] = useState([]);
-  const [picksRemaining, setPicksRemaining] = useState(4);
+  const [picksRemaining, setPicksRemaining] = useState(3);
   const [totalWinCoins, setTotalWinCoins] = useState(0);
   const [activeMultiplier, setActiveMultiplier] = useState(1);
   const [activeStrikeEffect, setActiveStrikeEffect] = useState(null);
@@ -38,12 +38,12 @@ export default function CelestialOverloadBonusModal({
 
     const baseBet = Math.max(1, currentBet);
     const altarTemplates = [
-      { id: 0, name: 'Eye of Ra', element: 'solar', mult: 10, bonusMult: 2, icon: '🔥', title: 'Solar Flare Altar' },
-      { id: 1, name: 'Anubis Scepter', element: 'lightning', mult: 15, bonusMult: 3, icon: '⚡', title: 'Thunderbolt Altar' },
-      { id: 2, name: 'Scarab of Eternity', element: 'solar', mult: 25, bonusMult: 4, icon: '🌟', title: 'Sunfire Scarab Altar' },
-      { id: 3, name: 'Bastet Claws', element: 'lightning', mult: 20, bonusMult: 3, icon: '⚡', title: 'Plasma Claw Altar' },
-      { id: 4, name: 'Ankh of Horus', element: 'solar', mult: 35, bonusMult: 5, icon: '✨', title: 'Celestial Ankh Altar' },
-      { id: 5, name: 'Apex Zenith Orb', element: 'cosmic', mult: 50, bonusMult: 10, icon: '👑', title: 'Zenith Grand Altar' },
+      { id: 0, name: 'Eye of Ra', element: 'solar', mult: 3, bonusMult: 1, icon: '🔥', title: 'Solar Flare Altar' },
+      { id: 1, name: 'Anubis Scepter', element: 'lightning', mult: 4, bonusMult: 1, icon: '⚡', title: 'Thunderbolt Altar' },
+      { id: 2, name: 'Scarab of Eternity', element: 'solar', mult: 6, bonusMult: 1, icon: '🌟', title: 'Sunfire Scarab Altar' },
+      { id: 3, name: 'Bastet Claws', element: 'lightning', mult: 5, bonusMult: 1, icon: '⚡', title: 'Plasma Claw Altar' },
+      { id: 4, name: 'Ankh of Horus', element: 'solar', mult: 8, bonusMult: 2, icon: '✨', title: 'Celestial Ankh Altar' },
+      { id: 5, name: 'Apex Zenith Orb', element: 'cosmic', mult: 12, bonusMult: 2, icon: '👑', title: 'Zenith Grand Altar' },
     ];
 
     // Shuffle templates
@@ -56,7 +56,7 @@ export default function CelestialOverloadBonusModal({
     }));
 
     setAltars(shuffled);
-    setPicksRemaining(4);
+    setPicksRemaining(3);
     setTotalWinCoins(0);
     setActiveMultiplier(1);
     setIsCompleted(false);
@@ -248,12 +248,12 @@ export default function CelestialOverloadBonusModal({
 
       if (lastElement && (lastElement === target.element || target.element === 'cosmic' || lastElement === 'cosmic')) {
         isResonance = true;
-        comboAddPicks = 1;
-        comboAddMult = 2;
+        comboAddPicks = 0;
+        comboAddMult = 1;
         setComboStreak((prev) => prev + 1);
         soundEngine.playBonusTrigger();
         setResonanceAlert(
-          `⚡ ELEMENTAL RESONANCE! ${String(target.element).toUpperCase()} HARMONY AWARDS +1 EXTRA PICK & +2× MULTIPLIER!`
+          `⚡ ELEMENTAL RESONANCE! ${String(target.element).toUpperCase()} HARMONY AWARDS +1× MULTIPLIER SURGE!`
         );
         setTimeout(() => setResonanceAlert(null), 3500);
       } else {
@@ -264,9 +264,9 @@ export default function CelestialOverloadBonusModal({
       const nextPicks = picksRemaining - 1 + comboAddPicks;
       setPicksRemaining(nextPicks);
 
-      // Update altar state
-      const winWithMultiplier = target.winAmount * activeMultiplier;
-      const nextMultiplier = activeMultiplier + (target.bonusMult || 1) + comboAddMult;
+      // Update altar state (cap multiplier at 4x to prevent runaway inflation)
+      const winWithMultiplier = Math.round(target.winAmount * activeMultiplier);
+      const nextMultiplier = Math.min(4, activeMultiplier + (target.bonusMult || 1) + comboAddMult);
 
       // Calculate spawn coordinates for floating toast
       const rect = e?.currentTarget?.getBoundingClientRect();

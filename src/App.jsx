@@ -487,9 +487,9 @@ export default function App() {
     nextPowerUpGuardianRef.current = 'anubis';
     setNextPowerUpGuardian('anubis');
 
-    // Launch 10 automated celestial free spins
+    // Launch 6 calibrated celestial free spins from Guardian Overcharge
     setAutoPlayCount(0);
-    setFreeSpinsCount(10);
+    setFreeSpinsCount(6);
     setFreeSpinsOpen(true);
     soundEngine.playBonusTrigger?.();
   }, [triggerAnubisPowerUp, triggerBastetPowerUp]);
@@ -503,13 +503,13 @@ export default function App() {
     nextPowerUpGuardianRef.current = 'anubis';
     setNextPowerUpGuardian('anubis');
 
-    // Launch 3D Treasure Vault
+    // Launch 3D Treasure Vault with balanced picks and 1x starting multiplier
     setAutoPlayCount(0);
     setBonusSession({
       triggerReason: 'Guardian Apex Overcharge 3D Vault',
-      initialPicks: 5,
-      wheelSpins: 2,
-      startingMultiplier: 3,
+      initialPicks: 3,
+      wheelSpins: 1,
+      startingMultiplier: 1,
       scatterWinCoins: 0,
     });
     soundEngine.playBonusTrigger?.();
@@ -909,7 +909,7 @@ export default function App() {
       }
 
       // Guardian Selective Animation & Persistent Charge Build-Up Engine:
-      // Characters do NOT move on every win; only on rare select combinations (sacred awakening relics, high relics, 4/5-of-a-kind, expanding wilds, big wins, scatters).
+      // Characters do NOT move on every win; only on rare select combinations (sacred awakening relics, 4/5-of-a-kind, expanding wilds, big wins, scatters).
       const allWinCells = Array.from(winCoordSet).map((k) => k.split(',').map(Number));
       const hasExpandingWild = pending?.nextExpanded && pending.nextExpanded.some((e) => e === true);
       const hasLotusMatch = wins.some((w) => w.symbol?.id === 'bastet_lotus');
@@ -923,10 +923,7 @@ export default function App() {
               w.symbol?.isGuardianAwakener ||
               w.symbol?.id === 'bastet_lotus' ||
               w.symbol?.id === 'anubis_scepter' ||
-              w.symbol?.id === 'eye' ||
-              w.symbol?.id === 'scarab' ||
-              w.symbol?.id === 'ankh' ||
-              w.symbol?.id === 'necklace'))
+              w.symbol?.id === 'eye'))
       );
       const isSelectCombination = isBig || bonusCount >= 2 || hasExpandingWild || hasHighMatch || hasGuardianAwakener;
       const currentCharge = guardianChargeLevelRef.current ?? guardianChargeLevel;
@@ -967,7 +964,7 @@ export default function App() {
         setTimeout(() => {
           setGuardianAction(false);
         }, 1600);
-      } else if (isSelectCombination || wins.length > 0) {
+      } else if (isSelectCombination) {
         // =========================================================================
         // 2026 ALTERNATING GUARDIAN POWER-UPS & FULL CHARGE CLIMAX:
         // 1. Power-ups strictly alternate between Lord Anubis and Queen Bastet.
@@ -1141,9 +1138,9 @@ export default function App() {
     setBonusMeter(0);
     setBonusSession({
       triggerReason: BONUS_CONFIG.meterTriggerName,
-      initialPicks: 4,
+      initialPicks: 3,
       wheelSpins: 1,
-      startingMultiplier: 2,
+      startingMultiplier: 1,
       scatterWinCoins: 0,
       defaultGame: 'vault',
     });
@@ -1164,9 +1161,9 @@ export default function App() {
     setAutoPlayCount(0);
     setBonusSession({
       triggerReason: BONUS_CONFIG.vipDirectTriggerName,
-      initialPicks: 4,
-      wheelSpins: 2,
-      startingMultiplier: bonusMeter >= BONUS_METER_GOAL ? 2 : 1,
+      initialPicks: 3,
+      wheelSpins: 1,
+      startingMultiplier: 1,
       scatterWinCoins: 0,
       defaultGame,
     });
@@ -1548,11 +1545,11 @@ export default function App() {
         nextExpanded[1] = true;
         nextExpanded[3] = true;
         nextGrid = [
-          [r(5), topHigh, r(7)],
+          [r(5), r(7), r(8)],
           [expSym, expSym, expSym],
-          [r(6), topHigh, r(4)],
+          [r(6), r(7), r(4)],
           [expSym, expSym, expSym],
-          [r(7), topHigh, r(5)],
+          [r(9), r(8), r(6)],
         ];
       } else if (forcedMode === 'microwin') {
         const lowSym = regs[regs.length - 1] || topHigh;
@@ -1633,11 +1630,14 @@ export default function App() {
           col.map((id) => symbolMap.get(id) || symbolMap.get('neon_10') || activeSymbols[0])
         );
 
-        // Check expanding wild columns (Reels 2, 3, 4) — calibrated authentic casino feature rate (~1 in 96 spins)
+        // Check expanding wild columns (Reels 2, 3, 4) — calibrated authentic casino feature rate
+        let expandedCount = 0;
         for (let c = 1; c <= 3; c++) {
-          if (nextGrid[c].some((s) => s.isExpanding) || Math.random() < 0.0035) {
+          const hasPhysicalExpand = nextGrid[c].some((s) => s.isExpanding);
+          if ((hasPhysicalExpand && expandedCount < 2) || (!hasPhysicalExpand && expandedCount === 0 && Math.random() < 0.0015)) {
             nextExpanded[c] = true;
             nextGrid[c] = [expSym, expSym, expSym];
+            expandedCount++;
           }
         }
       }
@@ -3722,7 +3722,7 @@ export default function App() {
         onStartFreeSpins={handleStartFreeSpinsFromGuardians}
         onEnterBonusVault={handleEnterBonusVaultFromGuardians}
         onClose={() => setGuardianBonusCelebrationOpen(false)}
-        initialSpins={10}
+        initialSpins={6}
       />
 
       {/* 3D Bonus Games Modal */}

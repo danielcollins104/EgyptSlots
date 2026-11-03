@@ -261,16 +261,16 @@ assert(currentSpins === 20, 'Second retrigger adds another +5 Free Spins (total:
 console.log('\n--- 6. Testing Celestial Overload Bonus Round ---');
 
 const altarTemplates = [
-  { id: 0, name: 'Eye of Ra', element: 'solar', mult: 10 },
-  { id: 1, name: 'Anubis Scepter', element: 'lightning', mult: 15 },
-  { id: 2, name: 'Scarab of Eternity', element: 'solar', mult: 25 },
-  { id: 3, name: 'Bastet Claws', element: 'lightning', mult: 20 },
-  { id: 4, name: 'Ankh of Horus', element: 'solar', mult: 35 },
-  { id: 5, name: 'Apex Zenith Orb', element: 'cosmic', mult: 50 },
+  { id: 0, name: 'Eye of Ra', element: 'solar', mult: 3 },
+  { id: 1, name: 'Anubis Scepter', element: 'lightning', mult: 4 },
+  { id: 2, name: 'Scarab of Eternity', element: 'solar', mult: 6 },
+  { id: 3, name: 'Bastet Claws', element: 'lightning', mult: 5 },
+  { id: 4, name: 'Ankh of Horus', element: 'solar', mult: 8 },
+  { id: 5, name: 'Apex Zenith Orb', element: 'cosmic', mult: 12 },
 ];
 assert(altarTemplates.length === 6, '6 Celestial Altars configured');
 altarTemplates.forEach((altar) => {
-  assert(altar.mult >= 10, `Altar [${altar.name}] provides generous multiplier (${altar.mult}x)`);
+  assert(altar.mult >= 3, `Altar [${altar.name}] provides balanced multiplier (${altar.mult}x)`);
 });
 
 // ============================================================================

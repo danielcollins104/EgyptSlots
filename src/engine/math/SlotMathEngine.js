@@ -109,6 +109,7 @@ export class SlotMathEngine {
       let matchSymbolId = null;
       let regularMatchCount = 0;
       let hasWildInRegular = false;
+      let hasPyramidWildInRegular = false;
 
       // Find first non-wild symbol along the line
       for (let c = 0; c < COLS; c++) {
@@ -127,6 +128,9 @@ export class SlotMathEngine {
           } else if (cell.isWild) {
             regularMatchCount++;
             hasWildInRegular = true;
+            if (!cell.isExpanding) {
+              hasPyramidWildInRegular = true;
+            }
           } else {
             break;
           }
@@ -140,7 +144,8 @@ export class SlotMathEngine {
       const matchCell = lineCells.find((c) => c.cell.id === matchSymbolId)?.cell;
       const targetSymbolPaytable = matchCell?.payouts || this.paytable[matchSymbolId]?.payouts;
       const basePay = targetSymbolPaytable?.[regularMatchCount] || 0;
-      const regularMultiplier = hasWildInRegular ? 2 : 1;
+      // Standard Pyramid Wilds double (2x) the payline win; 1x3 Expanding Column Wilds substitute at 1x across all 3 rows
+      const regularMultiplier = hasPyramidWildInRegular ? 2 : 1;
       const regularPay = basePay * regularMultiplier * betLevel;
 
       if (pureWildPay > 0 && pureWildPay >= regularPay) {

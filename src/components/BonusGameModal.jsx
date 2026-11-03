@@ -23,9 +23,29 @@ import PsdGoldNumber from './PsdGoldNumber';
 
 function buildVaultBoard(currentBet) {
   const styles = BONUS_CONFIG.vaultTileStyles;
-  const pool = BONUS_CONFIG.vaultPrizeTemplates.map((tpl) => ({
+  const templates = BONUS_CONFIG.vaultPrizeTemplates;
+  const regularTemplates = templates.filter((t) => t.kind !== 'jackpot');
+  const miniJp = templates.find((t) => t.jackpotId === 'mini') || regularTemplates[0];
+  const minorJp = templates.find((t) => t.jackpotId === 'minor') || regularTemplates[0];
+  const majorJp = templates.find((t) => t.jackpotId === 'major') || regularTemplates[0];
+
+  // Build a weighted 12-tile board so Major/Minor jackpots only appear on the board occasionally
+  const selectedTemplates = [...regularTemplates];
+  while (selectedTemplates.length < 11) {
+    selectedTemplates.push(regularTemplates[selectedTemplates.length % regularTemplates.length]);
+  }
+  const jpRoll = Math.random();
+  if (jpRoll < 0.04) {
+    selectedTemplates.push(majorJp);
+  } else if (jpRoll < 0.18) {
+    selectedTemplates.push(minorJp);
+  } else {
+    selectedTemplates.push(miniJp);
+  }
+
+  const pool = selectedTemplates.map((tpl) => ({
     ...tpl,
-    baseCoins: currentBet * tpl.betMult,
+    baseCoins: Number((currentBet * tpl.betMult).toFixed(2)),
   }));
 
   // Shuffle Fisher-Yates
@@ -434,7 +454,26 @@ export default function BonusGameModal({
     setWheelSpinsLeft((prev) => Math.max(0, prev - 1));
     soundEngine.playSpinStart();
 
-    const chosenIdx = Math.floor(Math.random() * wedges.length);
+    // Weighted wedge selection so Grand/Major jackpots have authentic casino rarity
+    const getWedgeWeight = (w) => {
+      if (w.jackpotId === 'grand') return 0.3;
+      if (w.jackpotId === 'major') return 1.2;
+      if (w.jackpotId === 'minor') return 3.5;
+      if (w.jackpotId === 'mini') return 7.0;
+      if (w.type === 'upgrade') return 6.0;
+      return Math.max(4, 24 - (w.mult || 5));
+    };
+    const weights = wedges.map(getWedgeWeight);
+    const totalW = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * totalW;
+    let chosenIdx = 0;
+    for (let i = 0; i < weights.length; i++) {
+      r -= weights[i];
+      if (r <= 0) {
+        chosenIdx = i;
+        break;
+      }
+    }
     const sliceDeg = 360 / wedges.length;
     const currentDeg = wheelRotationRef.current.deg;
     const targetMod = (360 - chosenIdx * sliceDeg) % 360;
