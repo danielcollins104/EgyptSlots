@@ -94,7 +94,7 @@ export const SWEEPSTAKES_CONFIG = {
   storePackages: [
     {
       id: 'pkg_starter',
-      tierTitle: 'Initiate Scepter Pack',
+      tierTitle: 'Root Chakra Royal Scepter Pack',
       priceUsd: 4.99,
       originalPriceUsd: 9.99,
       goldCoins: 10000,
@@ -113,7 +113,7 @@ export const SWEEPSTAKES_CONFIG = {
     },
     {
       id: 'pkg_bronze',
-      tierTitle: 'Sacred Scarab Chest',
+      tierTitle: 'Heart Chakra Scarab Chest',
       priceUsd: 9.99,
       originalPriceUsd: 16.99,
       goldCoins: 25000,
@@ -132,7 +132,7 @@ export const SWEEPSTAKES_CONFIG = {
     },
     {
       id: 'pkg_silver',
-      tierTitle: 'Royal Necklace Treasury',
+      tierTitle: 'Solar Plexus Pharaoh Treasury',
       priceUsd: 19.99,
       originalPriceUsd: 34.99,
       goldCoins: 60000,
@@ -151,7 +151,7 @@ export const SWEEPSTAKES_CONFIG = {
     },
     {
       id: 'pkg_gold',
-      tierTitle: 'All-Seeing Eye Vault',
+      tierTitle: 'Third-Eye Royal Horus Vault',
       priceUsd: 49.99,
       originalPriceUsd: 79.99,
       goldCoins: 175000,
@@ -170,7 +170,7 @@ export const SWEEPSTAKES_CONFIG = {
     },
     {
       id: 'pkg_diamond',
-      tierTitle: 'Pharaoh Crown Dynasty',
+      tierTitle: 'Crown Chakra Pharaoh Dynasty',
       priceUsd: 99.99,
       originalPriceUsd: 149.99,
       goldCoins: 400000,
@@ -247,7 +247,7 @@ export const SWEEPSTAKES_CONFIG = {
     },
     {
       id: 'pkg_hr_50000',
-      tierTitle: 'Emperor of Kemet Apex Vault',
+      tierTitle: 'Sovereign Crown Chakra Apex Vault',
       priceUsd: 50000.0,
       originalPriceUsd: 70000.0,
       goldCoins: 800000000,

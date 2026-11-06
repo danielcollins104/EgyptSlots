@@ -3,7 +3,7 @@
 // ============================================================================
 // Rigorously tests every single bonus system and mechanic in Egypt Slots:
 // 1. 3D Bonus Vault (Scatters trigger, pick-and-win tiles, multiplier accumulators)
-// 2. Fortune Wheel / Wheel of Kemet (Wedges, 4 Progressive Jackpots: Mini, Minor, Major, Grand)
+// 2. Fortune Wheel / Crown Chakra Wheel (Wedges, 4 Progressive Jackpots: Mini, Minor, Major, Grand)
 // 3. 3D Royal Bonus Collector Meter (Jewel pip accumulation, 100% threshold, celebration)
 // 4. Alternating Guardian Power-Ups (Anubis <-> Bastet alternation, 4/4 overcharge climax)
 // 5. Guardian Climax Strike & Illumination (Lightning & fire convergence, bonus modal fanfare)
@@ -351,13 +351,13 @@ LINE_OPTIONS.forEach((lines) => {
 // ============================================================================
 console.log('\n--- 10. Testing Golden Hustle Hybrid Suite (Doors, Hold & Win, and Ascension of Ra) ---');
 
-// 10.1 Doors of Kemet Hub
-assert(Array.isArray(BONUS_CONFIG.doors) && BONUS_CONFIG.doors.length === 4, 'Doors of Kemet configured with 4 temple gateways');
+// 10.1 Royal Chakra Portals Hub
+assert(Array.isArray(BONUS_CONFIG.doors) && BONUS_CONFIG.doors.length === 4, 'Royal Chakra Portals configured with 4 temple gateways');
 const doorIds = BONUS_CONFIG.doors.map((d) => d.id);
-assert(doorIds.includes('holdspin'), 'Doors include [HOLD & WIN RESPINS]');
-assert(doorIds.includes('vault'), 'Doors include [SACRED RELIC VAULT]');
-assert(doorIds.includes('wheel'), 'Doors include [WHEEL OF KEMET]');
-assert(doorIds.includes('ascension'), 'Doors include [ASCENSION OF RA]');
+assert(doorIds.includes('holdspin'), 'Doors include [SOLAR PLEXUS HOLD & WIN]');
+assert(doorIds.includes('vault'), 'Doors include [HEART CHAKRA RELIC VAULT]');
+assert(doorIds.includes('wheel'), 'Doors include [CROWN CHAKRA WHEEL]');
+assert(doorIds.includes('ascension'), 'Doors include [KUNDALINI ASCENSION OF RA]');
 
 // 10.2 Pharaoh's 15-Cell Hold & Win Respins
 const hwConfig = BONUS_CONFIG.holdSpin;

@@ -15,7 +15,7 @@ import org.junit.runner.RunWith;
 
 /**
  * Instrumented UI, Adaptive Configuration, & End-to-End (UI Automator) Tests
- * for Egypt Slots: Crowns of Kemet.
+ * for Egypt Slots: Pharaoh's Chakra Dynasty.
  */
 @RunWith(AndroidJUnit4.class)
 public class CasinoInstrumentedTest {

@@ -1,4 +1,4 @@
-# Egypt Slots: Crowns of Kemet — Cloud Disaster Recovery & Conversation Archive
+# Egypt Slots: Pharaoh's Chakra Dynasty — Cloud Disaster Recovery & Conversation Archive
 
 **Last Updated:** November 5, 2026  
 **Live Production Domain:** `https://oopsiwon.com` (`https://www.oopsiwon.com`)  
@@ -10,7 +10,7 @@
 
 ## 1. Complete Conversation & Milestone History
 
-This archive preserves the full engineering history and milestones completed across the development sessions for **DC Enterprises Casino — Crowns of Kemet**:
+This archive preserves the full engineering history and milestones completed across the development sessions for **DC Enterprises Casino — Pharaoh's Chakra Dynasty**:
 
 1. **Core Vegas Slot Engine & 90.0% RTP Mathematics (`src/engine/math/SlotMathEngine.js`, `src/engine/PhaserReelEngine.jsx`)**
    - 5×3 reel matrix with 15 paylines, configurable line counts (`1, 2, 5, 10, 15`), and dual-currency Sweepstakes architecture (`Gold Coins (GC)` for social play + `Sweeps Coins (SC)` redeemable 1:1 USD).
@@ -22,9 +22,9 @@ This archive preserves the full engineering history and milestones completed acr
    - Hardened `NeonKeyedImage.jsx` so any image decode or canvas flood-fill failure automatically falls back to the raw image asset.
 
 3. **Hands-Free "Free Money Celebration" Bonus Suite (`src/components/BonusGameModal.jsx`, `src/components/CelestialOverloadBonusModal.jsx`, `src/components/FreeSpinsScreen.jsx`)**
-   - **Doors of Kemet & 4-Chamber Automatic Tour:**
+   - **Royal Chakra Portals & 4-Chamber Automatic Tour:**
      - Defaults to **`⚡ AUTO-PLAY: ON (HANDS-FREE)`** with a glowing **`🎉 100% FREE BONUS MONEY`** plain-English guide bar under the header.
-     - Automatically launches from **Doors of Kemet** (`3s` countdown) and chains seamlessly through all 4 chambers:
+     - Automatically launches from **Royal Chakra Portals** (`3s` countdown) and chains seamlessly through all 4 chambers:
        1. **Chamber 1 — Hold & Win Respins (`holdspin`):** Auto-spins, locks glowing Golden Orbs, resets respins to `3` on every hit, and auto-advances to the Vault.
        2. **Chamber 2 — Sacred Relic Vault (`vault`):** Automatically unseals sacred chests every `1.2s` with multi-wave chamber refills and auto-advances to the Wheel.
        3. **Chamber 3 — 3D Wheel of Pharaohs (`wheel`):** Automatically spins the 3D fortune wheel and claims wedge multipliers/jackpots before advancing to Ascension.

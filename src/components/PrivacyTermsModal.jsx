@@ -96,7 +96,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept }) {
               <div className="legal-text-block highlight-block">
                 <h4>1. Operational Reserves &amp; Settlement-Based Payouts</h4>
                 <p>
-                  <strong>DC Enterprises (&ldquo;Crowns of Kemet&rdquo;)</strong> operates as an independent,
+                  <strong>DC Enterprises (&ldquo;Pharaoh&rsquo;s Chakra Dynasty&rdquo;)</strong> operates as an independent,
                   emerging sweepstakes gaming platform. Because we are a growing startup and emerging gaming studio,
                   all promotional Sweeps Coin prize redemptions are fulfilled and disbursed on a
                   <strong> rolling liquidity and cash-flow availability schedule</strong> as merchant processing,
@@ -192,7 +192,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept }) {
               <div className="legal-text-block">
                 <h4>1. Eligibility &amp; Age Restriction</h4>
                 <p>
-                  Crowns of Kemet is open exclusively to legal residents of eligible jurisdictions who are at least
+                  Pharaoh&rsquo;s Chakra Dynasty is open exclusively to legal residents of eligible jurisdictions who are at least
                   <strong> 18 years of age</strong> (19+ in Alabama and Nebraska; 21+ in Mississippi). Residents of
                   Washington state, Idaho, Nevada, and Michigan are excluded from promotional Sweeps Coins play in compliance
                   with local regulations.

@@ -3,7 +3,7 @@ import { PSD_DIGIT_SPRITES } from '../config/slotConfig';
 
 /**
  * Renders numbers using the 3D engraved gold number sprites (layers 395-418)
- * extracted directly from crowns_of_kemet_merged.psd.
+ * extracted directly from the royal pharaoh gold master PSD.
  */
 export default function PsdGoldNumber({ value, height = 64, gap = -4, className = '' }) {
   const formatted = typeof value === 'number' ? value.toLocaleString('en-US') : String(value);

@@ -1,4 +1,4 @@
-# Egypt Slots: Crowns of Kemet — Testing Strategy & Architecture (`/testing-setup`)
+# Egypt Slots: Pharaoh's Chakra Dynasty — Testing Strategy & Architecture (`/testing-setup`)
 
 ## 1. Current Testing Setup Analysis Report
 
@@ -27,7 +27,7 @@ Run these commands from the project root before every deployment:
 # Run all 218 Core Multi-Aspect Unit & Integration Tests (Assets, Math, Paylines, Store, Audio, Auth, Ad Architect, Adaptive Android, On-Chain Crypto)
 npm run test:all
 
-# Run all 185 Hands-Free Bonus Suite Tests (Hold & Win, Sacred Relic Vault, Wheel of Kemet, Ascension of Ra, Celestial Free Spins)
+# Run all 185 Hands-Free Bonus Suite Tests (Hold & Win, Heart Chakra Relic Vault, Crown Chakra Wheel, Ascension of Ra, Celestial Free Spins)
 npm run test:bonuses
 ```
 

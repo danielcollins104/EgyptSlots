@@ -277,7 +277,7 @@ const fsPayout = basePayout * FREE_SPINS_CONFIG.winMultiplier;
 assert(fsPayout === 240, `Base payout of 120 becomes 240 in Free Spins (calculated: ${fsPayout})`);
 
 // ----------------------------------------------------------------------------
-// 6. 3D BONUS VAULT & WHEEL OF KEMET
+// 6. 3D BONUS VAULT & CROWN CHAKRA WHEEL
 // ----------------------------------------------------------------------------
 console.log('\n--- 6. Testing 3D Bonus Vault & Fortune Wheel ---');
 assert(BONUS_CONFIG.vaultTileStyles.length === 6, 'Vault has 6 high-definition relic tiles');
@@ -438,6 +438,11 @@ const paymentModalSrc = fs.readFileSync(
 assert(
   paymentModalSrc.includes('/api/verify-crypto-tx'),
   'PaymentModal connects to live /api/verify-crypto-tx endpoint'
+);
+assert(
+  !ACTIVE_THEME.brand.gameTitle.toLowerCase().includes('kemet') &&
+    ACTIVE_THEME.brand.gameTitle.includes('CHAKRA DYNASTY'),
+  `Game title uses Egyptian Royalty & Chakra branding (${ACTIVE_THEME.brand.gameTitle}) with zero Kemet references`
 );
 
 // ----------------------------------------------------------------------------

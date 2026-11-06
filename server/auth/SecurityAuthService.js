@@ -13,7 +13,7 @@ import crypto from 'node:crypto';
 export class SecurityAuthService {
   constructor(ledger, options = {}) {
     this.ledger = ledger;
-    this.adminSecret = options.adminSecret || process.env.DC_ADMIN_SECRET || 'dc_admin_super_secret_kemet_999!';
+    this.adminSecret = options.adminSecret || process.env.DC_ADMIN_SECRET || 'dc_admin_super_secret_pharaoh_999!';
     this.users = new Map(); // userId -> UserRecord
     this.sessions = new Map(); // token -> SessionRecord
     this.failedAttempts = new Map(); // ip/identifier -> { count, lockedUntil }

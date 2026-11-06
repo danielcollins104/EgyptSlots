@@ -15,7 +15,7 @@ function createWindow() {
     height: winHeight,
     minWidth: 960,
     minHeight: 648,
-    title: 'Egypt Slots: Crowns of Kemet - DC Enterprises',
+    title: "Egypt Slots: Pharaoh's Chakra Dynasty - DC Enterprises",
     backgroundColor: '#05070e',
     autoHideMenuBar: true,
     webPreferences: {

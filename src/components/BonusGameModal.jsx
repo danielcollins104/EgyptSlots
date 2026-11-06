@@ -477,7 +477,7 @@ export default function BonusGameModal({
     return order.find((id) => id !== activeTab) || order[0] || null;
   }, [hwCompleted, picksLeft, wheelSpinsLeft, raFlightsLeft, activeTab]);
 
-  // 1. DOORS OF KEMET: 3-second Auto-Start Countdown into the Free Money Tour
+  // 1. ROYAL CHAKRA PORTALS: 3-second Auto-Start Countdown into the Free Money Tour
   useEffect(() => {
     if (!bonusSession || activeTab !== 'doors' || !autoPlayBonus || !nextChamberId) {
       setDoorsCountdown(3);
@@ -1247,7 +1247,7 @@ export default function BonusGameModal({
       : activeTab === 'vault'
       ? '🏺 FREE MONEY CHAMBER 2/4 (RELIC VAULT): Every chest holds guaranteed Free Coins, Multipliers, or Jackpots! Auto-opening chests for you now!'
       : activeTab === 'wheel'
-      ? '🎡 FREE MONEY CHAMBER 3/4 (WHEEL OF KEMET): Every spin wins guaranteed Free Coins, 2× Upgrades, or Royal Jackpots! Auto-spinning for you now!'
+      ? '🎡 FREE MONEY CHAMBER 3/4 (CROWN CHAKRA WHEEL): Every spin wins guaranteed Free Coins, 2× Upgrades, or Royal Pharaoh Jackpots! Auto-spinning for you now!'
       : '☀️ FREE MONEY CHAMBER 4/4 (ASCENSION OF RA): The Sun Chariot climbs up to 100× Multiplier! Protected by Ra’s Shield — 100% Guaranteed Free Money!';
 
   // Next Available Chamber helper to encourage multi-chamber bonus tour (excluding current tab)
@@ -1301,7 +1301,7 @@ export default function BonusGameModal({
                 }}
               >
                 <Crown size={15} />
-                <span>Doors of Kemet</span>
+                <span>{BONUS_CONFIG.doorsTabLabel || 'Royal Chakra Portals'}</span>
               </button>
 
               <button
@@ -1387,7 +1387,7 @@ export default function BonusGameModal({
           </div>
         </div>
 
-        {/* SCREEN 1: DOORS OF KEMET PORTAL HUB */}
+        {/* SCREEN 1: ROYAL CHAKRA PORTALS HUB */}
         {activeTab === 'doors' && (
           <div className="bonus-doors-stage">
             <div className="doors-hero-header">
@@ -1821,7 +1821,7 @@ export default function BonusGameModal({
                   ref={wheelCanvasRef}
                   width={420}
                   height={420}
-                  className="kemet-wheel-canvas"
+                  className="chakra-wheel-canvas"
                 />
 
                 <button
@@ -2164,7 +2164,7 @@ export default function BonusGameModal({
                 <PsdGoldNumber value={jackpotCelebration.amount} height={46} gap={-2} />
               </div>
               <p className="jp-splash-sub">
-                THE GODS OF KEMET BESTOW THEIR SUPREME TREASURE UPON YOU!
+                THE ROYAL PHARAOHS &amp; SACRED CHAKRAS BESTOW THEIR SUPREME TREASURE UPON YOU!
               </p>
               <button
                 type="button"

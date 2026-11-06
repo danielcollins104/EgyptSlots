@@ -1252,7 +1252,7 @@ export default function App() {
       setTimeout(() => {
         setCollectorCelebrationOpen(true);
         setStatusMessage(
-          `⚡ 36/36 ROYAL BONUS COLLECTOR FULL! 2× MULTIPLIER UNLOCKED! WRATH OF KEMET UNLEASHED!`
+          `⚡ 36/36 ROYAL CHAKRA COLLECTOR FULL! 2× MULTIPLIER UNLOCKED! SOVEREIGN PHARAOH UNLEASHED!`
         );
       }, 700);
     } else {

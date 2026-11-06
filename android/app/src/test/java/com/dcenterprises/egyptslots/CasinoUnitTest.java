@@ -14,7 +14,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 /**
- * Comprehensive Local Unit & Robolectric Behavior Test Suite for Egypt Slots: Crowns of Kemet.
+ * Comprehensive Local Unit & Robolectric Behavior Test Suite for Egypt Slots: Pharaoh's Chakra Dynasty.
  * Covers:
  * - Step 4 & 5: Business logic unit tests with FakeCasinoConfigRepository & DefaultCasinoConfigRepository
  * - Step 8 & 11: 9-size Window Size Class Matrix (400, 610, 900 dp widths × 400, 500, 1000 dp heights) + 1.5f fontScale

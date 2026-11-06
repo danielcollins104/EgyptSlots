@@ -15,7 +15,7 @@ export class AuditLedger {
     this.ledgerSecret =
       options.ledgerSecret ||
       process.env.DC_LEDGER_SECRET ||
-      'dc_kemet_ledger_master_secret_2026_salt_99x';
+      'dc_pharaoh_chakra_ledger_master_secret_2026_salt_99x';
     this.chain = [];
     this._initGenesisBlock();
     if (this.storagePath) {
@@ -36,7 +36,7 @@ export class AuditLedger {
         balanceAfter: 0,
         timestamp: '2026-01-01T00:00:00.000Z',
         prevHash: '0000000000000000000000000000000000000000000000000000000000000000',
-        metadata: { system: 'DC Enterprises Casino crowns_of_kemet Ledger' },
+        metadata: { system: 'DC Enterprises Casino pharaohs_chakra_dynasty Ledger' },
       };
       genesisData.entryHash = this._computeHash(genesisData);
       genesisData.signature = this._signHash(genesisData.entryHash);

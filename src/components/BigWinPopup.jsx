@@ -519,7 +519,7 @@ export default function BigWinPopup({
     ultra: {
       ribbon: '👑 COLOSSAL PHARAOH ULTRA WIN 👑',
       headline: 'COLOSSAL WIN',
-      subtitle: 'ETERNAL DYNASTY OF KEMET • SUPREME FORTUNE!',
+      subtitle: 'SOVEREIGN PHARAOH & CROWN CHAKRA • SUPREME FORTUNE!',
       badge: 'STAGE III • DIVINE ASCENSION',
     },
   }[activeStage] || {

@@ -18,7 +18,7 @@
   --neon-lime: #ffd700;
   --neon-violet: #7c3aed;
   --neon-yellow: #fde047;
-  --kemet-dark: #050816;
+  --pharaoh-dark: #050816;
   --font-display: 'Amarante', 'Cinzel Decorative', serif;
   --font-royal: 'Cinzel', serif;
 }
@@ -49,7 +49,7 @@ body::-webkit-scrollbar,
 
 body {
   font-family: var(--font-royal);
-  background-color: var(--kemet-dark);
+  background-color: var(--pharaoh-dark);
   color: #fff;
   user-select: none;
   -webkit-user-select: none;
@@ -4729,7 +4729,7 @@ body {
 }
 
 /* ============================================================================
-   12. 3D ROYAL BONUS MODAL (TOMB OF JEWELED RELICS + 3D WHEEL OF KEMET)
+   12. 3D ROYAL BONUS MODAL (HEART CHAKRA RELICS + 3D CROWN CHAKRA WHEEL)
    ============================================================================ */
 
 .bonus-modal-backdrop {
@@ -5125,7 +5125,7 @@ body {
 }
 
 /* ============================================================================
-   14. 3D WHEEL OF KEMET CHAMBER
+   14. 3D CROWN CHAKRA WHEEL CHAMBER
    ============================================================================ */
 
 .wheel-chamber-layout {
@@ -5147,7 +5147,7 @@ body {
   justify-content: center;
 }
 
-.kemet-wheel-canvas {
+.chakra-wheel-canvas {
   width: 100%;
   max-width: 420px;
   height: auto;
@@ -5170,7 +5170,7 @@ body {
     height: 320px;
   }
 
-  .kemet-wheel-canvas {
+  .chakra-wheel-canvas {
     max-width: 320px;
     width: 320px;
     height: 320px;
@@ -5199,7 +5199,7 @@ body {
     height: 280px;
   }
 
-  .kemet-wheel-canvas {
+  .chakra-wheel-canvas {
     max-width: 280px;
     width: 280px;
     height: 280px;
@@ -16031,7 +16031,7 @@ body {
    GOLDEN HUSTLE HYBRID BONUS SUITE: DOORS, HOLD & WIN, AND ASCENSION OF RA
    ============================================================================ */
 
-/* 1. Doors of Kemet Portal Stage */
+/* 1. Royal Chakra Portals Stage */
 .bonus-doors-stage {
   display: flex;
   flex-direction: column;

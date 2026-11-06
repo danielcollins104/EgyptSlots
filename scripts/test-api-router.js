@@ -40,7 +40,7 @@ console.log('✔ [PASS] /api/admin/adjust-balance rejected without admin token')
 
 // 5. Admin login & adjustment
 const adminLogin = await router.handleRequest('POST', '/api/admin/login', {}, {
-  adminKey: 'dc_admin_super_secret_kemet_999!',
+  adminKey: 'dc_admin_super_secret_pharaoh_999!',
 });
 assert.strictEqual(adminLogin.status, 200);
 assert(adminLogin.body.token, 'Admin token returned');

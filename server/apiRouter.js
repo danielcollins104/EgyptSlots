@@ -15,15 +15,15 @@ export class ApiRouter {
       ledgerSecret:
         options.ledgerSecret ||
         (typeof process !== 'undefined' && process.env?.DC_LEDGER_SECRET) ||
-        'dc_kemet_ledger_master_secret_2026_salt_99x',
+        'dc_pharaoh_chakra_ledger_master_secret_2026_salt_99x',
       signingKey:
         options.signingKey ||
         (typeof process !== 'undefined' && process.env?.DC_SPIN_SIGNING_KEY) ||
-        'dc_spin_master_signing_key_kemet_777',
+        'dc_spin_master_signing_key_pharaoh_777',
       adminSecret:
         options.adminSecret ||
         (typeof process !== 'undefined' && process.env?.DC_ADMIN_SECRET) ||
-        'dc_admin_super_secret_kemet_999!',
+        'dc_admin_super_secret_pharaoh_999!',
       initialAccounts: options.initialAccounts || {},
     });
     this.stripeSecretKey =
@@ -129,7 +129,7 @@ export class ApiRouter {
         );
         params.append(
           'line_items[0][price_data][product_data][description]',
-          `Crowns of Kemet Social Casino Bundle — Includes ${pkg.goldCoins.toLocaleString()} Gold Coins (GC) + ${pkg.freeSweepsCoins.toFixed(2)} Free Promotional Sweeps Coins (SC)`
+          `Pharaoh's Chakra Dynasty Social Casino Bundle — Includes ${pkg.goldCoins.toLocaleString()} Gold Coins (GC) + ${pkg.freeSweepsCoins.toFixed(2)} Free Promotional Sweeps Coins (SC)`
         );
         params.append('line_items[0][quantity]', '1');
 

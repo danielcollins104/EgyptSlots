@@ -1,4 +1,4 @@
-# Egypt Slots: Crowns of Kemet - Agent Rules & Workflow Invariants
+# Egypt Slots: Pharaoh's Chakra Dynasty - Agent Rules & Workflow Invariants
 
 ## 1. Mandatory Cross-Platform Synchronization
 Whenever changes are made to the game codebase (UI, math, audio, graphics, or configuration):
@@ -22,6 +22,6 @@ Whenever changes are made to the game codebase (UI, math, audio, graphics, or co
   - Preserve 16:9 / 2000:1350 aspect ratio container bounds and spacebar spin trigger.
 
 ## 3. Quality & Regression Verification
-- Run `npm run test:all` (all 218 unit & integration tests must pass) and `npm run test:bonuses` (all 185 bonus suite tests must pass).
+- Run `npm run test:all` (all 219 unit & integration tests must pass) and `npm run test:bonuses` (all 185 bonus suite tests must pass).
 - For Android native/hybrid changes, run `cd android && ./gradlew testDebugUnitTest jacocoTestReport` (see [`docs/testing.md`](docs/testing.md) for the complete testing strategy and commands).
 - Verify clean build with zero bundling errors.
