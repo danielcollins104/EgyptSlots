@@ -16,10 +16,10 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>DC Enterprises Casino — VIP Slot Lounge (By Daniel)</title>
+    <link rel="icon" type="image/png" href="/assets/symbols/high/high_scarab_no_frame.png" />
 
-    <!-- Instant Preload of Splashscreen Key Art (WebP & JPG) with High Fetch Priority -->
+    <!-- Instant Preload of Splashscreen Key Art (WebP) with High Fetch Priority -->
     <link rel="preload" as="image" href="/assets/neon/dc_enterprises_splash_hd.webp" type="image/webp" fetchpriority="high" />
-    <link rel="preload" as="image" href="/assets/neon/dc_enterprises_splash_hd.jpg" type="image/jpeg" />
 
     <!-- Google Fonts with Non-Blocking Asynchronous Loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -227,53 +227,56 @@
     </style>
   </head>
   <body>
-    <!-- Pre-rendered Instant Shell inside #root: Paints in Frame 0 (0ms) -->
-    <div id="root">
-      <div class="ad-creative-splash-root" id="preboot-splash">
-        <div class="ad-splash-ambient-bg" style="background-image: url('/assets/neon/dc_enterprises_splash_hd.webp');"></div>
-        <div class="ad-splash-laser-grid"></div>
+    <!-- Pre-rendered Persistent Instant Shell: Paints in Frame 0 and stays mounted across React hydration for Zero Element Render Delay -->
+    <div class="ad-creative-splash-root" id="preboot-splash">
+      <div class="ad-splash-ambient-bg" style="background-image: url('/assets/neon/dc_enterprises_splash_hd.webp');"></div>
+      <div class="ad-splash-laser-grid"></div>
 
-        <div class="ad-hero-artwork-stage">
-          <div class="ad-hero-image-wrapper">
-            <picture class="ad-hero-picture">
-              <source srcset="/assets/neon/dc_enterprises_splash_hd.webp" type="image/webp">
-              <img
-                src="/assets/neon/dc_enterprises_splash_hd.jpg"
-                alt="DC Enterprises Casino"
-                class="ad-hero-artwork-img"
-                loading="eager"
-                fetchpriority="high"
-                decoding="async"
-              >
-            </picture>
+      <div class="ad-hero-artwork-stage">
+        <div class="ad-hero-image-wrapper">
+          <picture class="ad-hero-picture" id="preboot-hero-picture">
+            <source srcset="/assets/neon/dc_enterprises_splash_hd.webp" type="image/webp">
+            <img
+              id="lcp-hero-img"
+              src="/assets/neon/dc_enterprises_splash_hd.webp"
+              alt="DC Enterprises Casino"
+              class="ad-hero-artwork-img"
+              width="1024"
+              height="576"
+              loading="eager"
+              fetchpriority="high"
+              decoding="sync"
+            >
+          </picture>
+        </div>
+
+        <div class="ad-splash-bottom-deck" id="preboot-splash-deck">
+          <aside class="ad-side-callout left-callout">
+            <div class="callout-badge-header">🎁 WELCOME BONUS</div>
+            <div class="callout-big-metric">1,000 FREE COINS</div>
+            <div class="callout-sub-label">Instant Starting Bankroll</div>
+            <div class="callout-fine-print">Automatic On Free Registration</div>
+          </aside>
+
+          <div class="ad-hero-cta-bar">
+            <button type="button" class="ad-enter-casino-btn">
+              <span class="cta-enter-text">ENTER CASINO</span>
+              <div class="cta-play-badge">▶</div>
+            </button>
+            <span class="cta-tap-hint">TAP ANYWHERE TO PLAY</span>
           </div>
 
-          <div class="ad-splash-bottom-deck">
-            <aside class="ad-side-callout left-callout">
-              <div class="callout-badge-header">🎁 WELCOME BONUS</div>
-              <div class="callout-big-metric">1,000 FREE COINS</div>
-              <div class="callout-sub-label">Instant Starting Bankroll</div>
-              <div class="callout-fine-print">Automatic On Free Registration</div>
-            </aside>
-
-            <div class="ad-hero-cta-bar">
-              <button type="button" class="ad-enter-casino-btn">
-                <span class="cta-enter-text">ENTER CASINO</span>
-                <div class="cta-play-badge">▶</div>
-              </button>
-              <span class="cta-tap-hint">TAP ANYWHERE TO PLAY</span>
-            </div>
-
-            <aside class="ad-side-callout right-callout">
-              <div class="callout-badge-header">🛡️ CERTIFIED FAIR PLAY</div>
-              <div class="callout-big-metric">90.0% RTP</div>
-              <div class="callout-sub-label">Certified Vegas Mathematics</div>
-              <div class="callout-fine-print">High-Payout Dual Currency</div>
-            </aside>
-          </div>
+          <aside class="ad-side-callout right-callout">
+            <div class="callout-badge-header">🛡️ CERTIFIED FAIR PLAY</div>
+            <div class="callout-big-metric">90.0% RTP</div>
+            <div class="callout-sub-label">Certified Vegas Mathematics</div>
+            <div class="callout-fine-print">High-Payout Dual Currency</div>
+          </aside>
         </div>
       </div>
     </div>
+
+    <div id="root"></div>
 
     <!-- Production JavaScript Entrypoint -->
     <script type="module" src="/src/main.jsx"></script>

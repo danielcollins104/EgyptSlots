@@ -16,6 +16,8 @@
     "test:bonuses": "node scripts/test-all-bonuses.js",
     "test:memory": "node scripts/audit-memory-leaks.js",
     "profile": "node scripts/profile-web-runtime.js",
+    "backup:cloud": "node scripts/cloud-backup-restore.js",
+    "restore:cloud": "node scripts/cloud-backup-restore.js --restore",
     "setup:stripe": "node scripts/setup-stripe.js",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",

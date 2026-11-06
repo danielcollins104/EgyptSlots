@@ -51,7 +51,7 @@ import {
   getTopHighSymbol,
   getRegularSymbols,
 } from './config/slotConfig';
-import { SWEEPSTAKES_CONFIG } from './config/sweepstakesConfig';
+import { SWEEPSTAKES_CONFIG, calculateCustomPackage } from './config/sweepstakesConfig';
 import { paymentService } from './services/paymentService';
 import PaymentModal from './components/PaymentModal';
 import LowBalanceOfferModal from './components/LowBalanceOfferModal';
@@ -507,10 +507,11 @@ export default function App() {
     setAutoPlayCount(0);
     setBonusSession({
       triggerReason: 'Guardian Apex Overcharge 3D Vault',
-      initialPicks: 3,
-      wheelSpins: 1,
-      startingMultiplier: 1,
+      initialPicks: 5,
+      wheelSpins: 3,
+      startingMultiplier: 2,
       scatterWinCoins: 0,
+      defaultGame: 'doors',
     });
     soundEngine.playBonusTrigger?.();
   }, [triggerAnubisPowerUp, triggerBastetPowerUp]);
@@ -584,6 +585,38 @@ export default function App() {
   const level = Math.max(1, Math.round(currencyMode === 'SC' ? totalBetSC / 0.25 : totalBetGC / 25));
   const coinValue = currencyMode === 'SC' ? lineBetSC : 1.0;
   const currentTheme = COLOR_PALETTES[neonThemeIdx % COLOR_PALETTES.length];
+
+  const handleLaunchCelestialOverload = useCallback((existingBonusCoins = 0) => {
+    if (existingBonusCoins > 0) {
+      if (currencyMode === 'SC') {
+        setSweepsCoins((prev) => {
+          const next = Number((prev + existingBonusCoins).toFixed(2));
+          sweepsCoinsRef.current = next;
+          try {
+            localStorage.setItem('dc_casino_sweeps_coins', next.toFixed(2));
+          } catch {}
+          return next;
+        });
+      } else {
+        setGoldCoins((prev) => {
+          const next = prev + existingBonusCoins;
+          goldCoinsRef.current = next;
+          try {
+            localStorage.setItem('dc_casino_gold_coins', String(next));
+          } catch {}
+          return next;
+        });
+      }
+      setLastWinCoins(existingBonusCoins);
+    }
+    setBonusSession(null);
+    setGuardianBonusCelebrationOpen(false);
+    setMajorIlluminationActive(false);
+    setAutoPlayCount(0);
+    setCelestialBonusBet(currentBet || 15);
+    setCelestialBonusOpen(true);
+    soundEngine.playBonusTrigger?.();
+  }, [currencyMode, currentBet]);
 
   // Sync balances and currencyMode to localStorage
   useEffect(() => {
@@ -1138,11 +1171,11 @@ export default function App() {
     setBonusMeter(0);
     setBonusSession({
       triggerReason: BONUS_CONFIG.meterTriggerName,
-      initialPicks: 3,
-      wheelSpins: 1,
+      initialPicks: 5,
+      wheelSpins: 3,
       startingMultiplier: 1,
       scatterWinCoins: 0,
-      defaultGame: 'vault',
+      defaultGame: 'doors',
     });
   };
 
@@ -1151,18 +1184,18 @@ export default function App() {
     if (bonusMeter >= BONUS_METER_GOAL) {
       setCollectorCelebrationOpen(true);
     } else {
-      openBonusGamesManually('vault');
+      openBonusGamesManually('doors');
     }
   };
 
-  const openBonusGamesManually = (defaultGame = 'vault') => {
+  const openBonusGamesManually = (defaultGame = 'doors') => {
     if (isSpinning) return;
     soundEngine.playBonusTrigger();
     setAutoPlayCount(0);
     setBonusSession({
       triggerReason: BONUS_CONFIG.vipDirectTriggerName,
-      initialPicks: 3,
-      wheelSpins: 1,
+      initialPicks: 5,
+      wheelSpins: 3,
       startingMultiplier: 1,
       scatterWinCoins: 0,
       defaultGame,
@@ -1338,9 +1371,40 @@ export default function App() {
         if (pkgId) {
           matchedPkg =
             SWEEPSTAKES_CONFIG.storePackages.find((p) => p.id === pkgId) ||
+            (SWEEPSTAKES_CONFIG.featuredRoyalPackage?.id === pkgId
+              ? SWEEPSTAKES_CONFIG.featuredRoyalPackage
+              : null) ||
             SWEEPSTAKES_CONFIG.highRollerPackages.find((p) => p.id === pkgId) ||
             SWEEPSTAKES_CONFIG.rescuePackages.find((p) => p.id === pkgId);
         }
+
+        // Check for custom amount purchase via URL query params or saved custom package
+        if (!matchedPkg) {
+          const urlAmount = parseFloat(params.get('amount') || '0');
+          const urlGC = parseInt(params.get('gc') || '0', 10);
+          const urlSC = parseFloat(params.get('sc') || '0');
+          if (urlAmount >= 1) {
+            const calc = calculateCustomPackage(urlAmount);
+            matchedPkg = {
+              ...calc,
+              id: pkgId || calc.id,
+              priceUsd: urlAmount,
+              goldCoins: urlGC > 0 ? urlGC : calc.goldCoins,
+              freeSweepsCoins: urlSC > 0 ? urlSC : calc.freeSweepsCoins,
+            };
+          } else {
+            try {
+              const savedCustom = localStorage.getItem('dc_pending_purchase_custom_pkg');
+              if (savedCustom) {
+                const parsed = JSON.parse(savedCustom);
+                if (parsed && parsed.priceUsd > 0 && parsed.goldCoins > 0) {
+                  matchedPkg = parsed;
+                }
+              }
+            } catch {}
+          }
+        }
+
         if (!matchedPkg) {
           matchedPkg = SWEEPSTAKES_CONFIG.storePackages[2]; // Fallback to Silver Bundle
         }
@@ -1364,6 +1428,7 @@ export default function App() {
           const cleanUrl = window.location.origin + window.location.pathname;
           window.history.replaceState({}, document.title, cleanUrl);
           localStorage.removeItem('dc_pending_purchase_pkg');
+          localStorage.removeItem('dc_pending_purchase_custom_pkg');
         } catch {}
       }
     } catch (err) {
@@ -1545,11 +1610,11 @@ export default function App() {
         nextExpanded[1] = true;
         nextExpanded[3] = true;
         nextGrid = [
-          [r(5), r(7), r(8)],
+          [topHigh, r(2), topHigh],
           [expSym, expSym, expSym],
-          [r(6), r(7), r(4)],
+          [topHigh, r(2), topHigh],
           [expSym, expSym, expSym],
-          [r(9), r(8), r(6)],
+          [topHigh, r(2), topHigh],
         ];
       } else if (forcedMode === 'microwin') {
         const lowSym = regs[regs.length - 1] || topHigh;
@@ -1980,10 +2045,14 @@ export default function App() {
 
       {/* Ambient Spark & Ray Overlays */}
       <img
+        ref={(el) => {
+          if (el) el.setAttribute('fetchpriority', 'low');
+        }}
         src={THEME_ASSETS.ambientSparksImage}
         alt=""
         className="ambient-sparks neon-fx-shift"
         draggable={false}
+        decoding="async"
       />
 
       {/* Top DC Enterprises Casino VIP Navigation & Feature Bar */}
@@ -2158,12 +2227,22 @@ export default function App() {
 
           <button
             className="dc-action-btn special-bonus-direct"
-            onClick={() => openBonusGamesManually('vault')}
+            onClick={() => openBonusGamesManually('doors')}
             disabled={isSpinning}
             title={THEME_COPY.bonusOpenButtonTooltip}
           >
             <Gem size={15} />
             <span>{THEME_COPY.bonusOpenButtonLabel}</span>
+          </button>
+
+          <button
+            className="dc-action-btn special-guardian-climax"
+            onClick={() => handleLaunchCelestialOverload(0)}
+            disabled={isSpinning || celestialBonusOpen}
+            title="Launch Wrath of the Gods: Celestial Overload 3-Wave Divine Bonus Round!"
+          >
+            <Zap size={15} color="#c084fc" />
+            <span>Wrath of Gods ⚡</span>
           </button>
 
           <button
@@ -2689,14 +2768,29 @@ export default function App() {
               className="mobile-drawer-card direct-vault-card"
               onClick={() => {
                 setMobileMenuOpen(false);
-                openBonusGamesManually('vault');
+                openBonusGamesManually('doors');
               }}
               disabled={isSpinning}
             >
               <Gem size={20} className="card-icon" />
               <div className="card-txt">
-                <strong>3D Bonus Vault Game</strong>
-                <small>Open 3-Tier Multiplier Pick</small>
+                <strong>5-Chamber Bonus Portal</strong>
+                <small>Doors, Hold &amp; Win, Vault, Wheel &amp; Ra</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card climax-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleLaunchCelestialOverload(0);
+              }}
+              disabled={isSpinning || celestialBonusOpen}
+            >
+              <Zap size={20} className="card-icon" color="#c084fc" />
+              <div className="card-txt">
+                <strong>Wrath of Gods: Celestial Overload</strong>
+                <small>3-Wave Anubis &amp; Bastet Divine Bonus</small>
               </div>
             </button>
 
@@ -3035,10 +3129,14 @@ export default function App() {
               />
             ) : (
               <img
+                ref={(el) => {
+                  if (el) el.setAttribute('fetchpriority', 'low');
+                }}
                 src={GUARDIANS.left.bodyImage}
                 alt={GUARDIANS.left.name}
                 className="guardian-body-img neon-char-filter"
                 draggable={false}
+                decoding="async"
               />
             )}
             {guardianBlinking && anubisCharge >= 1 && GUARDIANS.left.eyesClosedImage && (
@@ -3112,19 +3210,132 @@ export default function App() {
             />
           </div>
 
+          {/* Mobile Portrait Guardian Companion Bar — Keeps Lord Anubis & Queen Bastet Visible in Vertical Mode */}
+          <div className="mobile-portrait-guardians-bar">
+            <button
+              type="button"
+              className={`mpg-companion-pill mpg-anubis stage-${anubisCharge} ${anubisPowerUp ? 'mpg-surge' : ''}`}
+              onClick={() => {
+                const nextLvl = (anubisCharge + 1) % 5;
+                triggerAnubisPowerUp(nextLvl);
+                setStatusMessage(
+                  `⚡ ANUBIS POWER-UP: ${
+                    nextLvl === 0
+                      ? 'DORMANT STONE'
+                      : nextLvl === 1
+                      ? 'ALIVE'
+                      : nextLvl === 2
+                      ? 'DIVINE EYES'
+                      : nextLvl === 3
+                      ? 'PLASMA ORB'
+                      : 'APEX OVERCHARGE'
+                  }!`
+                );
+              }}
+              title="Tap to power up Lord Anubis!"
+            >
+              <img
+                src={
+                  anubisCharge >= 4 && GUARDIANS.left.apexBodyImage
+                    ? GUARDIANS.left.apexBodyImage
+                    : anubisCharge === 3 && GUARDIANS.left.chargedBodyImage
+                    ? GUARDIANS.left.chargedBodyImage
+                    : GUARDIANS.left.bodyImage
+                }
+                alt="Lord Anubis"
+                className="mpg-avatar-img"
+                draggable={false}
+              />
+              <div className="mpg-meta">
+                <span className="mpg-name">⚡ LORD ANUBIS</span>
+                <span className="mpg-stage">
+                  LVL {anubisCharge}/4 •{' '}
+                  {anubisCharge === 0
+                    ? 'STONE'
+                    : anubisCharge === 1
+                    ? 'ALIVE'
+                    : anubisCharge === 2
+                    ? 'EYES'
+                    : anubisCharge === 3
+                    ? 'ORB'
+                    : 'APEX!'}
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className={`mpg-companion-pill mpg-bastet stage-${bastetCharge} ${bastetPowerUp ? 'mpg-surge' : ''}`}
+              onClick={() => {
+                const nextLvl = (bastetCharge + 1) % 5;
+                triggerBastetPowerUp(nextLvl);
+                setStatusMessage(
+                  `🌸 BASTET POWER-UP: ${
+                    nextLvl === 0
+                      ? 'DORMANT STONE'
+                      : nextLvl === 1
+                      ? 'ALIVE'
+                      : nextLvl === 2
+                      ? 'SOLAR EYES'
+                      : nextLvl === 3
+                      ? 'SUNFIRE ORB'
+                      : 'APEX OVERCHARGE'
+                  }!`
+                );
+              }}
+              title="Tap to power up Queen Bastet!"
+            >
+              <div className="mpg-meta mpg-meta-right">
+                <span className="mpg-name">QUEEN BASTET 🌸</span>
+                <span className="mpg-stage">
+                  LVL {bastetCharge}/4 •{' '}
+                  {bastetCharge === 0
+                    ? 'STONE'
+                    : bastetCharge === 1
+                    ? 'ALIVE'
+                    : bastetCharge === 2
+                    ? 'EYES'
+                    : bastetCharge === 3
+                    ? 'ORB'
+                    : 'APEX!'}
+                </span>
+              </div>
+              <img
+                src={
+                  bastetCharge >= 4 && GUARDIANS.right.apexBodyImage
+                    ? GUARDIANS.right.apexBodyImage
+                    : bastetCharge === 3 && GUARDIANS.right.chargedBodyImage
+                    ? GUARDIANS.right.chargedBodyImage
+                    : GUARDIANS.right.bodyImage
+                }
+                alt="Queen Bastet"
+                className="mpg-avatar-img"
+                draggable={false}
+              />
+            </button>
+          </div>
+
           <div className={`reel-cabinet-box ${cabinetImpact ? `cabinet-impact-${cabinetImpact}` : ''} ${flowStreak >= 3 ? 'flow-momentum-active' : ''}`}>
             <img
+              ref={(el) => {
+                if (el) el.setAttribute('fetchpriority', 'low');
+              }}
               src={THEME_ASSETS.reelGlowImage}
               alt=""
               className="psd-reel-glow neon-fx-shift"
               draggable={false}
+              decoding="async"
             />
 
             <img
+              ref={(el) => {
+                if (el) el.setAttribute('fetchpriority', 'low');
+              }}
               src={THEME_ASSETS.reelShadowImage}
               alt=""
               className="psd-reel-shadow"
               draggable={false}
+              decoding="async"
             />
 
             {/* 2026 Architectural Egyptian Temple Pillars: Left & Right Bas-Relief Carved Stone & Gold Textures */}
@@ -3140,10 +3351,14 @@ export default function App() {
 
             {/* Reel Cabinet Frame */}
             <img
+              ref={(el) => {
+                if (el) el.setAttribute('fetchpriority', 'low');
+              }}
               src={THEME_ASSETS.reelFrameImage}
               alt="Reel Frame"
               className="psd-reel-frame-img neon-cabinet-filter"
               draggable={false}
+              decoding="async"
             />
 
             {/* Engraved Nameplate on the Top Arch Beam */}
@@ -3642,10 +3857,14 @@ export default function App() {
               />
             ) : (
               <img
+                ref={(el) => {
+                  if (el) el.setAttribute('fetchpriority', 'low');
+                }}
                 src={GUARDIANS.right.bodyImage}
                 alt={GUARDIANS.right.name}
                 className="guardian-body-img bastet-guardian-img"
                 draggable={false}
+                decoding="async"
               />
             )}
             {guardianBlinking && bastetCharge >= 1 && GUARDIANS.right.eyesClosedImage && (
@@ -3721,6 +3940,7 @@ export default function App() {
         isOpen={guardianBonusCelebrationOpen}
         onStartFreeSpins={handleStartFreeSpinsFromGuardians}
         onEnterBonusVault={handleEnterBonusVaultFromGuardians}
+        onLaunchCelestialOverload={() => handleLaunchCelestialOverload(0)}
         onClose={() => setGuardianBonusCelebrationOpen(false)}
         initialSpins={6}
       />
@@ -3732,6 +3952,7 @@ export default function App() {
         coinValue={coinValue}
         currencyMode={currencyMode}
         onCompleteBonus={handleCompleteBonus}
+        onLaunchCelestialOverload={handleLaunchCelestialOverload}
       />
 
       {/* 2026 Grand Climax: Wrath of the Gods — Celestial Overload Bonus Round */}
@@ -3753,12 +3974,6 @@ export default function App() {
                 } catch {}
                 return next;
               });
-              recordCurrencyTransaction({
-                type: 'BONUS_WIN',
-                currency: 'SC',
-                amount: scWin,
-                description: 'Wrath of the Gods: Celestial Overload Grand Bonus Round',
-              });
               setBigWinAmount(scWin);
               setLastWinCoins(scWin);
               setStatusMessage(
@@ -3774,12 +3989,6 @@ export default function App() {
                   localStorage.setItem('dc_casino_gold_coins', String(next));
                 } catch {}
                 return next;
-              });
-              recordCurrencyTransaction({
-                type: 'BONUS_WIN',
-                currency: 'GC',
-                amount: totalWinCoins,
-                description: 'Wrath of the Gods: Celestial Overload Grand Bonus Round',
               });
               setBigWinAmount(totalWinCoins);
               setLastWinCoins(totalWinCoins);

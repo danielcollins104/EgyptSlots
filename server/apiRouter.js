@@ -1,5 +1,9 @@
 import { SecurityServer } from './SecurityServer.js';
 import { SWEEPSTAKES_CONFIG } from '../src/config/sweepstakesConfig.js';
+import {
+  verifyCryptoDeposit,
+  getLiveWalletBalancesStatus,
+} from '../src/services/cryptoVerifierService.js';
 
 /**
  * Universal API Request Handler for DC Enterprises Casino
@@ -26,25 +30,75 @@ export class ApiRouter {
       options.stripeSecretKey ||
       (typeof process !== 'undefined' && process.env?.STRIPE_SECRET_KEY) ||
       '';
+    this.stripeWebhookSecret =
+      options.stripeWebhookSecret ||
+      (typeof process !== 'undefined' && process.env?.STRIPE_WEBHOOK_SECRET) ||
+      '';
   }
 
   /**
    * Creates a live Stripe Checkout Session via the Stripe REST API (fetch-based, 100% Cloudflare Workers & Node compatible)
    */
-  async createStripeCheckoutSession({ packageId, paymentMethod = 'card', origin = 'https://oopsiwon.com', customerEmail = '', userId = '' }) {
+  async createStripeCheckoutSession({
+    packageId,
+    customAmountUsd = null,
+    goldCoins = null,
+    freeSweepsCoins = null,
+    paymentMethod = 'card',
+    origin = 'https://oopsiwon.com',
+    customerEmail = '',
+    userId = '',
+  }) {
     const allPackages = [
       ...(SWEEPSTAKES_CONFIG.storePackages || []),
       ...(SWEEPSTAKES_CONFIG.highRollerPackages || []),
       ...(SWEEPSTAKES_CONFIG.rescuePackages || []),
     ];
-    const pkg = allPackages.find((p) => p.id === packageId) || SWEEPSTAKES_CONFIG.storePackages[2];
+    let pkg = allPackages.find((p) => p.id === packageId);
+
+    // Support Custom Amount packages dynamically
+    if (!pkg && (String(packageId || '').startsWith('pkg_custom') || Number(customAmountUsd) >= 1)) {
+      const priceUsd = Number(Math.max(1, Math.min(1000000, Number(customAmountUsd) || 25)).toFixed(2));
+      const bonusRate =
+        priceUsd >= 50000
+          ? 0.25
+          : priceUsd >= 10000
+          ? 0.18
+          : priceUsd >= 100
+          ? 0.15
+          : priceUsd >= 20
+          ? 0.10
+          : priceUsd >= 10
+          ? 0.05
+          : 0;
+      const gcPerDollar =
+        priceUsd >= 100 ? 4000 : priceUsd >= 50 ? 3500 : priceUsd >= 20 ? 3000 : priceUsd >= 10 ? 2500 : 2000;
+      const computedGC = Number(goldCoins) > 0 ? Math.round(Number(goldCoins)) : Math.round(priceUsd * gcPerDollar);
+      const computedSC =
+        Number(freeSweepsCoins) > 0
+          ? Number(Number(freeSweepsCoins).toFixed(2))
+          : Number((priceUsd * (1 + bonusRate)).toFixed(2));
+
+      pkg = {
+        id: packageId || `pkg_custom_${priceUsd}`,
+        priceUsd,
+        goldCoins: computedGC,
+        freeSweepsCoins: computedSC,
+        isCustom: true,
+      };
+    }
+
+    if (!pkg) {
+      pkg = SWEEPSTAKES_CONFIG.storePackages[2];
+    }
+
     const secretKey =
       this.stripeSecretKey ||
       (typeof process !== 'undefined' && process.env?.STRIPE_SECRET_KEY) ||
       '';
 
     const cleanOrigin = origin.replace(/\/$/, '');
-    const successUrl = `${cleanOrigin}/?payment_success=true&pkg=${encodeURIComponent(pkg.id)}&session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${cleanOrigin}/?payment_success=true&pkg=${encodeURIComponent(pkg.id)}&amount=${encodeURIComponent(pkg.priceUsd)}&gc=${encodeURIComponent(pkg.goldCoins)}&sc=${encodeURIComponent(pkg.freeSweepsCoins)}&session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${cleanOrigin}/?payment_cancelled=true&pkg=${encodeURIComponent(pkg.id)}`;
 
     // If Stripe Secret Key is available, create a real Stripe Checkout Session via api.stripe.com
@@ -142,6 +196,9 @@ export class ApiRouter {
   async handleRequest(method, path, headers = {}, body = {}, env = {}) {
     if (env && env.STRIPE_SECRET_KEY && !this.stripeSecretKey) {
       this.stripeSecretKey = env.STRIPE_SECRET_KEY;
+    }
+    if (env && env.STRIPE_WEBHOOK_SECRET && !this.stripeWebhookSecret) {
+      this.stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET;
     }
 
     // Standard CORS headers
@@ -242,6 +299,9 @@ export class ApiRouter {
         const reqOrigin = headers['origin'] || headers['Origin'] || parsedBody.origin || 'https://oopsiwon.com';
         const sessionRes = await this.createStripeCheckoutSession({
           packageId: parsedBody.packageId,
+          customAmountUsd: parsedBody.customAmountUsd,
+          goldCoins: parsedBody.goldCoins,
+          freeSweepsCoins: parsedBody.freeSweepsCoins,
           paymentMethod: parsedBody.paymentMethod || 'card',
           origin: reqOrigin,
           customerEmail: parsedBody.email || '',
@@ -277,15 +337,54 @@ export class ApiRouter {
       }
 
       // 8. STRIPE PAYMENT WEBHOOK
-      if (path === '/api/webhooks/stripe' && method === 'POST') {
+      if ((path === '/api/webhooks/stripe' || path === '/api/stripe/webhook') && method === 'POST') {
         const signature = headers['stripe-signature'] || headers['Stripe-Signature'];
+        const rawBody = typeof body === 'string' ? body : '';
+        const webhookSecret =
+          this.stripeWebhookSecret ||
+          env?.STRIPE_WEBHOOK_SECRET ||
+          (typeof process !== 'undefined' && process.env?.STRIPE_WEBHOOK_SECRET) ||
+          '';
         const res = await this.server.handleStripeWebhook({
           eventId: parsedBody.id || parsedBody.eventId || `evt_${Date.now()}`,
           eventType: parsedBody.type || parsedBody.eventType || 'checkout.session.completed',
           dataObject: parsedBody.data?.object || parsedBody.dataObject || {},
           signatureHeader: signature,
+          webhookSecret,
+          rawBody,
         });
         return { status: 200, headers: corsHeaders, body: res };
+      }
+
+      // 8.5 LIVE ON-CHAIN CRYPTO VERIFICATION & WALLET STATUS
+      if (path === '/api/crypto/verify' && method === 'POST') {
+        const verification = await verifyCryptoDeposit({
+          symbol: parsedBody.symbol || 'USDT',
+          expectedAmount: Number(parsedBody.expectedAmount) || 0,
+          txHash: parsedBody.txHash || '',
+          minTimestampSec: Number(parsedBody.minTimestampSec) || 0,
+        });
+        return {
+          status: 200,
+          headers: corsHeaders,
+          body: {
+            success: verification.verified,
+            ...verification,
+            timestamp: new Date().toISOString(),
+          },
+        };
+      }
+
+      if (path === '/api/crypto/wallets-status' && (method === 'GET' || method === 'POST')) {
+        const status = await getLiveWalletBalancesStatus();
+        return {
+          status: 200,
+          headers: corsHeaders,
+          body: {
+            success: true,
+            ...status,
+          },
+        };
       }
 
       // 9. HEALTH CHECK

@@ -7,12 +7,17 @@ import {
   getCashAppPayCheckoutLink,
   getPaymentReturnUrl,
 } from '../config/sweepstakesConfig.js';
+import {
+  verifyCryptoDeposit,
+  getLiveWalletBalancesStatus,
+} from './cryptoVerifierService.js';
 
 const STORAGE_KEYS = {
   STRIPE_KEY: 'dc_stripe_api_key',
   CHIME_KEY: 'dc_chime_api_key',
   CHIME_HANDLE: 'dc_chime_user_handle',
   TX_HISTORY: 'dc_payment_transactions',
+  CLAIMED_CRYPTO_TXS: 'dc_claimed_crypto_tx_hashes',
 };
 
 export const paymentService = {
@@ -142,6 +147,7 @@ export const paymentService = {
 
     try {
       localStorage.setItem('dc_pending_purchase_pkg', pkg.id);
+      localStorage.setItem('dc_pending_purchase_custom_pkg', JSON.stringify(pkg));
       localStorage.setItem('dc_pending_purchase_time', String(Date.now()));
     } catch {}
 
@@ -156,6 +162,9 @@ export const paymentService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           packageId: pkg.id,
+          customAmountUsd: pkg.priceUsd,
+          goldCoins: pkg.goldCoins,
+          freeSweepsCoins: pkg.freeSweepsCoins,
           paymentMethod,
           origin,
           email: user?.email || '',
@@ -222,5 +231,118 @@ export const paymentService = {
   async processRedemption(details = {}) {
     await new Promise((r) => setTimeout(r, 400));
     return this.requestRedemption(details);
+  },
+
+  /**
+   * Checks if a crypto transaction hash has already been claimed locally
+   */
+  isLocalTxClaimed(txHash) {
+    if (!txHash) return false;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.CLAIMED_CRYPTO_TXS);
+      const list = raw ? JSON.parse(raw) : [];
+      return list.includes(String(txHash).trim().toLowerCase());
+    } catch {
+      return false;
+    }
+  },
+
+  markLocalTxClaimed(txHash) {
+    if (!txHash) return;
+    try {
+      const clean = String(txHash).trim().toLowerCase();
+      const raw = localStorage.getItem(STORAGE_KEYS.CLAIMED_CRYPTO_TXS);
+      const list = raw ? JSON.parse(raw) : [];
+      if (!list.includes(clean)) {
+        list.unshift(clean);
+        localStorage.setItem(STORAGE_KEYS.CLAIMED_CRYPTO_TXS, JSON.stringify(list.slice(0, 200)));
+      }
+    } catch {}
+  },
+
+  /**
+   * Verifies an incoming crypto transfer on-chain across Bitcoin Mainnet, Solana Mainnet, or Ethereum/Polygon/Base
+   * via /api/crypto/verify (Cloudflare Worker) with automatic direct browser RPC fallback.
+   */
+  async verifyOnChainCryptoDeposit({
+    symbol = 'USDT',
+    expectedAmount = 0,
+    txHash = '',
+    minTimestampSec = 0,
+  } = {}) {
+    if (txHash && this.isLocalTxClaimed(txHash)) {
+      return {
+        verified: false,
+        symbol,
+        message: 'This transaction hash has already been verified and credited to your balance.',
+      };
+    }
+
+    // 1. Try server-side verification endpoint (/api/crypto/verify)
+    try {
+      const response = await fetch('/api/crypto/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol,
+          expectedAmount,
+          txHash,
+          minTimestampSec,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && typeof data.verified === 'boolean') {
+          if (data.verified && data.txHash) {
+            if (this.isLocalTxClaimed(data.txHash)) {
+              return {
+                verified: false,
+                symbol,
+                message: 'This blockchain transaction was already claimed.',
+              };
+            }
+            this.markLocalTxClaimed(data.txHash);
+          }
+          return data;
+        }
+      }
+    } catch (err) {
+      // Fallback to direct client-side RPC verification (for Capacitor mobile / Electron)
+    }
+
+    // 2. Direct client-side blockchain RPC verification fallback
+    const fallbackResult = await verifyCryptoDeposit({
+      symbol,
+      expectedAmount,
+      txHash,
+      minTimestampSec,
+    });
+
+    if (fallbackResult.verified && fallbackResult.txHash) {
+      if (this.isLocalTxClaimed(fallbackResult.txHash)) {
+        return {
+          verified: false,
+          symbol,
+          message: 'This blockchain transaction was already claimed.',
+        };
+      }
+      this.markLocalTxClaimed(fallbackResult.txHash);
+    }
+
+    return fallbackResult;
+  },
+
+  /**
+   * Fetches live on-chain connectivity & balance status for the 3 self-custody wallets
+   */
+  async fetchLiveWalletsStatus() {
+    try {
+      const res = await fetch('/api/crypto/wallets-status');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.wallets) return data;
+      }
+    } catch {}
+    return await getLiveWalletBalancesStatus();
   },
 };

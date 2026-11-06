@@ -207,7 +207,7 @@ export const ACTIVE_THEME = {
     { id: 'laser', label: 'Palette: Royal Amethyst & Gold' },
   ],
 
-  // 7. Interactive 3D Bonus Games Configuration (Game 1: Pick Vault + Game 2: Fortune Wheel + Game 3: Hold & Win + Game 4: Ascension of Ra)
+  // 7. Interactive 3D Bonus Games Configuration (Game 1: Pick Vault + Game 2: Fortune Wheel + Game 3: Hold & Win + Game 4: Ascension of Ra + Game 5: Celestial Overload)
   bonus: {
     modalTitle: 'DC ENTERPRISES 3D ROYAL BONUS VAULT',
     doorsTabLabel: 'Doors of Kemet',
@@ -215,6 +215,7 @@ export const ACTIVE_THEME = {
     game2TabLabel: '3D Wheel of Kemet',
     game3TabLabel: 'Hold & Win Respins',
     game4TabLabel: 'Ascension of Ra',
+    game5TabLabel: 'Celestial Overload',
     scatterTriggerName: '3D BONUS CHEST SCATTERS',
     meterTriggerName: '36/36 BONUS COLLECTOR METER FULL',
     vipDirectTriggerName: 'DANIEL VIP BONUS CHAMBER ACCESS',
@@ -258,14 +259,23 @@ export const ACTIVE_THEME = {
         color: '#f43f5e',
       },
     ],
+    celestialDoor: {
+      id: 'celestial',
+      name: 'WRATH OF THE GODS',
+      icon: '⚡',
+      subtitle: 'Celestial Overload 3-Wave Temple',
+      tagline: 'Command Anubis & Bastet in 3 Divine Waves of Relics, Lightning & Sunfire!',
+      badge: 'DIVINE CLIMAX',
+      color: '#c084fc',
+    },
     holdSpin: {
       title: "PHARAOH'S 15-CELL HOLD & WIN RESPINS",
       gridCols: 5,
       gridRows: 3,
       initialCoins: 3,
       spins: 3,
-      landChance: 0.17,
-      roundDelay: 650,
+      landChance: 0.24,
+      roundDelay: 900,
       fullBoardBonusMult: 500, // Grand Jackpot 500x on filling all 15 cells!
       coinTable: [
         { type: 'coins', mult: 1, chance: 0.45, label: '1× BET', icon: '/assets/symbols/high/high_scarab_no_frame.png', color: '#10b981' },
@@ -283,9 +293,9 @@ export const ACTIVE_THEME = {
       title: "ASCENSION OF RA'S SOLAR CHARIOT",
       sub: 'Fly through 8 celestial gates of the Duat — cash out your multiplier before the divine storm breaks!',
       nodes: [2, 3, 5, 8, 15, 30, 50, 100],
-      crashProb: [0.15, 0.22, 0.30, 0.38, 0.48, 0.58, 0.68, 0.80],
-      stepDelay: 950,
-      startDelay: 1000,
+      crashProb: [0.04, 0.08, 0.14, 0.22, 0.32, 0.45, 0.58, 0.72],
+      stepDelay: 1200,
+      startDelay: 1050,
       consolationMult: 1,
       chariotIcon: '☀️',
     },
@@ -349,13 +359,12 @@ export const ACTIVE_THEME = {
       { kind: 'coins', betMult: 2, label: 'EMERALD HOARD' },
       { kind: 'coins', betMult: 2.5, label: 'SAPPHIRE CHEST' },
       { kind: 'coins', betMult: 3, label: 'GOLDEN VAULT' },
-      { kind: 'coins', betMult: 4, label: 'IMPERIAL RELIC' },
       {
         kind: 'multiplier',
         multAdd: 1,
-        extraPicks: 1,
+        extraPicks: 2,
         betMult: 1,
-        label: '+1× MULT & +1 PICK!',
+        label: '+1× MULT & +2 PICKS!',
       },
       {
         kind: 'multiplier',
@@ -363,6 +372,12 @@ export const ACTIVE_THEME = {
         extraPicks: 1,
         betMult: 1.5,
         label: '+1× MULT & +1 PICK!',
+      },
+      {
+        kind: 'extra_picks',
+        extraPicks: 2,
+        betMult: 1.5,
+        label: '+2 EXTRA PICKS!',
       },
       {
         kind: 'extra_picks',

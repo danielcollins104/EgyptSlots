@@ -57,6 +57,12 @@ export default function FreeSpinsScreen({
   const [isCompleted, setIsCompleted] = useState(false);
   const [countdown, setCountdown] = useState(2); // Initial 2-sec intro countdown
   const [winStreak, setWinStreak] = useState(0);
+  const [spinWinPop, setSpinWinPop] = useState(null);
+  const [totalCardPulse, setTotalCardPulse] = useState(false);
+  const [collectCountdown, setCollectCountdown] = useState(4);
+  const totalWinRef = useRef(0);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   const isSC = currencyMode === 'SC';
   const autoLoopTimerRef = useRef(null);
@@ -180,9 +186,22 @@ export default function FreeSpinsScreen({
   const totalAwardedRef = useRef(initialSpins);
   const isSpinningRef = useRef(false);
   const isCompletedRef = useRef(false);
+  const winStreakRef = useRef(0);
   const executeAutoSpinRef = useRef();
   const hasStartedRef = useRef(false);
-  const MAX_SESSION_SPINS = 30; // Safety cap to prevent runaway loops
+  const spinTimeoutsRef = useRef([]);
+  const MAX_SESSION_SPINS = 35; // Safety cap to prevent runaway loops
+
+  const clearAllSpinTimeouts = useCallback(() => {
+    if (autoLoopTimerRef.current) {
+      clearTimeout(autoLoopTimerRef.current);
+      autoLoopTimerRef.current = null;
+    }
+    if (spinTimeoutsRef.current.length > 0) {
+      spinTimeoutsRef.current.forEach((id) => clearTimeout(id));
+      spinTimeoutsRef.current = [];
+    }
+  }, []);
 
   // Automated Spin Step with Authentic Staggered Casino Cascade
   const executeAutoSpin = useCallback(() => {
@@ -202,13 +221,24 @@ export default function FreeSpinsScreen({
     spinsLeftRef.current -= 1;
     setSpinsRemaining(spinsLeftRef.current);
 
-    // Generate outcome
+    // Generate outcome (with Guaranteed Free Money Celebration floor on the final spin if totalWinRef is 0)
     const nextGrid = generateFreeSpinsGrid();
+    if (spinsLeftRef.current === 0 && totalWinRef.current <= 0) {
+      const wildSym =
+        FREE_SPINS_CONFIG.symbols.find((s) => s.isWild) || FREE_SPINS_CONFIG.symbols[0];
+      if (wildSym) {
+        nextGrid[0][1] = wildSym;
+        nextGrid[1][1] = wildSym;
+        nextGrid[2][1] = wildSym;
+        nextGrid[3][1] = wildSym;
+      }
+    }
 
     // Authentic Sequential Staggered Stops (Reels 1 through 5 land sequentially)
     const stopDelays = [400, 580, 760, 940, 1120];
     stopDelays.forEach((delay, colIdx) => {
-      setTimeout(() => {
+      const stopTm = setTimeout(() => {
+        if (isCompletedRef.current) return;
         setCurrentGrid((prev) => {
           const updated = [...prev];
           updated[colIdx] = nextGrid[colIdx];
@@ -232,18 +262,21 @@ export default function FreeSpinsScreen({
           soundEngine.playReelStop(colIdx, hasSpecial);
         } catch (_) {}
 
-        setTimeout(() => {
+        const bounceTm = setTimeout(() => {
           setLandedCols((prev) => {
             const n = [...prev];
             n[colIdx] = false;
             return n;
           });
         }, 320);
+        spinTimeoutsRef.current.push(bounceTm);
       }, delay);
+      spinTimeoutsRef.current.push(stopTm);
     });
 
     // Evaluate wins after all 5 reels have finished landing with bounce
-    setTimeout(() => {
+    const evalTm = setTimeout(() => {
+      if (isCompletedRef.current) return;
       const {
         wins,
         winCoordSet,
@@ -254,31 +287,54 @@ export default function FreeSpinsScreen({
 
       // Calculate won amount in active currency
       let wonAmount = 0;
+      let nextStreak = 0;
       if (totalCoinsWon > 0) {
-        setWinStreak((prev) => prev + 1);
+        nextStreak = winStreakRef.current + 1;
+        winStreakRef.current = nextStreak;
+        setWinStreak(nextStreak);
         const effectiveLineBet = lineBet != null ? lineBet : (betAmount / (linesCount || 15));
         wonAmount = isSC
           ? Number((totalCoinsWon * effectiveLineBet).toFixed(2))
           : Math.round(totalCoinsWon * effectiveLineBet);
 
         setLastSpinWin(wonAmount);
-        setTotalAccumulatedWin((prev) =>
-          isSC ? Number((prev + wonAmount).toFixed(2)) : prev + wonAmount
-        );
+        setTotalAccumulatedWin((prev) => {
+          const next = isSC ? Number((prev + wonAmount).toFixed(2)) : prev + wonAmount;
+          totalWinRef.current = next;
+          return next;
+        });
         setWinningLines(wins);
         setWinningCells(winCoordSet);
+        setTotalCardPulse(true);
+        const popId = Date.now();
+        setSpinWinPop({
+          id: popId,
+          amount: wonAmount,
+          linesHit: wins.length,
+          isBig: wonAmount >= betAmount * 5,
+        });
+        setTimeout(() => {
+          setTotalCardPulse(false);
+        }, 1450);
+        setTimeout(() => {
+          setSpinWinPop((curr) => (curr?.id === popId ? null : curr));
+        }, 1750);
 
         // Play win celebration
         soundEngine.playWinCelebration(wonAmount >= betAmount * 5 ? 'big' : 'standard');
       } else {
+        winStreakRef.current = 0;
         setWinStreak(0);
         setLastSpinWin(0);
+        setSpinWinPop(null);
       }
 
-      // Retrigger Scatters handler (3+ Scatters only, subject to session ceiling)
-      if (retriggeredSpins > 0) {
+      // Retrigger Scatters handler (3+ Scatters) OR 3-Win Solar Frenzy Streak (+2 Extra Spins)
+      const streakBonusSpins = nextStreak > 0 && nextStreak % 3 === 0 ? 2 : 0;
+      const totalExtraRequested = retriggeredSpins + streakBonusSpins;
+      if (totalExtraRequested > 0) {
         const canAward = Math.min(
-          retriggeredSpins,
+          totalExtraRequested,
           Math.max(0, MAX_SESSION_SPINS - totalAwardedRef.current)
         );
         if (canAward > 0) {
@@ -287,9 +343,15 @@ export default function FreeSpinsScreen({
           setSpinsRemaining(spinsLeftRef.current);
           setTotalSpinsAwarded(totalAwardedRef.current);
           soundEngine.playBonusTrigger();
-          setRetriggerBanner(
-            `☀️ ${scatterCount}× SUN GOD RA SCATTERS! +${canAward} EXTRA FREE SPINS!`
-          );
+          if (retriggeredSpins > 0) {
+            setRetriggerBanner(
+              `☀️ ${scatterCount}× SUN GOD RA SCATTERS! +${canAward} EXTRA FREE SPINS!`
+            );
+          } else {
+            setRetriggerBanner(
+              `🔥 ${nextStreak}-WIN SOLAR FRENZY STREAK! +${canAward} BONUS FREE SPINS AWARDED!`
+            );
+          }
         }
       }
 
@@ -306,13 +368,14 @@ export default function FreeSpinsScreen({
         setIsSpinning(false);
         isSpinningRef.current = false;
         autoLoopTimerRef.current = setTimeout(() => {
-          if (executeAutoSpinRef.current) {
+          if (!isCompletedRef.current && executeAutoSpinRef.current) {
             executeAutoSpinRef.current();
           }
         }, wonAmount > 0 ? 1900 : 1200);
       }
     }, 1220);
-  }, [isSC, betAmount, coinValue, evaluateFreeSpinsWins]);
+    spinTimeoutsRef.current.push(evalTm);
+  }, [isSC, betAmount, coinValue, evaluateFreeSpinsWins, linesCount, lineBet]);
 
   executeAutoSpinRef.current = executeAutoSpin;
 
@@ -320,7 +383,9 @@ export default function FreeSpinsScreen({
   useEffect(() => {
     if (!isOpen) {
       hasStartedRef.current = false;
-      if (autoLoopTimerRef.current) clearTimeout(autoLoopTimerRef.current);
+      isCompletedRef.current = true;
+      isSpinningRef.current = false;
+      clearAllSpinTimeouts();
       return;
     }
 
@@ -332,13 +397,16 @@ export default function FreeSpinsScreen({
     totalAwardedRef.current = initialSpins;
     isSpinningRef.current = false;
     isCompletedRef.current = false;
+    winStreakRef.current = 0;
 
     setSpinsRemaining(initialSpins);
     setTotalSpinsAwarded(initialSpins);
     setTotalAccumulatedWin(0);
+    totalWinRef.current = 0;
     setLastSpinWin(0);
     setWinStreak(0);
     setIsCompleted(false);
+    setCollectCountdown(4);
     setCountdown(2);
 
     const countInterval = setInterval(() => {
@@ -362,6 +430,27 @@ export default function FreeSpinsScreen({
       if (autoLoopTimerRef.current) clearTimeout(autoLoopTimerRef.current);
     };
   }, [isOpen, initialSpins]);
+
+  // Automatic Collect Countdown when Free Spins Complete
+  useEffect(() => {
+    if (!isOpen || !isCompleted) {
+      setCollectCountdown(4);
+      return;
+    }
+    setCollectCountdown(4);
+    const interval = setInterval(() => {
+      setCollectCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          soundEngine.playWin(true);
+          onCompleteRef.current?.(totalWinRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isOpen, isCompleted]);
 
   if (!isOpen) return null;
 
@@ -425,7 +514,7 @@ export default function FreeSpinsScreen({
           </div>
 
           {/* Running Total Won Counter */}
-          <div className="fs-metric-card total-won-card">
+          <div className={`fs-metric-card total-won-card ${totalCardPulse ? 'fs-total-card-pulse' : ''}`}>
             <div className="fs-metric-label">RUNNING BONUS TOTAL</div>
             <div className="fs-running-digits">
               <PsdGoldNumber
@@ -433,6 +522,11 @@ export default function FreeSpinsScreen({
                 height={34}
                 gap={-2}
               />
+              {spinWinPop && (
+                <span key={spinWinPop.id} className="fs-running-delta-pill">
+                  +{isSC ? `$${spinWinPop.amount.toFixed(2)}` : spinWinPop.amount.toLocaleString()}!
+                </span>
+              )}
             </div>
             <div className="fs-running-usd">
               {isSC
@@ -470,6 +564,31 @@ export default function FreeSpinsScreen({
             <span>DC ENTERPRISES • {multiplier}× SOLAR ARENA</span>
             <Sparkles size={14} />
           </div>
+
+          {/* Celebratory Solar Spin Win Pop-Up Banner (Outside the reel symbols) */}
+          {spinWinPop && (
+            <div
+              key={spinWinPop.id}
+              className={`fs-spin-win-celebration-pop ${spinWinPop.isBig ? 'is-big-solar-win' : ''}`}
+              aria-live="polite"
+            >
+              <div className="fs-spin-pop-coins" aria-hidden="true">
+                <span className="fsp-coin c1">🪙</span>
+                <span className="fsp-coin c2">☀️</span>
+                <span className="fsp-coin c3">💎</span>
+                <span className="fsp-coin c4">🪙</span>
+                <span className="fsp-coin c5">✨</span>
+                <span className="fsp-coin c6">🪙</span>
+              </div>
+              <span className="fs-spin-pop-tag">
+                {spinWinPop.isBig ? '🔥 BLAZING SOLAR HIT!' : '☀️ SOLAR SPIN WIN!'} ({spinWinPop.linesHit}{' '}
+                {spinWinPop.linesHit === 1 ? 'LINE' : 'LINES'} • {multiplier}× MULT)
+              </span>
+              <strong className="fs-spin-pop-amount">
+                +{isSC ? `$${spinWinPop.amount.toFixed(2)} USD` : `${spinWinPop.amount.toLocaleString()} COINS`}
+              </strong>
+            </div>
+          )}
 
           {/* 5×3 Free Spins Grid Window — High Contrast, Unobstructed Symbol Stage */}
           <div className="fs-reel-window">
@@ -587,8 +706,19 @@ export default function FreeSpinsScreen({
                             </div>
                           )}
 
-                          {/* Winning Highlight Border Glow */}
-                          {isWinning && <div className="fs-winning-border-glow" />}
+                          {/* Winning Highlight Border Glow & Coin Sparkle Micro-Burst */}
+                          {isWinning && (
+                            <>
+                              <div className="fs-winning-border-glow" />
+                              <div className="fs-tile-win-micro-burst" aria-hidden="true">
+                                <span className="fs-cell-burst-ring" />
+                                <span className="fs-cell-spark s1">🪙</span>
+                                <span className="fs-cell-spark s2">✨</span>
+                                <span className="fs-cell-spark s3">🪙</span>
+                                <span className="fs-cell-spark s4">💎</span>
+                              </div>
+                            </>
+                          )}
                         </div>
                       );
                     })}
@@ -679,10 +809,11 @@ export default function FreeSpinsScreen({
             >
               <CheckCircle2 size={20} />
               <span>
-                COLLECT{' '}
+                🎉 AUTO-COLLECTING{' '}
                 {isSC
                   ? `$${totalAccumulatedWin.toFixed(2)} USD`
-                  : `${totalAccumulatedWin.toLocaleString()} COINS`}
+                  : `${totalAccumulatedWin.toLocaleString()} COINS`}{' '}
+                IN {collectCountdown}s (TAP TO CLAIM NOW)
               </span>
             </button>
           </div>

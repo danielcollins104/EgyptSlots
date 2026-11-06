@@ -24,6 +24,7 @@ export default function NeonKeyedImage({
       setDataUrl(processedCache.get(src));
       return;
     }
+    setDataUrl(null);
 
     let cancelled = false;
     const img = new Image();
@@ -41,6 +42,20 @@ export default function NeonKeyedImage({
 
         const imgData = ctx.getImageData(0, 0, w, h);
         const data = imgData.data;
+
+        // Check if the source image ALREADY has native alpha transparency along its borders
+        let transparentBorderSamples = 0;
+        const borderStep = Math.max(1, Math.floor(w / 16));
+        for (let x = 0; x < w; x += borderStep) {
+          if (data[(0 * w + x) * 4 + 3] < 200) transparentBorderSamples++;
+          if (data[((h - 1) * w + x) * 4 + 3] < 200) transparentBorderSamples++;
+        }
+        if (transparentBorderSamples >= 4) {
+          processedCache.set(src, src);
+          if (!cancelled) setDataUrl(src);
+          return;
+        }
+
         const visited = new Uint8Array(w * h);
         const queue = new Int32Array(w * h);
         let head = 0;
@@ -116,11 +131,17 @@ export default function NeonKeyedImage({
 
   return (
     <img
+      ref={(el) => {
+        if (el && !el.hasAttribute('fetchpriority')) {
+          el.setAttribute('fetchpriority', 'low');
+        }
+      }}
       src={dataUrl || src}
       alt={alt}
       className={className}
       style={style}
       draggable={draggable}
+      decoding="async"
     />
   );
 }

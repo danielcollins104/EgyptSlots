@@ -19,39 +19,51 @@ import { soundEngine } from '../audio/soundEngine';
 export const REFILL_PACKAGES = [
   {
     id: 'pkg_starter',
+    tierTitle: 'Initiate Scepter Pack',
     priceUsd: 4.99,
+    originalPriceUsd: 9.99,
     goldCoins: 10000,
     freeSweepsCoins: 5.0,
-    badge: 'STARTER PACK',
-    tagline: 'Instant refill to keep spinning',
-    savings: 'Standard Value',
+    badge: 'STARTER FLASH • 50% OFF',
+    tagline: 'Instant refill + $5.00 Free SC Value',
+    relicArt: '/assets/symbols/high/high_ankh_no_frame.png',
+    savings: 'Save $5.00',
   },
   {
     id: 'pkg_rescue_bronze',
+    tierTitle: 'Sacred Scarab Rescue',
     priceUsd: 9.99,
+    originalPriceUsd: 16.99,
     goldCoins: 30000,
     freeSweepsCoins: 12.0,
     badge: 'RESCUE DEAL • +20% BONUS',
-    tagline: 'Quick reload to stay in the action',
+    tagline: '30,000 GC + $12.00 Free Redeemable SC',
+    relicArt: '/assets/symbols/high/high_scarab_no_frame.png',
     savings: '20% Extra Free SC',
   },
   {
     id: 'pkg_rescue_silver',
+    tierTitle: 'Royal Necklace Booster',
     priceUsd: 19.99,
+    originalPriceUsd: 34.99,
     goldCoins: 75000,
     freeSweepsCoins: 25.0,
-    badge: 'MOST POPULAR • +25% BONUS',
-    tagline: 'Best value bankroll booster',
+    badge: '🔥 #1 BEST VALUE • +25% BONUS',
+    tagline: '75,000 GC + $25.00 Real Cash Prize Value!',
+    relicArt: '/assets/symbols/high/high_necklace_no_frame.png',
     savings: '25% Extra Free SC',
     recommended: true,
   },
   {
     id: 'pkg_rescue_gold',
+    tierTitle: 'All-Seeing Eye Whale Pack',
     priceUsd: 49.99,
+    originalPriceUsd: 79.99,
     goldCoins: 210000,
     freeSweepsCoins: 65.0,
-    badge: 'WHALE RESCUE • +30% BONUS',
-    tagline: 'Massive bankroll refill with VIP host perk',
+    badge: '👑 WHALE RESCUE • +30% BONUS',
+    tagline: 'Exceeds $50 Minimum Cashout Threshold!',
+    relicArt: '/assets/symbols/high/high_eye_no_frame.png',
     savings: '30% Extra Free SC',
   },
 ];
@@ -203,6 +215,14 @@ export default function LowBalanceOfferModal({
                 )}
 
                 <div className="rescue-card-top">
+                  {pkg.relicArt && (
+                    <img
+                      src={pkg.relicArt}
+                      alt={pkg.tierTitle || 'Relic'}
+                      className="rescue-relic-emblem"
+                      draggable={false}
+                    />
+                  )}
                   <div className="rescue-gc-row">
                     <Coins size={16} className="gc-icon-gold" />
                     <span className="rescue-gc-val">{pkg.goldCoins.toLocaleString()}</span>
@@ -211,7 +231,7 @@ export default function LowBalanceOfferModal({
 
                   <div className="rescue-sc-pill">
                     <Gem size={13} className="sc-icon-gem" />
-                    <span>+{pkg.freeSweepsCoins.toFixed(2)} FREE SC</span>
+                    <span>+FREE ${pkg.freeSweepsCoins.toFixed(2)} SC</span>
                   </div>
                 </div>
 
@@ -225,7 +245,10 @@ export default function LowBalanceOfferModal({
                     handleClaim(pkg);
                   }}
                 >
-                  <span>GET FOR ${pkg.priceUsd.toFixed(2)}</span>
+                  {pkg.originalPriceUsd && (
+                    <span className="rescue-old-price">${pkg.originalPriceUsd.toFixed(2)}</span>
+                  )}
+                  <span>CLAIM ${pkg.priceUsd.toFixed(2)}</span>
                   <ArrowRight size={15} />
                 </button>
               </div>

@@ -143,6 +143,25 @@ class AssetPreloader {
     if (this.promise) return this.promise;
 
     this.promise = new Promise(async (resolve) => {
+      // 0. Yield bandwidth to the primary LCP Hero Image (#lcp-hero-img) first so secondary
+      // game textures never compete with Largest Contentful Paint on 3G/mobile networks.
+      try {
+        if (typeof document !== 'undefined') {
+          const lcpImg = document.getElementById('lcp-hero-img');
+          if (lcpImg && !lcpImg.complete) {
+            await new Promise((r) => {
+              const done = () => r();
+              lcpImg.addEventListener('load', done, { once: true });
+              lcpImg.addEventListener('error', done, { once: true });
+              setTimeout(done, 1500);
+            });
+          }
+          if (typeof requestAnimationFrame === 'function') {
+            await new Promise((r) => requestAnimationFrame(() => r()));
+          }
+        }
+      } catch (_) {}
+
       // 1. Load fonts readiness if available
       try {
         if (typeof document !== 'undefined' && document.fonts) {

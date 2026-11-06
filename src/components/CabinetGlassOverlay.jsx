@@ -8,7 +8,7 @@ import React from 'react';
  */
 export default function CabinetGlassOverlay({ isSpinning = false, hasWin = false }) {
   return (
-    <div className={`cabinet-glass-overlay ${isSpinning ? 'spinning' : ''} ${hasWin ? 'winning' : ''}`} pointer-events="none">
+    <div className={`cabinet-glass-overlay ${isSpinning ? 'spinning' : ''} ${hasWin ? 'winning' : ''}`} style={{ pointerEvents: 'none' }}>
       {/* 1. Curved OLED Glass Glare & Chandelier Reflex */}
       <div className="cabinet-glass-glare" />
 

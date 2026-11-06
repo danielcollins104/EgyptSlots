@@ -19,3 +19,7 @@ Thumbs.db
 .env
 .env.*
 external/
+sovereign-ai-platform/
+*CRYPTO_WALLETS*
+*SECRET*
+*PRIVATE_KEY*

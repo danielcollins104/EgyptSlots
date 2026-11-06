@@ -17,6 +17,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const HOST = '127.0.0.1';
@@ -200,7 +201,28 @@ const server = http.createServer(async (req, res) => {
         STRIPE_WEBHOOK_SECRET: webhook,
       });
 
+      const cfNotes = [];
+      for (const [secretName, secretVal] of [
+        ['STRIPE_SECRET_KEY', secret],
+        ['STRIPE_WEBHOOK_SECRET', webhook],
+      ]) {
+        if (!secretVal) continue;
+        try {
+          const r = spawnSync(
+            'npx',
+            ['wrangler', 'secret', 'put', secretName, '--name', 'egyptslots2'],
+            { cwd: ROOT, input: secretVal, encoding: 'utf8', shell: true }
+          );
+          if (r.status === 0) {
+            cfNotes.push(`Uploaded ${secretName} to Cloudflare Worker (egyptslots2).`);
+          }
+        } catch {
+          // Ignore if wrangler is not logged in
+        }
+      }
+
       notes.unshift(`Saved to .env.local:\n• Publishable: ${mask(effectivePk)}\n• Secret: ${mask(effectiveSk)}${webhook ? `\n• Webhook: ${mask(webhook)}` : ''}`);
+      if (cfNotes.length) notes.push(cfNotes.join('\n'));
       notes.push('This setup server is now shutting down. You can close this tab.');
       send(res, 200, page({ message: notes.join('\n\n'), done: true }));
       console.log('\n✓ Stripe keys saved to .env.local (values not shown). Shutting down setup server.');

@@ -257,7 +257,12 @@ class SoundEngine {
 
   triggerHaptics(pattern = [40, 50, 60]) {
     try {
-      if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+      if (
+        typeof window !== 'undefined' &&
+        'navigator' in window &&
+        'vibrate' in navigator &&
+        (!navigator.userActivation || navigator.userActivation.hasBeenActive)
+      ) {
         navigator.vibrate(pattern);
       }
     } catch {
@@ -1097,6 +1102,35 @@ class SoundEngine {
   playAscensionCashOut() {
     this.playSfxSample('coins', 0.5);
     this.playWinCelebration('big');
+  }
+
+  playSolarFireball() {
+    if (this.muted || !this._canPlay('solarFireball', 120)) return;
+    this.init();
+    if (!this.ctx) return;
+
+    this.triggerHaptics([25, 35, 50]);
+    const now = this.ctx.currentTime;
+    this._playWarmNote({
+      freq: HARMONIC_SCALE.G3 || 196,
+      endFreq: HARMONIC_SCALE.C5,
+      startTime: now,
+      duration: 0.28,
+      peakGain: 0.08,
+      type: 'triangle',
+      filterCutoff: 1500,
+      attackSec: 0.015,
+    });
+    this._playWarmNote({
+      freq: HARMONIC_SCALE.E4,
+      endFreq: HARMONIC_SCALE.G5,
+      startTime: now + 0.05,
+      duration: 0.24,
+      peakGain: 0.06,
+      type: 'sine',
+      filterCutoff: 1800,
+      attackSec: 0.012,
+    });
   }
 }
 

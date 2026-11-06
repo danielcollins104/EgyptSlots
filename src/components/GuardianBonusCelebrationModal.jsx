@@ -12,6 +12,7 @@ export default function GuardianBonusCelebrationModal({
   isOpen = false,
   onStartFreeSpins,
   onEnterBonusVault,
+  onLaunchCelestialOverload,
   onClose,
   initialSpins = 6,
 }) {
@@ -163,7 +164,21 @@ export default function GuardianBonusCelebrationModal({
               }}
             >
               <Trophy size={16} className="btn-sec-icon" />
-              <span>OR PLAY 3D TREASURE VAULT</span>
+              <span>OR ENTER 5-CHAMBER 3D BONUS PORTAL</span>
+            </button>
+          )}
+
+          {onLaunchCelestialOverload && (
+            <button
+              type="button"
+              className="guardian-bonus-secondary-btn"
+              onClick={() => {
+                soundEngine.playButtonClick?.(680);
+                onLaunchCelestialOverload?.();
+              }}
+            >
+              <Zap size={16} className="btn-sec-icon" />
+              <span>OR PLAY WRATH OF THE GODS: CELESTIAL OVERLOAD</span>
             </button>
           )}
         </div>

@@ -822,6 +822,11 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
 
     buildStaticBackdrop(null);
 
+    // Ultra-smooth 60/120 FPS Render Loop with Delta Smoothing & Intelligent Idle Throttling
+    let lastTime = performance.now();
+    let isDirty = true;
+    const markDirty = () => { isDirty = true; };
+
     // Load & pre-bake all 3D Pop-Out Sprites ONCE from `THEME_ASSETS` & `GUARDIANS`
     (async () => {
       const [
@@ -844,7 +849,10 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
 
       if (isDisposed) return;
 
-      if (netImg) buildStaticBackdrop(netImg);
+      if (netImg) {
+        buildStaticBackdrop(netImg);
+        isDirty = true;
+      }
 
       const preparedLeftGuardian = rawLeftTallImg
         ? GUARDIANS.left.keyedBackground
@@ -882,6 +890,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         true,
         GUARDIANS.right.tallBannerText
       );
+      isDirty = true;
 
       // Render 3D Pop-Out Royal Symbols, 3D Bonus Symbol, & High-Tier Two-Layer Symbols
       const bonusCrestOverlay = await loadImage(THEME_ASSETS.bonusCrestOverlayImage);
@@ -908,6 +917,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             sprites[`sym_${sym.id}`] = normalCan;
             sprites[`frame_${sym.id}`] = frameCan;
             sprites[`pop_${sym.id}`] = artCan;
+            isDirty = true;
             return;
           }
 
@@ -917,6 +927,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             sprites[`sym_${sym.id}`] = normalCan;
             sprites[`frame_${sym.id}`] = frameCan;
             sprites[`pop_${sym.id}`] = artCan;
+            isDirty = true;
             return;
           }
 
@@ -958,6 +969,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
               sym.accentColor || '#ffd700'
             );
           }
+          isDirty = true;
 
           // Load separate Frame + No-Frame 3D Pop-Out layers for winning animations!
           if (sym.frameImage && sym.noFrameImage && sym.noFrameImage !== sym.image) {
@@ -982,10 +994,12 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 sym.neonFilter || '',
                 '#ffd700'
               );
+              isDirty = true;
             }
           }
         })
       );
+      isDirty = true;
     })();
 
     // Spin Controller with Turbo Flow Mode support
@@ -1069,6 +1083,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     const instantStop = () => {
       const isAnySpinning = reels.some((r) => r.state !== 'IDLE');
       if (!isAnySpinning) return;
+      isDirty = true;
 
       reels.forEach((reel) => {
         reel.tweens.forEach((t) => t.kill());
@@ -1165,7 +1180,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
               reel.expandedVisible = true;
               reel.tallScaleX = 0.3;
               reel.tallScaleY = 0.1;
-              reel.tallAlpha = 0;
+              reel.tallAlpha = 0.01;
+              isDirty = true;
 
               spawnParticles(reel.centerX, GAME_H * 0.3, 14, '#ffd700');
               spawnParticles(reel.centerX, GAME_H * 0.7, 14, '#00e5ff');
@@ -1176,6 +1192,12 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 tallAlpha: 1,
                 duration: 0.36,
                 ease: 'back.out(1.8)',
+                onUpdate: () => {
+                  isDirty = true;
+                },
+                onComplete: () => {
+                  isDirty = true;
+                },
               });
               reel.tweens.push(expTween);
             }
@@ -1188,11 +1210,6 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           },
         });
     };
-
-    // Ultra-smooth 60/120 FPS Render Loop with Delta Smoothing & Intelligent Idle Throttling
-    let lastTime = performance.now();
-    let isDirty = true;
-    const markDirty = () => { isDirty = true; };
 
     const tick = () => {
       if (isDisposed) return;

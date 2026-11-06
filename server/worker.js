@@ -6,6 +6,7 @@ function getRouter(env) {
   if (!routerInstance) {
     routerInstance = new ApiRouter({
       stripeSecretKey: env?.STRIPE_SECRET_KEY || '',
+      stripeWebhookSecret: env?.STRIPE_WEBHOOK_SECRET || '',
       ledgerSecret: env?.DC_LEDGER_SECRET,
       signingKey: env?.DC_SPIN_SIGNING_KEY,
       adminSecret: env?.DC_ADMIN_SECRET,

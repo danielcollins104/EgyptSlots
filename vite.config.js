@@ -2,8 +2,21 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { securityApiPlugin } from './server/vitePluginSecurity.js';
 
+function nonBlockingCssPlugin() {
+  return {
+    name: 'non-blocking-css-lcp',
+    enforce: 'post',
+    transformIndexHtml(html) {
+      return html.replace(
+        /<link rel="stylesheet"([^>]*?)href="(\/assets\/[^"]+\.css)"([^>]*)>/g,
+        '<link rel="preload" as="style"$1href="$2"$3><link rel="stylesheet"$1href="$2"$3 media="print" onload="this.media=\'all\'">'
+      );
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), securityApiPlugin()],
+  plugins: [react(), securityApiPlugin(), nonBlockingCssPlugin()],
   build: {
     target: 'es2020',
     minify: 'esbuild',
