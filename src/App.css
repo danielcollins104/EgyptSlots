@@ -19862,6 +19862,206 @@ body {
   }
 }
 
+/* ============================================================================
+   2026 ADAPTIVE UI: KEYBOARD SHORTCUT HELPER, FOLDABLE TABLETOP & CURSORS
+   ============================================================================ */
+.adaptive-shortcuts-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(3, 6, 18, 0.82);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.adaptive-shortcuts-modal {
+  width: 100%;
+  max-width: 640px;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.98), rgba(6, 10, 26, 0.99));
+  border: 2px solid rgba(253, 224, 71, 0.65);
+  border-radius: 18px;
+  padding: 20px 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.92), 0 0 32px rgba(56, 189, 248, 0.25);
+  color: #f8fafc;
+}
+
+.adaptive-shortcuts-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(253, 224, 71, 0.25);
+}
+
+.adaptive-shortcuts-title {
+  margin: 0;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #fde047;
+  letter-spacing: 0.06em;
+}
+
+.adaptive-shortcuts-sub {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.adaptive-shortcuts-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.adaptive-posture-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.45), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.adaptive-posture-toggle-row strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #fde047;
+}
+
+.adaptive-posture-toggle-row span {
+  display: block;
+  font-size: 0.7rem;
+  color: #cbd5e1;
+  margin-top: 2px;
+}
+
+.adaptive-posture-btn {
+  padding: 8px 14px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(56, 189, 248, 0.7);
+  background: rgba(14, 116, 144, 0.45);
+  color: #e0f2fe;
+  font-weight: 900;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.adaptive-posture-btn.active {
+  border-color: #fde047;
+  background: linear-gradient(135deg, #059669, #d97706);
+  color: #ffffff;
+}
+
+.adaptive-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px 12px;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.78rem;
+  color: #e2e8f0;
+}
+
+.shortcut-item kbd {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(253, 224, 71, 0.55);
+  color: #fde047;
+  font-family: monospace;
+  font-size: 0.74rem;
+  font-weight: 800;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Adaptive Pointer Cursors (Desktop, ChromeOS, Large Screen Trackpads) */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: default !important;
+}
+
+.assets-loading,
+.loading-locked {
+  cursor: wait !important;
+}
+
+.bonus-chamber-tabs {
+  cursor: grab;
+}
+
+.bonus-chamber-tabs:active {
+  cursor: grabbing;
+}
+
+/* Foldable Tabletop Posture (Half-Folded Horizontal Hinge):
+   Top upright half = Viewing Stage; Bottom flat half = Interactive Controls Deck */
+@media (horizontal-viewport-segments: 2) {
+  .casino-app-root {
+    display: grid !important;
+    grid-template-rows: env(viewport-segment-bottom 0 0, 50dvh) calc(100dvh - env(viewport-segment-top 0 1, 50dvh));
+  }
+}
+
+.casino-app-root.tabletop-posture-active .slot-stage-container {
+  max-height: env(viewport-segment-bottom 0 0, 54dvh) !important;
+  height: env(viewport-segment-bottom 0 0, 54dvh) !important;
+  padding-bottom: 4px !important;
+}
+
+.casino-app-root.tabletop-posture-active .psd-bottom-control-bar {
+  position: fixed !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  top: env(viewport-segment-top 0 1, 56dvh) !important;
+  bottom: 8px !important;
+  height: auto !important;
+  min-height: 140px !important;
+  width: min(96vw, 980px) !important;
+  z-index: 950 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-around !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(4, 8, 22, 0.98)) !important;
+  border: 2px solid rgba(253, 224, 71, 0.65) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.85), 0 0 24px rgba(56, 189, 248, 0.25) !important;
+  padding: 12px 20px !important;
+}
+
+
 
 
 

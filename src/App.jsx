@@ -125,9 +125,57 @@ function formatCoinValue(val) {
 }
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [muted, setMuted] = useState(false);
-  const [neonThemeIdx, setNeonThemeIdx] = useState(0);
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      return sessionStorage.getItem('dc_session_splash_dismissed') !== 'true';
+    } catch {
+      return true;
+    }
+  });
+  const [muted, setMuted] = useState(() => {
+    try {
+      return sessionStorage.getItem('dc_session_muted') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [neonThemeIdx, setNeonThemeIdx] = useState(() => {
+    try {
+      const saved = parseInt(sessionStorage.getItem('dc_session_theme_idx') || '0', 10);
+      return Number.isNaN(saved) ? 0 : saved;
+    } catch {
+      return 0;
+    }
+  });
+  const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
+  const [isTabletopPosture, setIsTabletopPosture] = useState(false);
+
+  // Detect foldable tabletop posture (Viewport Segments / Device Posture API)
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const checkPosture = () => {
+      try {
+        const postureType = window.navigator?.devicePosture?.type;
+        const hasHorizSegments =
+          window.matchMedia &&
+          window.matchMedia('(horizontal-viewport-segments: 2)').matches;
+        if (postureType === 'folded' || hasHorizSegments) {
+          setIsTabletopPosture(true);
+        }
+      } catch {}
+    };
+    checkPosture();
+    window.addEventListener('resize', checkPosture);
+    try {
+      window.navigator?.devicePosture?.addEventListener?.('change', checkPosture);
+    } catch {}
+    return () => {
+      window.removeEventListener('resize', checkPosture);
+      try {
+        window.navigator?.devicePosture?.removeEventListener?.('change', checkPosture);
+      } catch {}
+    };
+  }, []);
 
   // Asset Preloading & Instant Spin Lock Telemetry
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(() => assetPreloader.isComplete);
@@ -229,10 +277,31 @@ export default function App() {
     }
   };
 
-  // Bottom UI State (Multi-Line Wagering & Per-Line Bet Selector)
-  const [selectedLines, setSelectedLines] = useState(15);
-  const [lineBetIndexSC, setLineBetIndexSC] = useState(0); // Default 0.25 SC ($3.75 total bet at 15 lines)
-  const [lineBetIndexGC, setLineBetIndexGC] = useState(0); // Default 25 GC (375 GC total bet at 15 lines)
+  // Bottom UI State (Multi-Line Wagering & Per-Line Bet Selector) — Saved across foldable/rotation configuration changes
+  const [selectedLines, setSelectedLines] = useState(() => {
+    try {
+      const saved = parseInt(sessionStorage.getItem('dc_session_selected_lines') || '15', 10);
+      return LINE_OPTIONS.includes(saved) ? saved : 15;
+    } catch {
+      return 15;
+    }
+  });
+  const [lineBetIndexSC, setLineBetIndexSC] = useState(() => {
+    try {
+      const saved = parseInt(sessionStorage.getItem('dc_session_line_bet_sc') || '0', 10);
+      return saved >= 0 && saved < LINE_BET_TIERS_SC.length ? saved : 0;
+    } catch {
+      return 0;
+    }
+  }); // Default 0.25 SC ($3.75 total bet at 15 lines)
+  const [lineBetIndexGC, setLineBetIndexGC] = useState(() => {
+    try {
+      const saved = parseInt(sessionStorage.getItem('dc_session_line_bet_gc') || '0', 10);
+      return saved >= 0 && saved < LINE_BET_TIERS_GC.length ? saved : 0;
+    } catch {
+      return 0;
+    }
+  }); // Default 25 GC (375 GC total bet at 15 lines)
   const [betIndexGC, setBetIndexGC] = useState(4); // Backward-compatibility
   const [betIndexSC, setBetIndexSC] = useState(4); // Backward-compatibility
 
@@ -277,7 +346,14 @@ export default function App() {
   // Autoplay, Bonus Mechanisms & Modals
   const [autoPlayCount, setAutoPlayCount] = useState(0);
   const [paytableOpen, setPaytableOpen] = useState(false);
-  const [bonusMeter, setBonusMeter] = useState(4);
+  const [bonusMeter, setBonusMeter] = useState(() => {
+    try {
+      const saved = parseInt(sessionStorage.getItem('dc_session_bonus_meter') || '4', 10);
+      return Number.isNaN(saved) ? 4 : saved;
+    } catch {
+      return 4;
+    }
+  });
   const [collectorCelebrationOpen, setCollectorCelebrationOpen] = useState(false);
   const [bonusSession, setBonusSession] = useState(null);
   const [celestialBonusOpen, setCelestialBonusOpen] = useState(false);
@@ -293,10 +369,49 @@ export default function App() {
   // 3 = Celestial Energy Orbs & Flames Manifest (Plasma & Solar Sunfire)
   // 4 = Incandescent Apex Overcharge (Maximum Scale, Blinding Glow, Crackling Lightning)
   // 5 = Grand Celestial Strike Laser
-  const [anubisCharge, setAnubisCharge] = useState(0);
-  const [bastetCharge, setBastetCharge] = useState(0);
-  const anubisChargeRef = useRef(0);
-  const bastetChargeRef = useRef(0);
+  const [anubisCharge, setAnubisCharge] = useState(() => {
+    try {
+      const saved = parseInt(sessionStorage.getItem('dc_session_anubis_charge') || '0', 10);
+      return Number.isNaN(saved) ? 0 : saved;
+    } catch {
+      return 0;
+    }
+  });
+  const [bastetCharge, setBastetCharge] = useState(() => {
+    try {
+      const saved = parseInt(sessionStorage.getItem('dc_session_bastet_charge') || '0', 10);
+      return Number.isNaN(saved) ? 0 : saved;
+    } catch {
+      return 0;
+    }
+  });
+  const anubisChargeRef = useRef(anubisCharge);
+  const bastetChargeRef = useRef(bastetCharge);
+
+  // Preserve interactive UI state across configuration changes (folding/unfolding, orientation rotation, window resize)
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('dc_session_splash_dismissed', showSplash ? 'false' : 'true');
+      sessionStorage.setItem('dc_session_muted', muted ? 'true' : 'false');
+      sessionStorage.setItem('dc_session_theme_idx', String(neonThemeIdx));
+      sessionStorage.setItem('dc_session_selected_lines', String(selectedLines));
+      sessionStorage.setItem('dc_session_line_bet_sc', String(lineBetIndexSC));
+      sessionStorage.setItem('dc_session_line_bet_gc', String(lineBetIndexGC));
+      sessionStorage.setItem('dc_session_bonus_meter', String(bonusMeter));
+      sessionStorage.setItem('dc_session_anubis_charge', String(anubisCharge));
+      sessionStorage.setItem('dc_session_bastet_charge', String(bastetCharge));
+    } catch {}
+  }, [
+    showSplash,
+    muted,
+    neonThemeIdx,
+    selectedLines,
+    lineBetIndexSC,
+    lineBetIndexGC,
+    bonusMeter,
+    anubisCharge,
+    bastetCharge,
+  ]);
   const [anubisPowerUp, setAnubisPowerUp] = useState(null);
   const [bastetPowerUp, setBastetPowerUp] = useState(null);
   const anubisTimerRef = useRef(null);
@@ -1816,14 +1931,24 @@ export default function App() {
     }
   }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, freeSpinsOpen, triggerSpin, turboFlow, isAssetsLoaded]);
 
-  // Desktop & Adaptive Keyboard Shortcuts (Space, Bet Up/Down, Mute, Paytable, Escape)
+  // Desktop & Adaptive Keyboard Shortcuts (Space, Bet Up/Down, Lines Left/Right, Mute, Fullscreen, Paytable, Bonus, Navigation, Shortcut Helper, Escape)
   useEffect(() => {
     const onKeyDown = (e) => {
-      // Don't intercept if user is typing in an input field (e.g. login/search)
-      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
+      // Do not intercept if user is typing in an input, textarea, select, or contentEditable field
+      if (
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName) ||
+        e.target?.isContentEditable
+      ) {
+        return;
+      }
 
-      // Escape: Close modals
+      // Escape: Dismiss temporary UI (modals, drawers, overlays)
       if (e.code === 'Escape') {
+        if (e.repeat) return;
+        if (keyboardShortcutsOpen) {
+          setKeyboardShortcutsOpen(false);
+          return;
+        }
         if (bigWinAmount > 0) setBigWinAmount(0);
         if (winSplashAmount > 0) setWinSplashAmount(0);
         if (paytableOpen) setPaytableOpen(false);
@@ -1831,6 +1956,49 @@ export default function App() {
         if (authModalOpen) setAuthModalOpen(false);
         if (lowBalanceOfferOpen) setLowBalanceOfferOpen(false);
         return;
+      }
+
+      // Keyboard Shortcut Helper: ? (Shift+Slash) or Ctrl+Slash
+      if (
+        (e.code === 'Slash' && (e.shiftKey || e.ctrlKey || e.metaKey)) ||
+        e.key === '?'
+      ) {
+        e.preventDefault();
+        if (e.repeat) return;
+        soundEngine.playButtonClick(680);
+        setKeyboardShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      // Ctrl+1 to Ctrl+4: Switch top-level navigation destinations
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && !showSplash) {
+        if (e.code === 'Digit1') {
+          e.preventDefault();
+          if (e.repeat) return;
+          setPaymentModalTab('store');
+          setPaymentModalOpen(true);
+          return;
+        }
+        if (e.code === 'Digit2') {
+          e.preventDefault();
+          if (e.repeat) return;
+          setPaymentModalTab('redeem');
+          setPaymentModalOpen(true);
+          return;
+        }
+        if (e.code === 'Digit3') {
+          e.preventDefault();
+          if (e.repeat) return;
+          setPaymentModalTab('history');
+          setPaymentModalOpen(true);
+          return;
+        }
+        if (e.code === 'Digit4') {
+          e.preventDefault();
+          if (e.repeat) return;
+          setPaytableOpen((prev) => !prev);
+          return;
+        }
       }
 
       // Spacebar: Spin trigger
@@ -1850,45 +2018,55 @@ export default function App() {
       }
 
       // Lines Left/Right: ArrowLeft / KeyA (Decrease Lines), ArrowRight / KeyD (Increase Lines)
-      if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey) {
-        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-          e.preventDefault();
-          handleLinesChange(-1);
-          return;
-        }
+      if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        if (e.repeat) return;
+        handleLinesChange(-1);
+        return;
       }
-      if ((e.code === 'ArrowRight' || e.code === 'KeyD') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey) {
-        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-          e.preventDefault();
-          handleLinesChange(1);
-          return;
-        }
+      if ((e.code === 'ArrowRight' || e.code === 'KeyD') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        if (e.repeat) return;
+        handleLinesChange(1);
+        return;
       }
 
       // Bet Up: ArrowUp or KeyW
-      if ((e.code === 'ArrowUp' || e.code === 'KeyW') && !isSpinning && !showSplash) {
+      if ((e.code === 'ArrowUp' || e.code === 'KeyW') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
+        if (e.repeat) return;
         handleBetChange(1);
         return;
       }
 
       // Bet Down: ArrowDown or KeyS
-      if ((e.code === 'ArrowDown' || e.code === 'KeyS') && !isSpinning && !showSplash) {
+      if ((e.code === 'ArrowDown' || e.code === 'KeyS') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
+        if (e.repeat) return;
         handleBetChange(-1);
         return;
       }
 
       // Mute Toggle: KeyM
-      if (e.code === 'KeyM' && !showSplash) {
+      if (e.code === 'KeyM' && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
+        if (e.repeat) return;
         toggleMute();
         return;
       }
 
-      // Paytable Toggle: KeyP
-      if (e.code === 'KeyP' && !showSplash) {
+      // Fullscreen Toggle: KeyF
+      if (e.code === 'KeyF' && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
+        if (e.repeat) return;
+        toggleFullscreen();
+        return;
+      }
+
+      // Paytable Toggle: KeyP
+      if (e.code === 'KeyP' && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        if (e.repeat) return;
         setPaytableOpen((prev) => !prev);
         return;
       }
@@ -1908,6 +2086,7 @@ export default function App() {
     };
   }, [
     showSplash,
+    keyboardShortcutsOpen,
     paytableOpen,
     paymentModalOpen,
     authModalOpen,
@@ -1923,6 +2102,7 @@ export default function App() {
     selectedLines,
     lineBetIndexSC,
     lineBetIndexGC,
+    isAssetsLoaded,
   ]);
 
   const handleLinesChange = (delta) => {
@@ -2029,9 +2209,111 @@ export default function App() {
   };
 
   return (
-    <div className={`casino-app-root theme-${currentTheme.id}`}>
+    <div className={`casino-app-root theme-${currentTheme.id} ${isTabletopPosture ? 'tabletop-posture-active' : ''}`}>
       {/* Welcome Screen */}
       {showSplash && <SplashScreen onEnterCasino={() => setShowSplash(false)} />}
+
+      {/* Adaptive Keyboard Shortcuts & Foldable Tabletop Helper Modal */}
+      {keyboardShortcutsOpen && (
+        <div
+          className="adaptive-shortcuts-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Keyboard Shortcuts and Adaptive Posture Controls"
+          onClick={() => setKeyboardShortcutsOpen(false)}
+        >
+          <div
+            className="adaptive-shortcuts-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="adaptive-shortcuts-header">
+              <div>
+                <h2 className="adaptive-shortcuts-title">⌨️ KEYBOARD SHORTCUTS &amp; ADAPTIVE POSTURE</h2>
+                <p className="adaptive-shortcuts-sub">
+                  Desktop, Tablet &amp; Foldable Hardware Controls
+                </p>
+              </div>
+              <button
+                type="button"
+                className="adaptive-shortcuts-close"
+                onClick={() => setKeyboardShortcutsOpen(false)}
+                aria-label="Dismiss keyboard shortcuts (Esc)"
+                title="Dismiss keyboard shortcuts (Esc)"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="adaptive-posture-toggle-row">
+              <div>
+                <strong>📱 Foldable Tabletop Posture</strong>
+                <span>Splits Viewing Stage (top screen) &amp; Controls Deck (bottom flat screen)</span>
+              </div>
+              <button
+                type="button"
+                className={`adaptive-posture-btn ${isTabletopPosture ? 'active' : ''}`}
+                onClick={() => {
+                  soundEngine.playButtonClick(660);
+                  setIsTabletopPosture((prev) => !prev);
+                }}
+              >
+                {isTabletopPosture ? 'TABLETOP: ON' : 'TABLETOP: OFF'}
+              </button>
+            </div>
+
+            <div className="adaptive-shortcuts-grid">
+              <div className="shortcut-item">
+                <span>Spin Reels / Instant Stop</span>
+                <kbd>Space</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Increase Bet Per Line</span>
+                <kbd>↑ / W</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Decrease Bet Per Line</span>
+                <kbd>↓ / S</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Increase Active Paylines</span>
+                <kbd>→ / D</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Decrease Active Paylines</span>
+                <kbd>← / A</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Mute / Unmute Audio</span>
+                <kbd>M</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Toggle Fullscreen</span>
+                <kbd>F</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Open Paytable &amp; Rules</span>
+                <kbd>P</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Open Coin Store</span>
+                <kbd>Ctrl+1</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Redeem Sweeps Prizes</span>
+                <kbd>Ctrl+2</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>View Payment History</span>
+                <kbd>Ctrl+3</kbd>
+              </div>
+              <div className="shortcut-item">
+                <span>Dismiss Active Dialog</span>
+                <kbd>Esc</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Progressive Stage Background: Instant Low-Res Placeholder + High-Res WebP */}
       <div
@@ -2367,9 +2649,24 @@ export default function App() {
               setPaytableOpen(true);
             }}
             onMouseEnter={() => soundEngine.playButtonHover()}
+            title="Open paytable and rules (P)"
+            aria-label="Open paytable and rules (P)"
           >
             <BookOpen size={15} />
             <span>Paytable &amp; Rules</span>
+          </button>
+
+          <button
+            className="dc-action-btn"
+            onClick={() => {
+              soundEngine.playButtonClick(680);
+              setKeyboardShortcutsOpen((prev) => !prev);
+            }}
+            onMouseEnter={() => soundEngine.playButtonHover()}
+            title="Keyboard shortcuts and foldable posture (?)"
+            aria-label="Keyboard shortcuts and foldable posture (?)"
+          >
+            <span style={{ fontWeight: 900, fontSize: '0.82rem' }}>?</span>
           </button>
 
           <button
@@ -2396,6 +2693,7 @@ export default function App() {
             }}
             onMouseEnter={() => soundEngine.playButtonHover()}
             title={currencyMode === 'SC' ? 'Reset Sweeps Coins to 10.00 SC' : 'Reset Gold Coins to 250,000 GC'}
+            aria-label={currencyMode === 'SC' ? 'Reset Sweeps Coins to 10.00 SC' : 'Reset Gold Coins to 250,000 GC'}
           >
             <RotateCcw size={15} />
           </button>
@@ -2406,7 +2704,8 @@ export default function App() {
             className="dc-action-btn"
             onClick={toggleMute}
             onMouseEnter={() => soundEngine.playButtonHover()}
-            title="Toggle Sound"
+            title={muted ? 'Unmute audio (M)' : 'Mute audio (M)'}
+            aria-label={muted ? 'Unmute audio (M)' : 'Mute audio (M)'}
           >
             {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
