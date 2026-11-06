@@ -355,6 +355,92 @@ requiredAuthMethods.forEach((methodName) => {
 });
 
 // ----------------------------------------------------------------------------
+// 10. CASINO AD ARCHITECT & 1-CLICK CONVERSION FLOWS
+// ----------------------------------------------------------------------------
+console.log('\n--- 10. Testing Casino Ad Architect & 1-Click Conversion Flows ---');
+const vipAdModalSrc = fs.readFileSync(path.join(rootDir, 'src/components/VipPromoAdModal.jsx'), 'utf8');
+assert(vipAdModalSrc.includes('VIP_FOUNDER_OFFERS'), 'VipPromoAdModal defines 3-tier VIP Founder Offer Stack');
+assert(vipAdModalSrc.includes('liveJackpot'), 'VipPromoAdModal features live progressive jackpot ticker');
+assert(vipAdModalSrc.includes('vip-ad-cashout-bridge-card'), 'VipPromoAdModal features Real Prize Cashout Bridge Meter');
+assert(vipAdModalSrc.includes('onSelectPackage'), 'VipPromoAdModal supports 1-click direct package checkout');
+
+const bigWinSrc = fs.readFileSync(path.join(rootDir, 'src/components/BigWinPopup.jsx'), 'utf8');
+assert(bigWinSrc.includes('bigwin-vip-upsell-banner'), 'BigWinPopup includes Post-Big-Win VIP Upsell Banner');
+
+const lowBalanceSrc = fs.readFileSync(path.join(rootDir, 'src/components/LowBalanceOfferModal.jsx'), 'utf8');
+assert(lowBalanceSrc.includes('rescue-live-jackpot-strip'), 'LowBalanceOfferModal includes Live Progressive Jackpot urgency strip');
+
+// ----------------------------------------------------------------------------
+// 11. ADAPTIVE ANDROID, FOLDABLE POSTURE & MULTI-WINDOW COMPLIANCE
+// ----------------------------------------------------------------------------
+console.log('\n--- 11. Testing Adaptive Android, Foldable Posture & Testing Setup ---');
+const manifestXml = fs.readFileSync(
+  path.join(rootDir, 'android/app/src/main/AndroidManifest.xml'),
+  'utf8'
+);
+assert(
+  manifestXml.includes('android:resizeableActivity="true"'),
+  'AndroidManifest enables resizeableActivity="true" for multi-window & foldables'
+);
+assert(
+  !manifestXml.includes('android:screenOrientation='),
+  'AndroidManifest has no orientation locks (full orientation freedom)'
+);
+assert(
+  !manifestXml.includes('android:configChanges='),
+  'AndroidManifest omits restrictive configChanges to allow adaptive recreation'
+);
+assert(
+  fs.existsSync(
+    path.join(
+      rootDir,
+      'android/app/src/main/java/com/dcenterprises/egyptslots/CasinoConfigRepository.java'
+    )
+  ),
+  'Android CasinoConfigRepository interface exists for testable DI/Fake architecture'
+);
+assert(
+  fs.existsSync(
+    path.join(
+      rootDir,
+      'android/app/src/test/java/com/dcenterprises/egyptslots/CasinoUnitTest.java'
+    )
+  ),
+  'Android Robolectric & JUnit4 CasinoUnitTest suite exists'
+);
+assert(
+  fs.existsSync(
+    path.join(
+      rootDir,
+      'android/app/src/androidTest/java/com/dcenterprises/egyptslots/CasinoInstrumentedTest.java'
+    )
+  ),
+  'Android Espresso & UIAutomator CasinoInstrumentedTest suite exists'
+);
+
+// ----------------------------------------------------------------------------
+// 12. LIVE ON-CHAIN CRYPTO VERIFIER & WALLET INTEGRITY
+// ----------------------------------------------------------------------------
+console.log('\n--- 12. Testing Live On-Chain Crypto Verifier ---');
+const cryptoVerifierSrc = fs.readFileSync(
+  path.join(rootDir, 'functions/api/verify-crypto-tx.js'),
+  'utf8'
+);
+assert(
+  cryptoVerifierSrc.includes('bc1q9394923748329592l359573222238282940000') ||
+    cryptoVerifierSrc.includes('OFFICIAL_WALLETS'),
+  'Cloudflare Worker on-chain crypto verifier is present and configured'
+);
+const paymentModalSrc = fs.readFileSync(
+  path.join(rootDir, 'src/components/PaymentModal.jsx'),
+  'utf8'
+);
+assert(
+  paymentModalSrc.includes('/api/verify-crypto-tx'),
+  'PaymentModal connects to live /api/verify-crypto-tx endpoint'
+);
+
+// ----------------------------------------------------------------------------
 // SUMMARY REPORT
 // ----------------------------------------------------------------------------
 console.log('\n======================================================');
