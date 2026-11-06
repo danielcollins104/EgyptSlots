@@ -387,6 +387,7 @@ export default function BigWinPopup({
   currencyMode = 'GC',
   betAmount = 1,
   onClose,
+  onClaimVipOffer,
 }) {
   const [displayCoins, setDisplayCoins] = useState(0);
   const [isRollComplete, setIsRollComplete] = useState(false);
@@ -665,6 +666,26 @@ export default function BigWinPopup({
             </span>
           </div>
         </div>
+
+        {/* High-Conversion "Winner's High" VIP Multiplier Match Ad Banner */}
+        {isRollComplete && onClaimVipOffer && (
+          <button
+            type="button"
+            className="bigwin-vip-upsell-banner"
+            onClick={(e) => {
+              e.stopPropagation();
+              soundEngine.playButtonClick(780);
+              onClaimVipOffer(winCoins);
+            }}
+          >
+            <span className="upsell-tag">🔥 HOT STREAK VIP MATCH</span>
+            <span className="upsell-copy">
+              {isSC
+                ? 'Double Down on Your Hot Reels! Claim +$22.00 FREE SC + 60,000 GC →'
+                : 'Turn Your Next Big Hit Into REAL CASH! Unlock $22.00 FREE SC + 60,000 GC →'}
+            </span>
+          </button>
+        )}
 
         {/* Action Button (Fast-Forward during roll-up, Collect when finished) */}
         <button

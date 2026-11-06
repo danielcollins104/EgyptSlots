@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Sparkles,
@@ -80,6 +80,16 @@ export default function LowBalanceOfferModal({
   onClaimDailyBonus,
   canClaimDaily = false,
 }) {
+  const [liveRescueJackpot, setLiveRescueJackpot] = useState(1254892.45);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const tick = setInterval(() => {
+      setLiveRescueJackpot((prev) => Number((prev + 0.42 + Math.random() * 1.35).toFixed(2)));
+    }, 120);
+    return () => clearInterval(tick);
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const isSC = currencyMode === 'SC';
@@ -175,6 +185,15 @@ export default function LowBalanceOfferModal({
               </>
             )}
           </p>
+
+          {/* Live Ticking Progressive Jackpot & VIP Trust Strip */}
+          <div className="rescue-live-jackpot-strip">
+            <span className="rescue-jp-label">⚡ LIVE GRAND JACKPOT POOL:</span>
+            <strong className="rescue-jp-counter">
+              ${liveRescueJackpot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </strong>
+            <span className="rescue-jp-badge">INSTANT CREDIT</span>
+          </div>
         </div>
 
         {/* Daily Reward Banner (if eligible) */}

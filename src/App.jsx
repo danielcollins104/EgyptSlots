@@ -55,6 +55,7 @@ import { SWEEPSTAKES_CONFIG, calculateCustomPackage } from './config/sweepstakes
 import { paymentService } from './services/paymentService';
 import PaymentModal from './components/PaymentModal';
 import LowBalanceOfferModal from './components/LowBalanceOfferModal';
+import VipPromoAdModal from './components/VipPromoAdModal';
 import { soundEngine } from './audio/soundEngine';
 import SplashScreen from './components/SplashScreen';
 import BigWinPopup from './components/BigWinPopup';
@@ -254,6 +255,13 @@ export default function App() {
   // Proactive & Insufficient Balance Smart Offer Modal State
   const [lowBalanceOfferOpen, setLowBalanceOfferOpen] = useState(false);
   const lastLowBalanceOfferTimeRef = useRef(0);
+
+  // /casino-ad-architect High-Converting VIP Promo Ad Modal State
+  const [vipPromoAdOpen, setVipPromoAdOpen] = useState(false);
+  const [vipPromoAdReason, setVipPromoAdReason] = useState('vip_flash');
+  const [vipPromoLastWin, setVipPromoLastWin] = useState(0);
+  const sessionSpinCountRef = useRef(0);
+  const hasShownHotStreakPromoRef = useRef(false);
 
   // Daily Login Reward & Faucet State
   const [canClaimDaily, setCanClaimDaily] = useState(() => authService.canClaimDailyReward(currentUser?.id));
@@ -1277,6 +1285,28 @@ export default function App() {
             }
           }
         }, 1200);
+      } else {
+        // High-Conversion Mid-Session Milestone / Hot-Streak VIP Flash Drop
+        sessionSpinCountRef.current += 1;
+        if (
+          !hasShownHotStreakPromoRef.current &&
+          (sessionSpinCountRef.current === 8 || flowStreak >= 3) &&
+          !isHoldingSpinRef.current &&
+          nowTimestamp - lastLowBalanceOfferTimeRef.current > 45000
+        ) {
+          hasShownHotStreakPromoRef.current = true;
+          setTimeout(() => {
+            if (
+              !isSpinningRef.current &&
+              !freeSpinsOpen &&
+              !bonusSession &&
+              !isHoldingSpinRef.current
+            ) {
+              setVipPromoAdReason('hot_streak');
+              setVipPromoAdOpen(true);
+            }
+          }, 1400);
+        }
       }
     }
   }, [evaluateGridWins, currencyMode, turboFlow, flowStreak, sweepsCoins, goldCoins, freeSpinsOpen, bonusSession]);
@@ -2436,6 +2466,23 @@ export default function App() {
           </button>
 
           <div className="sweepstakes-action-btns">
+            <button
+              type="button"
+              className="dc-pay-btn vip-flash-deal-btn"
+              onClick={() => {
+                soundEngine.playButtonClick(760);
+                setVipPromoAdReason('vip_flash');
+                setVipPromoAdOpen(true);
+              }}
+              title="Claim VIP Founder's 50% OFF Flash Bundle (+Free Redeemable SC)"
+            >
+              <Gift size={15} className="pay-btn-icon" />
+              <div className="pay-btn-labels">
+                <span className="pay-btn-primary">50% OFF</span>
+                <span className="pay-btn-secondary">VIP DEAL</span>
+              </div>
+            </button>
+
             <button
               className={`dc-pay-btn buy-gc-btn ${currencyMode === 'SC' && sweepsCoins < 0.15 ? 'urgent-refill-pulse' : ''}`}
               onClick={() => {
@@ -4310,6 +4357,37 @@ export default function App() {
         currencyMode={currencyMode}
         betAmount={currentBet}
         onClose={() => setBigWinAmount(0)}
+        onClaimVipOffer={(wonAmt) => {
+          setBigWinAmount(0);
+          setVipPromoLastWin(wonAmt || bigWinAmount);
+          setVipPromoAdReason('post_big_win');
+          setVipPromoAdOpen(true);
+        }}
+      />
+
+      {/* /casino-ad-architect 4-Pillar VIP Founder Promotional Ad & 1-Click Checkout */}
+      <VipPromoAdModal
+        isOpen={vipPromoAdOpen}
+        onClose={() => setVipPromoAdOpen(false)}
+        triggerReason={vipPromoAdReason}
+        lastWinAmount={vipPromoLastWin}
+        currencyMode={currencyMode}
+        sweepsCoins={sweepsCoinsRef.current ?? sweepsCoins}
+        goldCoins={goldCoinsRef.current ?? goldCoins}
+        onSelectPackage={(pkg) => {
+          setVipPromoAdOpen(false);
+          setSelectedStorePackage(pkg);
+          setPaymentModalTab('store');
+          setPaymentModalOpen(true);
+          lastLowBalanceOfferTimeRef.current = Date.now();
+        }}
+        onOpenFullStore={() => {
+          setVipPromoAdOpen(false);
+          setSelectedStorePackage(null);
+          setPaymentModalTab('store');
+          setPaymentModalOpen(true);
+          lastLowBalanceOfferTimeRef.current = Date.now();
+        }}
       />
 
       {/* Paytable Modal */}
@@ -4494,6 +4572,21 @@ export default function App() {
               <span className="mobile-bal-switch-hint">⇄ SWITCH</span>
             </div>
           </div>
+
+          <button
+            type="button"
+            className="mobile-dock-vip-deal-btn"
+            onClick={() => {
+              soundEngine.playButtonClick(760);
+              setVipPromoAdReason(currencyMode === 'SC' && sweepsCoins < 50 ? 'cashout_bridge' : 'vip_flash');
+              setVipPromoAdOpen(true);
+            }}
+            title="Claim 50% OFF VIP Founder's Bundle"
+            aria-label="Claim 50% OFF VIP Founder's Bundle"
+          >
+            <Gift size={14} />
+            <span>50% VIP</span>
+          </button>
 
           <button
             type="button"

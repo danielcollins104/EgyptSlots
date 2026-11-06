@@ -20061,6 +20061,482 @@ button:disabled,
   padding: 12px 20px !important;
 }
 
+/* ============================================================================
+   /casino-ad-architect 4-PILLAR VIP PROMO AD BILLBOARD & CONVERSION FLOWS
+   ============================================================================ */
+.vip-flash-deal-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #dc2626 55%, #9333ea 100%) !important;
+  border: 1.5px solid #fef08a !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+  animation: autoPlayPulseGlow 2.2s ease-in-out infinite;
+}
+
+.mobile-dock-vip-deal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1.5px solid #fef08a;
+  background: linear-gradient(135deg, #f59e0b 0%, #dc2626 60%, #7e22ce 100%);
+  color: #ffffff;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.55);
+  flex-shrink: 0;
+}
+
+.bigwin-vip-upsell-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px auto 10px;
+  padding: 9px 16px;
+  max-width: 620px;
+  border-radius: 999px;
+  border: 2px solid #fef08a;
+  background: linear-gradient(90deg, rgba(124, 45, 18, 0.95) 0%, rgba(6, 78, 59, 0.96) 50%, rgba(88, 28, 135, 0.95) 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8), 0 0 22px rgba(250, 204, 21, 0.55);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 30;
+}
+
+.bigwin-vip-upsell-banner:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.9), 0 0 32px rgba(52, 211, 153, 0.75);
+}
+
+.bigwin-vip-upsell-banner .upsell-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  color: #1c0a00;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.bigwin-vip-upsell-banner .upsell-copy {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #ecfdf5;
+}
+
+.rescue-live-jackpot-strip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.65);
+  border: 1px solid rgba(52, 211, 153, 0.65);
+  font-size: 0.74rem;
+}
+
+.rescue-jp-label {
+  color: #a7f3d0;
+  font-weight: 800;
+}
+
+.rescue-jp-counter {
+  color: #fde047;
+  font-family: monospace;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.rescue-jp-badge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #022c22;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.vip-ad-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 11800;
+  background: rgba(4, 2, 14, 0.86);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.vip-ad-modal-billboard {
+  position: relative;
+  width: 100%;
+  max-width: 920px;
+  max-height: 94dvh;
+  overflow-y: auto;
+  border-radius: 22px;
+  padding: 18px 20px;
+  background: radial-gradient(circle at 50% 0%, rgba(88, 28, 135, 0.55) 0%, rgba(9, 13, 28, 0.98) 65%, rgba(3, 6, 17, 0.99) 100%);
+  border: 2px solid rgba(253, 224, 71, 0.8);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.95), 0 0 45px rgba(245, 158, 11, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  box-sizing: border-box;
+}
+
+.vip-ad-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.vip-ad-marquee-top {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.vip-ad-authority-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #b45309, #f59e0b, #b45309);
+  border: 1px solid #fef08a;
+  color: #fffbeb;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.5);
+}
+
+.vip-ad-trust-timer-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 0.7rem;
+}
+
+.vip-ad-stars-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #fde047;
+}
+
+.vip-ad-urgency-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.25);
+  border: 1px solid rgba(248, 113, 113, 0.6);
+  color: #fca5a5;
+  font-weight: 800;
+}
+
+.vip-ad-headline {
+  margin: 6px 0 4px;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+  font-weight: 900;
+  color: #fef08a;
+  text-shadow: 0 2px 12px rgba(245, 158, 11, 0.55);
+}
+
+.vip-ad-subheadline {
+  margin: 0 auto;
+  max-width: 720px;
+  font-size: 0.78rem;
+  color: #e2e8f0;
+}
+
+.vip-ad-live-ticker-bar {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, rgba(6, 78, 59, 0.55), rgba(15, 23, 42, 0.9), rgba(88, 28, 135, 0.45));
+  border: 1.5px solid rgba(52, 211, 153, 0.55);
+  align-items: center;
+}
+
+.ticker-eyebrow {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: #6ee7b7;
+  letter-spacing: 0.08em;
+}
+
+.ticker-live-counter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: monospace;
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  font-weight: 900;
+  color: #fde047;
+  text-shadow: 0 0 12px rgba(253, 224, 71, 0.5);
+}
+
+.ticker-live-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #022c22;
+  font-size: 0.6rem;
+  font-weight: 900;
+}
+
+.cashout-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: #cbd5e1;
+  margin-bottom: 5px;
+}
+
+.cashout-progress-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.cashout-progress-fill-projected {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.45), rgba(52, 211, 153, 0.85));
+  transition: width 0.3s ease;
+}
+
+.cashout-progress-fill-current {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #f59e0b, #fde047);
+  transition: width 0.3s ease;
+}
+
+.vip-ad-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.vip-founder-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 16px;
+  padding: 12px;
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.92), rgba(9, 13, 28, 0.96));
+  border: 1.5px solid rgba(148, 163, 184, 0.35);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vip-founder-card.card-most-popular {
+  background: linear-gradient(160deg, rgba(69, 26, 3, 0.88), rgba(15, 23, 42, 0.96));
+  border-color: rgba(253, 224, 71, 0.75);
+}
+
+.vip-founder-card.card-selected {
+  transform: translateY(-3px);
+  border: 2px solid #fde047;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.8), 0 0 22px rgba(253, 224, 71, 0.45);
+}
+
+.vip-card-ribbon {
+  text-align: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(253, 224, 71, 0.16);
+  border: 1px solid rgba(253, 224, 71, 0.5);
+  color: #fef08a;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.vip-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.vip-card-relic-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(253, 224, 71, 0.55));
+  margin-bottom: 4px;
+}
+
+.vip-card-tier-name {
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+
+.vip-card-gc-amount {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #fde047;
+}
+
+.vip-card-sc-bonus-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 5px 0 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+}
+
+.vip-card-perks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  width: 100%;
+  text-align: left;
+  font-size: 0.68rem;
+  color: #cbd5e1;
+}
+
+.vip-card-perks-list li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+}
+
+.vip-card-select-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid #fde047;
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.74rem;
+}
+
+.vip-strike-price {
+  text-decoration: line-through;
+  opacity: 0.75;
+  font-size: 0.66rem;
+}
+
+.vip-ad-bottom-cta-deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.vip-ad-master-cta-btn {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 680px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 24px;
+  border-radius: 999px;
+  border: 2px solid #fef08a;
+  background: linear-gradient(135deg, #10b981 0%, #059669 45%, #d97706 100%);
+  color: #ffffff;
+  font-family: var(--font-royal, 'Cinzel', serif);
+  font-size: clamp(0.82rem, 1.8vw, 1.02rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  box-shadow: 0 8px 28px rgba(16, 185, 129, 0.55), 0 0 32px rgba(253, 224, 71, 0.45);
+  animation: autoPlayPulseGlow 2s ease-in-out infinite;
+}
+
+.vip-ad-sub-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.vip-ad-view-all-link {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-decoration: underline;
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .vip-ad-live-ticker-bar {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .vip-ad-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+
 
 
 
