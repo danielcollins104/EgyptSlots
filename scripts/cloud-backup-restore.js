@@ -97,10 +97,19 @@ function getOrCreateKvNamespaceId() {
 }
 
 function putKvKey(namespaceId, key, valueFilePath) {
-  execSync(
-    `npx wrangler kv key put --namespace-id=${namespaceId} "${key}" --path="${valueFilePath}" --remote`,
-    { stdio: 'inherit' }
-  );
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      execSync(
+        `npx wrangler kv key put --namespace-id=${namespaceId} "${key}" --path="${valueFilePath}" --remote`,
+        { stdio: 'inherit' }
+      );
+      return;
+    } catch (err) {
+      if (attempt === 3) throw err;
+      console.warn(`⚠️ KV upload attempt ${attempt} failed for ${key}, retrying in 3s...`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
+    }
+  }
 }
 
 async function runBackup() {
