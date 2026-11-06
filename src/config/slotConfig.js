@@ -203,7 +203,7 @@ export const ACTIVE_THEME = {
   // 6. Color Palette Switcher Themes
   palettes: [
     { id: 'ultraviolet', label: 'Palette: Crown Chakra Amethyst & Sapphire' },
-    { id: 'acid', label: 'Palette: Heart & Solar Chakra Gold-Emerald' },
+    { id: 'chakra_emerald', label: 'Palette: Heart & Solar Chakra Gold-Emerald' },
     { id: 'laser', label: 'Palette: Third-Eye Royal Dynasty Gold' },
   ],
 

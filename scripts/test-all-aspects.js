@@ -444,6 +444,11 @@ assert(
     ACTIVE_THEME.brand.gameTitle.includes('CHAKRA DYNASTY'),
   `Game title uses Egyptian Royalty & Chakra branding (${ACTIVE_THEME.brand.gameTitle}) with zero Kemet references`
 );
+const appCssSrc = fs.readFileSync(path.join(rootDir, 'src/App.css'), 'utf8');
+assert(
+  !/psychedel|psychadel/i.test(appCssSrc),
+  'Zero psychedelic/psychadelic text or animations remain in App.css'
+);
 
 // ----------------------------------------------------------------------------
 // SUMMARY REPORT
