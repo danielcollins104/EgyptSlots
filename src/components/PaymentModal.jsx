@@ -142,12 +142,13 @@ function buildCryptoPaymentUri(cryptoObj, amount) {
 export default function PaymentModal({
   isOpen,
   onClose,
-  initialTab = 'store', // 'store' | 'redeem' | 'history'
+  initialTab = 'store', // 'store' | 'redeem' | 'history' | 'payout_admin'
   initialPackage = null,
   goldCoins = 0,
   sweepsCoins = 0,
   onPurchaseSuccess,
   onRedeemSuccess,
+  onRefundSC,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   // Step 1 = Choose Package, Step 2 = Choose Payment Method (Card -> Stripe, Cash App Pay -> Stripe, or Crypto)
@@ -174,12 +175,24 @@ export default function PaymentModal({
   const [checkoutError, setCheckoutError] = useState('');
   const [purchaseCompletedPkg, setPurchaseCompletedPkg] = useState(null);
 
-  // Redemption state
+  // Redemption state (4-Pillar Payout Architecture)
   const [redeemAmountInput, setRedeemAmountInput] = useState('50');
-  const [redeemMethod, setRedeemMethod] = useState('ach');
+  const [redeemMethod, setRedeemMethod] = useState('giftcard');
+  const [redeemCryptoAsset, setRedeemCryptoAsset] = useState('USDT_SOL');
+  const [redeemGiftCardBrand, setRedeemGiftCardBrand] = useState('visa_virtual');
   const [redeemDestination, setRedeemDestination] = useState('');
   const [redeemSuccessMsg, setRedeemSuccessMsg] = useState('');
   const [redeemError, setRedeemError] = useState('');
+  const [lastSubmittedRedemption, setLastSubmittedRedemption] = useState(null);
+
+  // Admin 1-Click Payout Center state
+  const [redemptionQueue, setRedemptionQueue] = useState(() =>
+    paymentService.getRedemptionQueue()
+  );
+  const [adminTxInputs, setAdminTxInputs] = useState({});
+  const [adminGiftCodeInputs, setAdminGiftCodeInputs] = useState({});
+  const [adminStatusToast, setAdminStatusToast] = useState('');
+  const [expandedAdminQrId, setExpandedAdminQrId] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -201,6 +214,9 @@ export default function PaymentModal({
       setPurchaseCompletedPkg(null);
       setRedeemSuccessMsg('');
       setRedeemError('');
+      setLastSubmittedRedemption(null);
+      setRedemptionQueue(paymentService.getRedemptionQueue());
+      setAdminStatusToast('');
     }
   }, [isOpen, initialTab, initialPackage]);
 
@@ -442,40 +458,178 @@ export default function PaymentModal({
     }
   };
 
+  const playthroughState = paymentService.getPlaythroughState(sweepsCoins);
+  const isGiftCardMethod = redeemMethod === 'giftcard';
+  const activeMinRedeemSC = isGiftCardMethod
+    ? SWEEPSTAKES_CONFIG.minGiftCardRedemptionSC || 25
+    : SWEEPSTAKES_CONFIG.minRedemptionSC || 50;
+  const parsedRedeemSC = Math.max(0, parseFloat(redeemAmountInput) || 0);
+  const calculatedPayoutUsd = isGiftCardMethod
+    ? Number((parsedRedeemSC * 1.05).toFixed(2))
+    : Number(parsedRedeemSC.toFixed(2));
+  const calculatedBonusUsd = Number((calculatedPayoutUsd - parsedRedeemSC).toFixed(2));
+
+  const handleRedeemMethodChange = (methodId) => {
+    setRedeemMethod(methodId);
+    setRedeemError('');
+    const currentNum = parseFloat(redeemAmountInput) || 0;
+    if (methodId === 'giftcard' && (currentNum === 50 || currentNum < 25)) {
+      setRedeemAmountInput('25');
+    } else if (methodId !== 'giftcard' && currentNum < 50) {
+      setRedeemAmountInput('50');
+    }
+  };
+
   const handleRedeemSubmit = (e) => {
     e.preventDefault();
     setRedeemError('');
     setRedeemSuccessMsg('');
+    setLastSubmittedRedemption(null);
 
     const amount = parseFloat(redeemAmountInput);
-    if (isNaN(amount) || amount < SWEEPSTAKES_CONFIG.minRedemptionSC) {
-      setRedeemError(`Minimum redemption is $${SWEEPSTAKES_CONFIG.minRedemptionSC.toFixed(2)} SC.`);
+    if (isNaN(amount) || amount < activeMinRedeemSC) {
+      setRedeemError(
+        isGiftCardMethod
+          ? `Minimum Instant Gift Card redemption is $${activeMinRedeemSC.toFixed(2)} SC ($${(
+              activeMinRedeemSC * 1.05
+            ).toFixed(2)} Gift Card value).`
+          : `Minimum Cash / Crypto redemption is $${activeMinRedeemSC.toFixed(2)} SC. (Tip: Choose Instant Gift Card for a $25.00 SC minimum + 5% bonus!)`
+      );
       return;
     }
     if (amount > sweepsCoins) {
       setRedeemError(`Insufficient Sweeps Coins. You have ${sweepsCoins.toFixed(2)} SC.`);
       return;
     }
+    if (amount > playthroughState.redeemableSC + 0.009) {
+      setRedeemError(
+        `1× Playthrough Required: You have ${playthroughState.redeemableSC.toFixed(
+          2
+        )} Redeemable SC and ${playthroughState.unplayedSC.toFixed(
+          2
+        )} Unplayed Bonus SC. Spin your unplayed SC 1× on the reels to unlock it for payout!`
+      );
+      return;
+    }
     if (!redeemDestination.trim()) {
-      setRedeemError('Please enter your payout account details (Bank Routing/Account or $Cashtag).');
+      setRedeemError(
+        redeemMethod === 'giftcard'
+          ? 'Please enter the email address where we should send your +5% Digital Gift Card.'
+          : redeemMethod === 'crypto'
+          ? `Please paste your receiving ${redeemCryptoAsset} wallet address.`
+          : redeemMethod === 'chime'
+          ? 'Please enter your $Cashtag or $ChimeSign handle.'
+          : 'Please enter your payout account details.'
+      );
       return;
     }
 
+    const currentUser = authService.getCurrentUser();
     const res = paymentService.requestRedemption({
       sweepsCoins: amount,
       method: redeemMethod,
+      cryptoAsset: redeemCryptoAsset,
+      giftCardBrand: redeemGiftCardBrand,
       destination: redeemDestination.trim(),
+      playerName: currentUser?.name || 'VIP Player',
+      enforcePlaythrough: true,
+      currentScBalance: sweepsCoins,
     });
 
     if (res.success) {
       if (onRedeemSuccess) onRedeemSuccess(amount);
+      setRedemptionQueue(paymentService.getRedemptionQueue());
+      setLastSubmittedRedemption(res);
+      const payoutStr = `$${res.amountUsd.toFixed(2)} USD${
+        res.bonusUsd > 0 ? ` (includes +$${res.bonusUsd.toFixed(2)} 5% Gift Card Bonus!)` : ''
+      }`;
       setRedeemSuccessMsg(
-        `Redemption of $${amount.toFixed(2)} USD submitted! Ref: ${res.redemptionId}. Arrives in 1-2 business days.`
+        `Redemption of ${amount.toFixed(2)} SC → ${payoutStr} queued! Ref: ${res.redemptionId}.`
       );
       setRedeemDestination('');
       soundEngine.playWinCelebration(false);
     } else {
       setRedeemError(res.error || 'Failed to submit redemption request.');
+    }
+  };
+
+  const handleAdminApprove = (rdm) => {
+    const txVal =
+      adminTxInputs[rdm.id] ||
+      (rdm.method === 'giftcard'
+        ? `GC-${rdm.giftCardBrand?.toUpperCase() || 'VISA'}-${Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase()}`
+        : `PAID_${Date.now().toString(36).toUpperCase()}`);
+    const giftCode =
+      adminGiftCodeInputs[rdm.id] ||
+      (rdm.method === 'giftcard'
+        ? `${(rdm.giftCardBrand || 'VISA').slice(0, 4).toUpperCase()}-${Math.random()
+            .toString(36)
+            .substring(2, 6)
+            .toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+        : '');
+
+    const res = paymentService.approveRedemption(rdm.id, {
+      txHashOrReceipt: txVal,
+      giftCardCode: giftCode,
+      operatorNote: `Fulfilled via Admin 1-Click Payout Center (${rdm.method.toUpperCase()})`,
+    });
+    if (res.success) {
+      setRedemptionQueue(paymentService.getRedemptionQueue());
+      setAdminStatusToast(
+        `✅ Approved & Marked Paid: ${rdm.id} ($${Number(rdm.amountUsd || 0).toFixed(2)} USD)`
+      );
+      soundEngine.playWinCelebration(false);
+    }
+  };
+
+  const handleAdminReject = (rdm) => {
+    const res = paymentService.rejectRedemption(rdm.id, {
+      reason: 'Canceled / Refunded via Admin Payout Center — SC Restored to Player Balance',
+    });
+    if (res.success) {
+      setRedemptionQueue(paymentService.getRedemptionQueue());
+      if (res.refundSC > 0 && onRefundSC) {
+        onRefundSC(res.refundSC);
+      }
+      setAdminStatusToast(
+        `↩️ Rejected & Refunded +${Number(res.refundSC || 0).toFixed(2)} SC for ${rdm.id}`
+      );
+      soundEngine.playButtonClick(420);
+    }
+  };
+
+  const handleCreateSampleAdminRedemption = (sampleType = 'chime') => {
+    const samplePayload =
+      sampleType === 'giftcard'
+        ? {
+            sweepsCoins: 25,
+            method: 'giftcard',
+            giftCardBrand: 'visa_virtual',
+            destination: 'vip.winner@oopsiwon.com',
+            playerName: 'Elena R. (VIP Demo)',
+          }
+        : sampleType === 'crypto'
+        ? {
+            sweepsCoins: 100,
+            method: 'crypto',
+            cryptoAsset: 'USDT_SOL',
+            destination: 'Ejj7hyePNeC9yHQKuEnRvjSiSdJ7sZfNsdmm3YZxFS1f',
+            playerName: 'Devon K. (VIP Demo)',
+          }
+        : {
+            sweepsCoins: 50,
+            method: 'chime',
+            destination: '$MarcusVIP777',
+            playerName: 'Marcus T. (VIP Demo)',
+          };
+    const res = paymentService.requestRedemption(samplePayload);
+    if (res.success) {
+      setRedemptionQueue(paymentService.getRedemptionQueue());
+      setAdminStatusToast(`🧪 Added Sample ${sampleType.toUpperCase()} Redemption (${res.redemptionId}) to Queue!`);
+      soundEngine.playButtonClick(620);
     }
   };
 
@@ -580,6 +734,22 @@ export default function PaymentModal({
           >
             <History size={15} />
             <span>History ({txHistory.length})</span>
+          </button>
+
+          <button
+            type="button"
+            className={`sc-cashier-tab ${activeTab === 'payout_admin' ? 'active' : ''}`}
+            onClick={() => {
+              setRedemptionQueue(paymentService.getRedemptionQueue());
+              setActiveTab('payout_admin');
+              soundEngine.playButtonClick(520);
+            }}
+            title="Admin 1-Click Payout & Redemption Queue Center"
+          >
+            <Crown size={15} />
+            <span>
+              Payout Center ({redemptionQueue.filter((r) => r.status === 'processing').length})
+            </span>
           </button>
         </nav>
 
@@ -1268,21 +1438,64 @@ export default function PaymentModal({
           )}
 
           {/* ================================================================
-              TAB 2: REDEEM SWEEPS COINS FOR REAL MONEY (1 SC = $1.00 USD)
+              TAB 2: REDEEM SWEEPS COINS FOR REAL MONEY (4-PILLAR PAYOUT SUITE)
              ================================================================ */}
           {activeTab === 'redeem' && (
             <form onSubmit={handleRedeemSubmit} className="sc-redeem-form">
+              {/* Top Balance & 1x Playthrough Rollover Verification Card */}
               <div className="sc-redeem-balance-card">
                 <div>
-                  <span className="sc-redeem-label">REDEEMABLE SWEEPS COINS</span>
-                  <div className="sc-redeem-val">{sweepsCoins.toFixed(2)} SC</div>
+                  <span className="sc-redeem-label">REDEEMABLE SWEEPS COINS (1× PLAYTHROUGH VERIFIED)</span>
+                  <div className="sc-redeem-val">{playthroughState.redeemableSC.toFixed(2)} SC</div>
                   <span className="sc-redeem-sub">
-                    1.00 SC = $1.00 USD • Minimum Redemption: ${SWEEPSTAKES_CONFIG.minRedemptionSC.toFixed(2)} SC
+                    Total Balance: {sweepsCoins.toFixed(2)} SC • Unplayed Bonus: {playthroughState.unplayedSC.toFixed(2)} SC • Min:{' '}
+                    ${activeMinRedeemSC.toFixed(2)} SC
                   </span>
                 </div>
                 <div className="sc-redeem-usd-box">
-                  <span>Cash Value</span>
-                  <strong>${sweepsCoins.toFixed(2)} USD</strong>
+                  <span>{isGiftCardMethod ? 'Gift Card Value (+5%)' : 'Cash / Crypto Value'}</span>
+                  <strong>
+                    $
+                    {(isGiftCardMethod
+                      ? playthroughState.redeemableSC * 1.05
+                      : playthroughState.redeemableSC
+                    ).toFixed(2)}{' '}
+                    USD
+                  </strong>
+                </div>
+              </div>
+
+              {/* Pillar 1: 1x Playthrough (Rollover) Progress Meter */}
+              <div className="sc-playthrough-meter-card">
+                <div className="sc-playthrough-header">
+                  <span className="sc-playthrough-title">
+                    <ShieldCheck size={15} />
+                    <span>1× Anti-Fraud Playthrough Rollover Status</span>
+                  </span>
+                  <span
+                    className={`sc-playthrough-badge ${
+                      playthroughState.isFullyUnlocked ? 'unlocked' : 'in-progress'
+                    }`}
+                  >
+                    {playthroughState.isFullyUnlocked
+                      ? '✅ 100% UNLOCKED FOR CASHOUT'
+                      : `⚡ ${playthroughState.progressPct}% ROLLOVER COMPLETE`}
+                  </span>
+                </div>
+                <div className="sc-playthrough-bar-track">
+                  <div
+                    className="sc-playthrough-bar-fill"
+                    style={{ width: `${Math.max(6, playthroughState.progressPct)}%` }}
+                  />
+                </div>
+                <div className="sc-playthrough-stats-row">
+                  <span>Wagered SC: ${playthroughState.wageredSC.toFixed(2)}</span>
+                  <span>Won SC: +${playthroughState.wonSC.toFixed(2)}</span>
+                  <span>
+                    {playthroughState.isFullyUnlocked
+                      ? 'All SC eligible for immediate redemption'
+                      : `Spin $${playthroughState.unplayedSC.toFixed(2)} more SC on the reels to unlock 100%`}
+                  </span>
                 </div>
               </div>
 
@@ -1296,50 +1509,121 @@ export default function PaymentModal({
               {redeemSuccessMsg && (
                 <div className="sc-success-banner">
                   <CheckCircle2 size={16} />
-                  <span>{redeemSuccessMsg}</span>
+                  <div>
+                    <div>{redeemSuccessMsg}</div>
+                    {lastSubmittedRedemption && (
+                      <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="sc-payout-pill active"
+                          onClick={() => setActiveTab('payout_admin')}
+                        >
+                          👑 View in Admin 1-Click Payout Center →
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
+              {/* Pillar 2 & 3: 5 Payout Channels (Gift Card +5%, Crypto 0% Fee, Cash App/Chime, Instant Debit, Bank ACH) */}
               <div className="sc-field-group">
-                <label>Amount to Redeem (SC / USD)</label>
-                <input
-                  type="number"
-                  min={SWEEPSTAKES_CONFIG.minRedemptionSC}
-                  step="1"
-                  value={redeemAmountInput}
-                  onChange={(e) => setRedeemAmountInput(e.target.value)}
-                  className="sc-input"
-                  placeholder="50"
-                />
-              </div>
-
-              <div className="sc-field-group">
-                <label>Payout Method</label>
-                <div className="sc-payout-methods-row">
-                  {[
-                    { id: 'ach', label: 'Bank Transfer (ACH)' },
-                    { id: 'chime', label: 'Cash App / Chime' },
-                    { id: 'debit', label: 'Instant Debit Card' },
-                  ].map((m) => (
+                <label>Choose Your Payout Channel</label>
+                <div className="sc-payout-methods-grid">
+                  {(SWEEPSTAKES_CONFIG.redemptionMethods || []).map((m) => (
                     <button
                       key={m.id}
                       type="button"
-                      className={`sc-payout-pill ${redeemMethod === m.id ? 'active' : ''}`}
-                      onClick={() => setRedeemMethod(m.id)}
+                      className={`sc-payout-method-card ${redeemMethod === m.id ? 'active' : ''}`}
+                      onClick={() => handleRedeemMethodChange(m.id)}
                     >
-                      {m.label}
+                      <div className="sc-payout-method-top">
+                        <span className="sc-payout-method-name">{m.shortLabel || m.label}</span>
+                        <span className="sc-payout-method-badge">{m.badge}</span>
+                      </div>
+                      <div className="sc-payout-method-eta">
+                        Min ${m.minSC.toFixed(0)} SC • {m.eta}
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* Pillar 2 Details: Digital Gift Card Brand Picker (+5% Bonus Value, $25 Min) */}
+              {redeemMethod === 'giftcard' && (
+                <div className="sc-field-group">
+                  <label>Select Instant Digital Gift Card Brand (+5% Extra USD Bonus)</label>
+                  <div className="sc-giftcard-brand-grid">
+                    {(SWEEPSTAKES_CONFIG.giftCardBrands || []).map((brand) => (
+                      <button
+                        key={brand.id}
+                        type="button"
+                        className={`sc-payout-pill ${
+                          redeemGiftCardBrand === brand.id ? 'active' : ''
+                        }`}
+                        onClick={() => setRedeemGiftCardBrand(brand.id)}
+                      >
+                        <span>
+                          {brand.icon} {brand.name} (+{brand.bonusPct}%)
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pillar 3 Details: On-Chain Crypto Payout Asset Picker */}
+              {redeemMethod === 'crypto' && (
+                <div className="sc-field-group">
+                  <label>Select Receiving Cryptocurrency &amp; Network (0% Casino Fee)</label>
+                  <div className="sc-giftcard-brand-grid">
+                    {(SWEEPSTAKES_CONFIG.cryptoPayoutAssets || []).map((asset) => (
+                      <button
+                        key={asset.id}
+                        type="button"
+                        className={`sc-payout-pill ${
+                          redeemCryptoAsset === asset.id ? 'active' : ''
+                        }`}
+                        onClick={() => setRedeemCryptoAsset(asset.id)}
+                      >
+                        <span>⚡ {asset.symbol}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="sc-field-group">
                 <label>
-                  {redeemMethod === 'ach'
-                    ? 'Bank Name, Routing & Account Number'
+                  Amount to Redeem (Min ${activeMinRedeemSC.toFixed(2)} SC)
+                  {isGiftCardMethod && parsedRedeemSC > 0
+                    ? ` → Receives $${calculatedPayoutUsd.toFixed(2)} Gift Card (+$${calculatedBonusUsd.toFixed(
+                        2
+                      )} Free Bonus!)`
+                    : ''}
+                </label>
+                <input
+                  type="number"
+                  min={activeMinRedeemSC}
+                  step="1"
+                  value={redeemAmountInput}
+                  onChange={(e) => setRedeemAmountInput(e.target.value)}
+                  className="sc-input"
+                  placeholder={String(activeMinRedeemSC)}
+                />
+              </div>
+
+              <div className="sc-field-group">
+                <label>
+                  {redeemMethod === 'giftcard'
+                    ? 'Delivery Email Address for Instant Gift Card Code'
+                    : redeemMethod === 'crypto'
+                    ? `Your Receiving ${redeemCryptoAsset} Wallet Address`
                     : redeemMethod === 'chime'
-                    ? 'Your $Cashtag or Chime Sign'
-                    : 'Visa / Mastercard Debit Number'}
+                    ? 'Your $Cashtag or $ChimeSign Handle'
+                    : redeemMethod === 'ach'
+                    ? 'Bank Name, Routing & Account Number'
+                    : 'Visa / Mastercard Debit Card Number'}
                 </label>
                 <input
                   type="text"
@@ -1347,17 +1631,29 @@ export default function PaymentModal({
                   onChange={(e) => setRedeemDestination(e.target.value)}
                   className="sc-input"
                   placeholder={
-                    redeemMethod === 'ach'
-                      ? 'Chase • Routing 021000021 • Acct 000123456'
+                    redeemMethod === 'giftcard'
+                      ? 'you@example.com (Instant Digital Code Delivery)'
+                      : redeemMethod === 'crypto'
+                      ? (SWEEPSTAKES_CONFIG.cryptoPayoutAssets || []).find(
+                          (a) => a.id === redeemCryptoAsset
+                        )?.placeholder || 'Paste your self-custody wallet address...'
                       : redeemMethod === 'chime'
-                      ? '$YourCashtag'
+                      ? '$YourCashtag or $YourChimeSign'
+                      : redeemMethod === 'ach'
+                      ? 'Chase • Routing 021000021 • Acct 000123456'
                       : '4242 •••• •••• 4242'
                   }
                 />
               </div>
 
               <button type="submit" className="sc-submit-redeem-btn">
-                Redeem ${parseFloat(redeemAmountInput || 0).toFixed(2)} USD Prize
+                {isGiftCardMethod
+                  ? `🎁 Redeem ${parsedRedeemSC.toFixed(2)} SC for $${calculatedPayoutUsd.toFixed(
+                      2
+                    )} Gift Card (+5% Bonus)`
+                  : redeemMethod === 'crypto'
+                  ? `⚡ Request $${calculatedPayoutUsd.toFixed(2)} Instant ${redeemCryptoAsset} Payout`
+                  : `💸 Redeem $${calculatedPayoutUsd.toFixed(2)} USD Prize`}
               </button>
             </form>
           )}
@@ -1378,7 +1674,12 @@ export default function PaymentModal({
                     <div>
                       <strong>{tx.type}</strong>
                       <div className="sc-history-date">
-                        {new Date(tx.timestamp).toLocaleString()}
+                        {new Date(tx.timestamp).toLocaleString()} • Status:{' '}
+                        <span style={{ textTransform: 'uppercase', fontWeight: 700 }}>
+                          {tx.status || 'completed'}
+                        </span>
+                        {tx.txHashOrReceipt ? ` • Ref: ${tx.txHashOrReceipt}` : ''}
+                        {tx.giftCardCode ? ` • Gift Code: ${tx.giftCardCode}` : ''}
                       </div>
                     </div>
                     <div className="sc-history-amounts">
@@ -1395,6 +1696,229 @@ export default function PaymentModal({
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          )}
+
+          {/* ================================================================
+              TAB 4: ADMIN 1-CLICK PAYOUT & REDEMPTION QUEUE CENTER
+             ================================================================ */}
+          {activeTab === 'payout_admin' && (
+            <div className="sc-admin-payout-center">
+              <div className="sc-admin-payout-banner">
+                <div>
+                  <h3 className="sc-admin-payout-title">
+                    👑 Operator 1-Click Payout &amp; Redemption Center
+                  </h3>
+                  <p className="sc-admin-payout-desc">
+                    Review player prize redemptions and fulfill them in 1 click via Cash App Deep-Link,
+                    On-Chain Crypto URI/QR, or +5% Digital Gift Card Code.
+                  </p>
+                </div>
+                <div className="sc-admin-sample-btns">
+                  <button
+                    type="button"
+                    className="sc-payout-pill"
+                    onClick={() => handleCreateSampleAdminRedemption('chime')}
+                  >
+                    + Test $Cashtag Payout
+                  </button>
+                  <button
+                    type="button"
+                    className="sc-payout-pill"
+                    onClick={() => handleCreateSampleAdminRedemption('crypto')}
+                  >
+                    + Test Crypto Payout
+                  </button>
+                  <button
+                    type="button"
+                    className="sc-payout-pill"
+                    onClick={() => handleCreateSampleAdminRedemption('giftcard')}
+                  >
+                    + Test +5% Gift Card
+                  </button>
+                </div>
+              </div>
+
+              {adminStatusToast && (
+                <div className="sc-success-banner" style={{ marginBottom: '12px' }}>
+                  <CheckCircle2 size={16} />
+                  <span>{adminStatusToast}</span>
+                </div>
+              )}
+
+              {redemptionQueue.length === 0 ? (
+                <div className="sc-history-empty">
+                  <Crown size={32} />
+                  <p>No pending or historical redemptions in queue yet.</p>
+                  <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>
+                    Submit a redemption in the &ldquo;Redeem SC&rdquo; tab or click one of the &ldquo;+ Test&rdquo;
+                    buttons above to preview 1-Click Operator Fulfillment.
+                  </span>
+                </div>
+              ) : (
+                <div className="sc-admin-queue-list">
+                  {redemptionQueue.map((rdm) => {
+                    const isPending = rdm.status === 'processing';
+                    return (
+                      <div
+                        key={rdm.id}
+                        className={`sc-admin-queue-card status-${rdm.status || 'processing'}`}
+                      >
+                        <div className="sc-admin-queue-top">
+                          <div>
+                            <span className="sc-admin-rdm-id">{rdm.id}</span>
+                            <strong className="sc-admin-rdm-type">{rdm.type}</strong>
+                            <div className="sc-history-date">
+                              Player: {rdm.playerName || 'VIP Player'} •{' '}
+                              {new Date(rdm.timestamp).toLocaleString()} • Destination:{' '}
+                              <code>{rdm.destination || rdm.destinationMasked}</code>
+                            </div>
+                          </div>
+                          <div className="sc-admin-rdm-amounts">
+                            <span className="sc-admin-usd-amt">
+                              ${Number(rdm.amountUsd || 0).toFixed(2)} USD
+                            </span>
+                            <span className="sc-admin-sc-amt">
+                              ({Math.abs(Number(rdm.amountSC || rdm.sweepsCoins || 0)).toFixed(2)} SC
+                              {rdm.bonusUsd > 0 ? ` + $${Number(rdm.bonusUsd).toFixed(2)} Bonus` : ''})
+                            </span>
+                            <span className={`sc-admin-status-pill ${rdm.status}`}>
+                              {rdm.status === 'completed'
+                                ? '✅ PAID'
+                                : rdm.status === 'rejected'
+                                ? '↩️ REFUNDED'
+                                : '⏳ PENDING 1-CLICK PAYOUT'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 1-Click Action Bar for Pending Redemptions */}
+                        {isPending && (
+                          <div className="sc-admin-actions-bar">
+                            {rdm.cashAppPayoutLink && (
+                              <a
+                                href={rdm.cashAppPayoutLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="sc-admin-action-btn cashapp"
+                              >
+                                <ExternalLink size={14} />
+                                <span>
+                                  💸 1-Click Send ${Number(rdm.amountUsd).toFixed(2)} on Cash App
+                                </span>
+                              </a>
+                            )}
+
+                            {rdm.cryptoPayoutUri && (
+                              <>
+                                <a
+                                  href={rdm.cryptoPayoutUri}
+                                  className="sc-admin-action-btn crypto"
+                                >
+                                  <Zap size={14} />
+                                  <span>
+                                    ⚡ 1-Tap Sign {rdm.cryptoAmount} {rdm.cryptoAsset} Wallet Payout
+                                  </span>
+                                </a>
+                                <button
+                                  type="button"
+                                  className="sc-payout-pill"
+                                  onClick={() =>
+                                    setExpandedAdminQrId(
+                                      expandedAdminQrId === rdm.id ? null : rdm.id
+                                    )
+                                  }
+                                >
+                                  {expandedAdminQrId === rdm.id ? 'Hide Wallet QR' : '📱 Scan Wallet QR'}
+                                </button>
+                              </>
+                            )}
+
+                            {rdm.method === 'giftcard' && (
+                              <input
+                                type="text"
+                                className="sc-input sc-admin-inline-input"
+                                placeholder="Paste Gift Card Claim Code (or leave blank to auto-issue)..."
+                                value={adminGiftCodeInputs[rdm.id] || ''}
+                                onChange={(e) =>
+                                  setAdminGiftCodeInputs((prev) => ({
+                                    ...prev,
+                                    [rdm.id]: e.target.value,
+                                  }))
+                                }
+                              />
+                            )}
+
+                            <input
+                              type="text"
+                              className="sc-input sc-admin-inline-input"
+                              placeholder="Optional TX Hash / Cash App Receipt ID..."
+                              value={adminTxInputs[rdm.id] || ''}
+                              onChange={(e) =>
+                                setAdminTxInputs((prev) => ({
+                                  ...prev,
+                                  [rdm.id]: e.target.value,
+                                }))
+                              }
+                            />
+
+                            <button
+                              type="button"
+                              className="sc-admin-action-btn approve"
+                              onClick={() => handleAdminApprove(rdm)}
+                            >
+                              <Check size={14} />
+                              <span>Mark Paid &amp; Complete</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="sc-admin-action-btn reject"
+                              onClick={() => handleAdminReject(rdm)}
+                            >
+                              <X size={14} />
+                              <span>Reject &amp; Refund SC</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {expandedAdminQrId === rdm.id && rdm.cryptoQrUrl && (
+                          <div className="sc-admin-qr-drawer">
+                            <img
+                              src={rdm.cryptoQrUrl}
+                              alt="Crypto Payout QR"
+                              width={140}
+                              height={140}
+                            />
+                            <div>
+                              <strong>Scan with Phantom, MetaMask, or Bitcoin Wallet</strong>
+                              <p style={{ fontSize: '0.78rem', opacity: 0.85, margin: '4px 0' }}>
+                                URI: <code>{rdm.cryptoPayoutUri}</code>
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {!isPending && (
+                          <div className="sc-admin-completed-meta">
+                            {rdm.txHashOrReceipt && (
+                              <span>
+                                Receipt / TXID: <code>{rdm.txHashOrReceipt}</code>
+                              </span>
+                            )}
+                            {rdm.giftCardCode && (
+                              <span>
+                                • Gift Card Code: <code>{rdm.giftCardCode}</code>
+                              </span>
+                            )}
+                            {rdm.operatorNote && <span> • {rdm.operatorNote}</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}

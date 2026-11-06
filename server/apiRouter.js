@@ -34,6 +34,7 @@ export class ApiRouter {
       options.stripeWebhookSecret ||
       (typeof process !== 'undefined' && process.env?.STRIPE_WEBHOOK_SECRET) ||
       '';
+    this.redemptionQueue = [];
   }
 
   /**
@@ -267,11 +268,59 @@ export class ApiRouter {
         return { status: 200, headers: corsHeaders, body: { success: true, balance } };
       }
 
-      // 3. PRIZE REDEMPTION
+      // 3. PRIZE REDEMPTION & ADMIN PAYOUT QUEUE
       if (path === '/api/redeem' && method === 'POST') {
         if (!token) return { status: 401, headers: corsHeaders, body: { error: 'Authentication required' } };
         const res = await this.server.handleRedemptionRequest(token, parsedBody);
         return { status: 200, headers: corsHeaders, body: { success: true, ...res } };
+      }
+
+      if (path === '/api/redemptions' && method === 'GET') {
+        return {
+          status: 200,
+          headers: corsHeaders,
+          body: { success: true, redemptions: this.redemptionQueue },
+        };
+      }
+
+      if (path === '/api/redemptions' && method === 'POST') {
+        const entry = {
+          id: parsedBody.id || `rdm_${Date.now().toString(36).toUpperCase()}`,
+          timestamp: parsedBody.timestamp || new Date().toISOString(),
+          status: parsedBody.status || 'processing',
+          ...parsedBody,
+        };
+        this.redemptionQueue.unshift(entry);
+        this.redemptionQueue = this.redemptionQueue.slice(0, 100);
+        if (this.server && this.server.ledger) {
+          this.server.ledger.append('REDEMPTION_QUEUED', {
+            redemptionId: entry.id,
+            amountSC: entry.amountSC,
+            amountUsd: entry.amountUsd,
+            method: entry.method,
+            destinationMasked: entry.destinationMasked,
+          });
+        }
+        return { status: 200, headers: corsHeaders, body: { success: true, redemption: entry } };
+      }
+
+      if (path === '/api/redemptions/update' && method === 'POST') {
+        const { redemptionId, action, updated } = parsedBody;
+        const idx = this.redemptionQueue.findIndex((r) => r.id === redemptionId);
+        if (idx !== -1 && updated) {
+          this.redemptionQueue[idx] = { ...this.redemptionQueue[idx], ...updated };
+        } else if (updated) {
+          this.redemptionQueue.unshift(updated);
+        }
+        if (this.server && this.server.ledger) {
+          this.server.ledger.append('REDEMPTION_UPDATED', {
+            redemptionId,
+            action,
+            status: updated?.status,
+            txHashOrReceipt: updated?.txHashOrReceipt,
+          });
+        }
+        return { status: 200, headers: corsHeaders, body: { success: true, redemptionId, action } };
       }
 
       // 4. PLAYER AUTHENTICATION

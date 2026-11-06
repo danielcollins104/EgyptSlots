@@ -20536,6 +20536,350 @@ button:disabled,
   }
 }
 
+/* ============================================================================
+   4-PILLAR PAYOUT ARCHITECTURE & ADMIN 1-CLICK PAYOUT CENTER STYLES
+   ============================================================================ */
+.sc-playthrough-meter-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.85));
+  border: 1.5px solid rgba(251, 191, 36, 0.4);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.sc-playthrough-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sc-playthrough-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fde047;
+  letter-spacing: 0.03em;
+}
+
+.sc-playthrough-badge {
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+
+.sc-playthrough-badge.unlocked {
+  background: rgba(16, 185, 129, 0.22);
+  border: 1px solid #10b981;
+  color: #4ade80;
+}
+
+.sc-playthrough-badge.in-progress {
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid #f59e0b;
+  color: #fde047;
+}
+
+.sc-playthrough-bar-track {
+  width: 100%;
+  height: 9px;
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.sc-playthrough-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b 0%, #fde047 50%, #10b981 100%);
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.sc-playthrough-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
+.sc-payout-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+}
+
+.sc-payout-method-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 23, 42, 0.78);
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sc-payout-method-card:hover {
+  border-color: rgba(251, 191, 36, 0.65);
+  background: rgba(30, 41, 59, 0.92);
+}
+
+.sc-payout-method-card.active {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(15, 23, 42, 0.92));
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.32);
+}
+
+.sc-payout-method-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sc-payout-method-name {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.sc-payout-method-badge {
+  font-size: 0.6rem;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.55);
+  color: #fde047;
+  white-space: nowrap;
+}
+
+.sc-payout-method-eta {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.sc-giftcard-brand-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Admin 1-Click Payout Center */
+.sc-admin-payout-center {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sc-admin-payout-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.2), rgba(15, 23, 42, 0.92));
+  border: 1.5px solid rgba(251, 191, 36, 0.5);
+}
+
+.sc-admin-payout-title {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #fde047;
+}
+
+.sc-admin-payout-desc {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #cbd5e1;
+}
+
+.sc-admin-sample-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sc-admin-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sc-admin-queue-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sc-admin-queue-card.status-processing {
+  border-color: rgba(251, 191, 36, 0.65);
+}
+
+.sc-admin-queue-card.status-completed {
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+.sc-admin-queue-card.status-rejected {
+  border-color: rgba(239, 68, 68, 0.45);
+  opacity: 0.82;
+}
+
+.sc-admin-queue-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sc-admin-rdm-id {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 900;
+  color: #fde047;
+  background: rgba(251, 191, 36, 0.16);
+  padding: 2px 7px;
+  border-radius: 5px;
+  margin-right: 8px;
+}
+
+.sc-admin-rdm-type {
+  font-size: 0.84rem;
+  color: #ffffff;
+}
+
+.sc-admin-rdm-amounts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sc-admin-usd-amt {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #4ade80;
+}
+
+.sc-admin-sc-amt {
+  font-size: 0.74rem;
+  color: #cbd5e1;
+}
+
+.sc-admin-status-pill {
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.2);
+  color: #fde047;
+}
+
+.sc-admin-status-pill.completed {
+  background: rgba(16, 185, 129, 0.22);
+  color: #4ade80;
+}
+
+.sc-admin-status-pill.rejected {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+}
+
+.sc-admin-actions-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sc-admin-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.sc-admin-action-btn.cashapp {
+  background: linear-gradient(135deg, #00d632, #059669);
+  color: #ffffff;
+}
+
+.sc-admin-action-btn.crypto {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+}
+
+.sc-admin-action-btn.approve {
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: #ffffff;
+}
+
+.sc-admin-action-btn.reject {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.sc-admin-inline-input {
+  flex: 1 1 200px;
+  min-width: 170px;
+  padding: 6px 10px !important;
+  font-size: 0.74rem !important;
+}
+
+.sc-admin-qr-drawer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.sc-admin-completed-meta {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+
 
 
 

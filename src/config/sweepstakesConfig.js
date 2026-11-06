@@ -87,8 +87,74 @@ export const SWEEPSTAKES_CONFIG = {
   // Initial / Default Balances for New Players
   defaultGoldCoins: 1000, // 1,000 GC free starting bankroll
   defaultSweepsCoins: 10.0, // 10.00 free SC promotional bonus ($10.00 USD prize value)
-  minRedemptionSC: 50.0, // Minimum $50 SC to request prize redemption
+  minRedemptionSC: 50.0, // Minimum $50 SC to request cash/crypto prize redemption
+  minGiftCardRedemptionSC: 25.0, // Lower $25 SC minimum for Instant Digital Gift Cards
+  giftCardBonusRate: 0.05, // +5% Bonus USD value when redeeming for Digital Gift Cards
+  playthroughRequirementMultiplier: 1.0, // 1x anti-fraud playthrough requirement on bonus SC
   scUsdRate: 1.0, // 1 SC = $1.00 USD
+
+  // Supported Redemption / Payout Methods
+  redemptionMethods: [
+    {
+      id: 'giftcard',
+      label: '🎁 Instant Digital Gift Card (+5% BONUS)',
+      shortLabel: '🎁 Gift Card (+5%)',
+      minSC: 25.0,
+      bonusRate: 0.05,
+      eta: 'Instant Email Delivery (5–15 Mins)',
+      badge: '+5% EXTRA PAYOUT • $25 MIN',
+    },
+    {
+      id: 'crypto',
+      label: '⚡ On-Chain Crypto Payout (USDT / SOL / ETH / BTC)',
+      shortLabel: '⚡ Crypto Wallet',
+      minSC: 50.0,
+      bonusRate: 0,
+      eta: 'Near-Instant On-Chain Settlement (0% Casino Fee)',
+      badge: 'FASTEST • 0% FEE',
+    },
+    {
+      id: 'chime',
+      label: '💸 Cash App ($Cashtag) / Chime Instant',
+      shortLabel: '💸 Cash App / Chime',
+      minSC: 50.0,
+      bonusRate: 0,
+      eta: 'Same-Day Direct P2P Transfer',
+      badge: '1-CLICK P2P',
+    },
+    {
+      id: 'debit',
+      label: '💳 Instant Visa / Mastercard Debit Push',
+      shortLabel: '💳 Instant Debit',
+      minSC: 50.0,
+      bonusRate: 0,
+      eta: '15–60 Minutes (Fast Funds / OCT)',
+      badge: 'INSTANT CARD PUSH',
+    },
+    {
+      id: 'ach',
+      label: '🏦 Direct Bank Transfer (ACH Routing & Account)',
+      shortLabel: '🏦 Bank ACH',
+      minSC: 50.0,
+      bonusRate: 0,
+      eta: '1–2 Business Days',
+      badge: 'HIGH LIMIT BANK WIRE',
+    },
+  ],
+
+  giftCardBrands: [
+    { id: 'visa_virtual', name: 'Visa® Virtual Prepaid Card', icon: '💳', bonusPct: 5 },
+    { id: 'amazon', name: 'Amazon.com eGift Card', icon: '📦', bonusPct: 5 },
+    { id: 'apple', name: 'Apple / App Store Gift Card', icon: '🍎', bonusPct: 5 },
+    { id: 'walmart', name: 'Walmart Digital Gift Card', icon: '🛒', bonusPct: 5 },
+  ],
+
+  cryptoPayoutAssets: [
+    { id: 'USDT_SOL', symbol: 'USDT (Solana SPL)', network: 'Solana Mainnet', placeholder: 'Enter your Solana Wallet Address (e.g. Phantom / Solflare)...', rateUsd: 1.0 },
+    { id: 'SOL', symbol: 'SOL (Solana)', network: 'Solana Mainnet', placeholder: 'Enter your Solana (SOL) Wallet Address...', rateUsd: 185.0 },
+    { id: 'ETH', symbol: 'ETH / USDT (ERC-20)', network: 'Ethereum / Base / Arbitrum', placeholder: 'Enter your 0x... Ethereum Wallet Address...', rateUsd: 2950.0 },
+    { id: 'BTC', symbol: 'BTC (Bitcoin)', network: 'Bitcoin Mainnet', placeholder: 'Enter your bc1q... or 1... Bitcoin Wallet Address...', rateUsd: 92000.0 },
+  ],
 
   // Available Store Bundles (Buy Gold Coins -> Receive FREE bonus Sweeps Coins)
   storePackages: [

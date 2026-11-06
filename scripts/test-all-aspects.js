@@ -451,6 +451,101 @@ assert(
 );
 
 // ----------------------------------------------------------------------------
+// 13. 4-PILLAR PAYOUT ARCHITECTURE & ADMIN 1-CLICK PAYOUT CENTER
+// ----------------------------------------------------------------------------
+console.log('\n--- 13. Testing 4-Pillar Payout System (Playthrough, +5% Gift Cards, Crypto, Admin Queue) ---');
+assert(
+  SWEEPSTAKES_CONFIG.minGiftCardRedemptionSC === 25.0 &&
+    SWEEPSTAKES_CONFIG.giftCardBonusRate === 0.05 &&
+    Array.isArray(SWEEPSTAKES_CONFIG.redemptionMethods) &&
+    SWEEPSTAKES_CONFIG.redemptionMethods.length >= 5,
+  'Sweepstakes config defines $25 Gift Card minimum, +5% bonus rate, and 5 payout channels'
+);
+
+// 13a. 1x Playthrough (Rollover) Anti-Fraud Tracker
+paymentService.savePlaythroughState({
+  totalGrantedBonusSC: 20,
+  totalWageredSC: 0,
+  totalWonSC: 0,
+  unplayedBonusSC: 20,
+});
+const ptBefore = paymentService.getPlaythroughState(20);
+assert(
+  ptBefore.redeemableSC === 0 && ptBefore.unplayedSC === 20 && !ptBefore.isFullyUnlocked,
+  'Unplayed bonus SC requires 1x rollover before unlocking for redemption'
+);
+paymentService.recordScWagered(12);
+paymentService.recordScWon(45);
+const ptAfter = paymentService.getPlaythroughState(53);
+assert(
+  ptAfter.unplayedSC === 8 && ptAfter.redeemableSC === 45,
+  'Wagered SC unlocks rollover 1:1 and won SC is immediately redeemable'
+);
+paymentService.recordScWagered(8);
+const ptFull = paymentService.getPlaythroughState(53);
+assert(
+  ptFull.isFullyUnlocked && ptFull.redeemableSC === 53,
+  '100% 1x playthrough unlocks full SC balance for instant redemption'
+);
+
+// 13b. Instant Digital Gift Card (+5% Bonus Value & $25 Minimum)
+const gcRedeem = paymentService.requestRedemption({
+  sweepsCoins: 25,
+  method: 'giftcard',
+  giftCardBrand: 'visa_virtual',
+  destination: 'winner@oopsiwon.com',
+  enforcePlaythrough: true,
+  currentScBalance: 53,
+});
+assert(
+  gcRedeem.success && gcRedeem.amountSC === 25 && gcRedeem.amountUsd === 26.25 && gcRedeem.bonusUsd === 1.25,
+  'Instant Digital Gift Card redemption accepts $25 SC minimum and adds +5% bonus ($26.25 USD)'
+);
+
+// 13c. On-Chain Crypto Payout URI & Cash App 1-Click Deep-Link
+const cryptoRedeem = paymentService.requestRedemption({
+  sweepsCoins: 50,
+  method: 'crypto',
+  cryptoAsset: 'USDT_SOL',
+  destination: 'Ejj7hyePNeC9yHQKuEnRvjSiSdJ7sZfNsdmm3YZxFS1f',
+});
+assert(
+  cryptoRedeem.success &&
+    cryptoRedeem.cryptoPayoutUri.startsWith('solana:Ejj7hyePNeC9yHQKuEnRvjSiSdJ7sZfNsdmm3YZxFS1f?amount=50.00'),
+  'Crypto payout generates pre-populated Solana URI and QR code for 1-tap wallet signing'
+);
+
+const cashAppRedeem = paymentService.requestRedemption({
+  sweepsCoins: 60,
+  method: 'chime',
+  destination: '$WinnerCashtag',
+});
+assert(
+  cashAppRedeem.success &&
+    cashAppRedeem.cashAppPayoutLink === 'https://cash.app/$WinnerCashtag/60.00',
+  'Cash App redemption generates 1-click operator payout deep-link (https://cash.app/$WinnerCashtag/60.00)'
+);
+
+// 13d. Admin 1-Click Payout Center Approval & Rejection Queue
+const approved = paymentService.approveRedemption(cashAppRedeem.redemptionId, {
+  txHashOrReceipt: 'CASHAPP_RCPT_999',
+});
+assert(
+  approved.success &&
+    approved.redemption.status === 'completed' &&
+    approved.redemption.txHashOrReceipt === 'CASHAPP_RCPT_999',
+  'Admin 1-Click Payout Center marks redemption completed with TXID/Receipt'
+);
+
+const rejected = paymentService.rejectRedemption(cryptoRedeem.redemptionId, {
+  reason: 'Test refund',
+});
+assert(
+  rejected.success && rejected.refundSC === 50 && rejected.redemption.status === 'rejected',
+  'Admin 1-Click Payout Center rejects redemption and returns exact SC refund amount'
+);
+
+// ----------------------------------------------------------------------------
 // SUMMARY REPORT
 // ----------------------------------------------------------------------------
 console.log('\n======================================================');

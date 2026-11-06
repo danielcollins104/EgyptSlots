@@ -1039,6 +1039,7 @@ export default function App() {
 
     if (totalCoinsWon > 0) {
       if (isSC) {
+        paymentService.recordScWon(finalWin);
         setSweepsCoins((prev) => Number((prev + finalWin).toFixed(2)));
       } else {
         setGoldCoins((prev) => prev + finalWin);
@@ -1359,6 +1360,7 @@ export default function App() {
       const extraSC = Number(extraCoinsBeyondScatter.toFixed(2));
       const totalSC = Number(totalBonusCoins.toFixed(2));
       if (extraSC > 0) {
+        paymentService.recordScWon(extraSC);
         setSweepsCoins((prev) => Number((prev + extraSC).toFixed(2)));
       }
       setLastWinCoins(totalSC);
@@ -1396,6 +1398,7 @@ export default function App() {
     setFreeSpinsOpen(false);
     if (totalBonusWon > 0) {
       if (currencyMode === 'SC') {
+        paymentService.recordScWon(totalBonusWon);
         setSweepsCoins((prev) => Number((prev + totalBonusWon).toFixed(2)));
       } else {
         setGoldCoins((prev) => prev + totalBonusWon);
@@ -1701,6 +1704,7 @@ export default function App() {
       const activeLevel = Math.max(1, Math.round(isSC ? activeSpinBet / 0.15 : activeSpinBet / 15));
 
       if (isSC) {
+        paymentService.recordScWagered(activeSpinBet);
         setSweepsCoins((prev) => {
           const next = Math.max(0, Number((prev - activeSpinBet).toFixed(2)));
           sweepsCoinsRef.current = next;
@@ -4446,6 +4450,19 @@ export default function App() {
         sweepsCoins={sweepsCoins}
         onPurchaseSuccess={handlePurchaseSuccess}
         onRedeemSuccess={handleRedeemSuccess}
+        onRefundSC={(refundSC) => {
+          if (refundSC > 0) {
+            setSweepsCoins((prev) => {
+              const next = Number((prev + refundSC).toFixed(2));
+              sweepsCoinsRef.current = next;
+              try {
+                localStorage.setItem('dc_casino_sweeps_coins', next.toFixed(2));
+              } catch {}
+              return next;
+            });
+            setStatusMessage(`↩️ REDEMPTION REFUNDED: +${refundSC.toFixed(2)} SC RESTORED TO BALANCE.`);
+          }
+        }}
       />
 
       {/* Automated Celestial Free Spins Bonus Stage */}
