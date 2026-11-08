@@ -52,14 +52,29 @@ export class SecurityServer {
   }
 
   /**
+   * Rotate Provably Fair Server Seed and reveal previous unhashed seed
+   */
+  rotateProvablyFairSeed() {
+    return this.spinService.rotateServerSeed();
+  }
+
+  /**
+   * Verify a historical spin outcome deterministically
+   */
+  verifyProvablyFairSpin(params) {
+    return this.spinService.verifySpinOutcome(params);
+  }
+
+  /**
    * Handle Authoritative Spin Request
    */
-  async handleSpinRequest(authToken, { currencyMode = 'GC', betLevel = 1, clientSeed, currentBetSC }) {
+  async handleSpinRequest(authToken, { currencyMode = 'GC', betLevel = 1, selectedLines = 15, clientSeed, currentBetSC }) {
     const session = this._authenticate(authToken);
     return await this.spinService.executeSpin({
       userId: session.userId,
       currencyMode,
       betLevel,
+      selectedLines,
       clientSeed,
       currentBetSC,
     });

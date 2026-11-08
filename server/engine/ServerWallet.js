@@ -4,6 +4,17 @@
  * Guarantees zero negative balances, anti-double-spending, and atomic commit locks
  */
 export class ServerWallet {
+  /**
+   * Exact integer-cent conversion helpers to eliminate IEEE-754 floating-point drift
+   */
+  static toCents(amount) {
+    return Math.round((Number(amount) || 0) * 100);
+  }
+
+  static fromCents(cents) {
+    return Number((Math.round(cents) / 100).toFixed(2));
+  }
+
   constructor(ledger, initialAccounts = {}) {
     this.ledger = ledger;
     this.accounts = new Map(); // userId -> { goldCoins, sweepsCoins, unplayedSC, redeemedSC, nonce }
@@ -11,11 +22,13 @@ export class ServerWallet {
 
     // Populate initial accounts
     Object.entries(initialAccounts).forEach(([id, acc]) => {
+      const initSC = ServerWallet.fromCents(ServerWallet.toCents(acc.sweepsCoins ?? 10.0));
+      const initUnplayed = ServerWallet.fromCents(ServerWallet.toCents(acc.unplayedSC ?? acc.sweepsCoins ?? 10.0));
       this.accounts.set(id, {
-        goldCoins: acc.goldCoins ?? 100000,
-        sweepsCoins: acc.sweepsCoins ?? 10.0,
-        unplayedSC: acc.unplayedSC ?? acc.sweepsCoins ?? 10.0,
-        redeemedSC: acc.redeemedSC ?? 0,
+        goldCoins: Math.round(acc.goldCoins ?? 100000),
+        sweepsCoins: initSC,
+        unplayedSC: initUnplayed,
+        redeemedSC: ServerWallet.fromCents(ServerWallet.toCents(acc.redeemedSC ?? 0)),
         nonce: acc.nonce ?? 0,
       });
     });
@@ -55,7 +68,7 @@ export class ServerWallet {
   }
 
   /**
-   * Atomic spin bet deduction
+   * Atomic spin bet deduction (using exact integer-cent math for SC)
    */
   async deductBet(userId, currency, betAmount) {
     if (betAmount <= 0) throw new Error('Bet amount must be positive');
@@ -65,20 +78,46 @@ export class ServerWallet {
       const isSC = currency === 'SC';
       const currentBal = isSC ? acc.sweepsCoins : acc.goldCoins;
 
+      if (isSC) {
+        const currentCents = ServerWallet.toCents(currentBal);
+        const betCents = ServerWallet.toCents(betAmount);
+        if (currentCents < betCents) {
+          throw new Error(`Insufficient funds: required ${betAmount} ${currency}, available ${currentBal} ${currency}`);
+        }
+        const balanceBefore = currentBal;
+        const balanceAfter = ServerWallet.fromCents(currentCents - betCents);
+        acc.sweepsCoins = balanceAfter;
+        const unplayedCents = Math.max(0, ServerWallet.toCents(acc.unplayedSC) - betCents);
+        acc.unplayedSC = ServerWallet.fromCents(unplayedCents);
+        acc.nonce += 1;
+
+        const tx = this.ledger.append({
+          userId,
+          type: 'BET',
+          currency,
+          amount: -ServerWallet.fromCents(betCents),
+          balanceBefore,
+          balanceAfter,
+          metadata: { nonce: acc.nonce, amountCents: -betCents },
+        });
+
+        return {
+          success: true,
+          currency,
+          balanceBefore,
+          balanceAfter,
+          nonce: acc.nonce,
+          transactionId: tx.id,
+        };
+      }
+
       if (currentBal < betAmount) {
         throw new Error(`Insufficient funds: required ${betAmount} ${currency}, available ${currentBal} ${currency}`);
       }
 
       const balanceBefore = currentBal;
-      const balanceAfter = isSC ? Number((currentBal - betAmount).toFixed(2)) : currentBal - betAmount;
-
-      if (isSC) {
-        acc.sweepsCoins = balanceAfter;
-        // Count towards rollover requirement
-        acc.unplayedSC = Math.max(0, Number((acc.unplayedSC - betAmount).toFixed(2)));
-      } else {
-        acc.goldCoins = balanceAfter;
-      }
+      const balanceAfter = Math.round(currentBal - betAmount);
+      acc.goldCoins = balanceAfter;
       acc.nonce += 1;
 
       // Log to cryptographic audit ledger
@@ -106,7 +145,7 @@ export class ServerWallet {
   }
 
   /**
-   * Atomic win credit
+   * Atomic win credit (using exact integer-cent math for SC)
    */
   async creditWin(userId, currency, winAmount, metadata = {}) {
     if (winAmount < 0) throw new Error('Win amount cannot be negative');
@@ -118,7 +157,12 @@ export class ServerWallet {
       const isSC = currency === 'SC';
       const currentBal = isSC ? acc.sweepsCoins : acc.goldCoins;
       const balanceBefore = currentBal;
-      const balanceAfter = isSC ? Number((currentBal + winAmount).toFixed(2)) : currentBal + winAmount;
+      const normalizedWin = isSC
+        ? ServerWallet.fromCents(ServerWallet.toCents(winAmount))
+        : Math.round(winAmount);
+      const balanceAfter = isSC
+        ? ServerWallet.fromCents(ServerWallet.toCents(currentBal) + ServerWallet.toCents(winAmount))
+        : Math.round(currentBal + winAmount);
 
       if (isSC) {
         acc.sweepsCoins = balanceAfter;
@@ -130,16 +174,16 @@ export class ServerWallet {
         userId,
         type: 'WIN',
         currency,
-        amount: winAmount,
+        amount: normalizedWin,
         balanceBefore,
         balanceAfter,
-        metadata,
+        metadata: isSC ? { ...metadata, winCents: ServerWallet.toCents(winAmount) } : metadata,
       });
 
       return {
         success: true,
         currency,
-        winAmount,
+        winAmount: normalizedWin,
         balanceBefore,
         balanceAfter,
         transactionId: tx.id,
@@ -160,15 +204,16 @@ export class ServerWallet {
       const gcBefore = acc.goldCoins;
       const scBefore = acc.sweepsCoins;
 
-      acc.goldCoins += goldCoinsToAdd;
-      acc.sweepsCoins = Number((acc.sweepsCoins + freeSweepsCoinsToAdd).toFixed(2));
-      acc.unplayedSC = Number((acc.unplayedSC + freeSweepsCoinsToAdd).toFixed(2));
+      acc.goldCoins = Math.round(acc.goldCoins + (Number(goldCoinsToAdd) || 0));
+      const addScCents = ServerWallet.toCents(freeSweepsCoinsToAdd);
+      acc.sweepsCoins = ServerWallet.fromCents(ServerWallet.toCents(acc.sweepsCoins) + addScCents);
+      acc.unplayedSC = ServerWallet.fromCents(ServerWallet.toCents(acc.unplayedSC) + addScCents);
 
       const txGC = this.ledger.append({
         userId,
         type: 'PURCHASE_GC',
         currency: 'GC',
-        amount: goldCoinsToAdd,
+        amount: Math.round(Number(goldCoinsToAdd) || 0),
         balanceBefore: gcBefore,
         balanceAfter: acc.goldCoins,
         metadata: { packageId, paymentRef },
@@ -178,10 +223,10 @@ export class ServerWallet {
         userId,
         type: 'PROMOTIONAL_SC_GRANT',
         currency: 'SC',
-        amount: freeSweepsCoinsToAdd,
+        amount: ServerWallet.fromCents(addScCents),
         balanceBefore: scBefore,
         balanceAfter: acc.sweepsCoins,
-        metadata: { packageId, paymentRef, note: 'Free sweepstakes bonus entry with GC purchase' },
+        metadata: { packageId, paymentRef, amountCents: addScCents, note: 'Free sweepstakes bonus entry with GC purchase' },
       });
 
       return {
@@ -198,43 +243,59 @@ export class ServerWallet {
   /**
    * Validate and request Cash Prize Redemption for Sweeps Coins
    */
-  async requestRedemption(userId, amountSC, payoutDetails) {
-    if (amountSC < 50.0) {
+  async requestRedemption(userId, amountSC, payoutDetails = {}) {
+    const isGiftCard = payoutDetails?.method === 'giftcard';
+    const minSC = isGiftCard ? 25.0 : 50.0;
+    const reqCents = ServerWallet.toCents(amountSC);
+    const minCents = ServerWallet.toCents(minSC);
+
+    if (reqCents < minCents) {
+      if (isGiftCard) {
+        throw new Error('Minimum gift card prize redemption threshold is 25.00 SC ($25.00 USD)');
+      }
       throw new Error('Minimum prize redemption threshold is 50.00 SC ($50.00 USD)');
     }
 
     await this.acquireLock(userId);
     try {
       const acc = this.getAccount(userId);
-      if (acc.sweepsCoins < amountSC) {
+      const balCents = ServerWallet.toCents(acc.sweepsCoins);
+      if (balCents < reqCents) {
         throw new Error(`Insufficient Sweeps Coins: requested ${amountSC} SC, balance is ${acc.sweepsCoins} SC`);
       }
 
-      // Check rollover (1x playthrough requirement)
-      const eligibleToRedeem = acc.sweepsCoins - acc.unplayedSC;
-      if (eligibleToRedeem < amountSC) {
+      // Check rollover (1x playthrough requirement) in exact integer cents
+      const unplayedCents = ServerWallet.toCents(acc.unplayedSC);
+      const eligibleCents = Math.max(0, balCents - unplayedCents);
+      const eligibleToRedeem = ServerWallet.fromCents(eligibleCents);
+      if (eligibleCents < reqCents) {
         throw new Error(
           `Playthrough requirement not met. Eligible redeemable balance is ${eligibleToRedeem.toFixed(2)} SC. You have ${acc.unplayedSC.toFixed(2)} SC unplayed bonus entries.`
         );
       }
 
       const balanceBefore = acc.sweepsCoins;
-      acc.sweepsCoins = Number((acc.sweepsCoins - amountSC).toFixed(2));
-      acc.redeemedSC = Number((acc.redeemedSC + amountSC).toFixed(2));
+      const exactAmountSC = ServerWallet.fromCents(reqCents);
+      acc.sweepsCoins = ServerWallet.fromCents(balCents - reqCents);
+      acc.redeemedSC = ServerWallet.fromCents(ServerWallet.toCents(acc.redeemedSC) + reqCents);
 
       const tx = this.ledger.append({
         userId,
         type: 'REDEMPTION_REQUEST',
         currency: 'SC',
-        amount: -amountSC,
+        amount: -exactAmountSC,
         balanceBefore,
         balanceAfter: acc.sweepsCoins,
-        metadata: { payoutMethod: payoutDetails.method, destinationMasked: payoutDetails.destinationMasked },
+        metadata: {
+          payoutMethod: payoutDetails?.method,
+          destinationMasked: payoutDetails?.destinationMasked,
+          amountCents: -reqCents,
+        },
       });
 
       return {
         success: true,
-        amountRedeemedSC: amountSC,
+        amountRedeemedSC: exactAmountSC,
         remainingSC: acc.sweepsCoins,
         redemptionId: tx.id,
       };

@@ -667,6 +667,9 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     });
 
     const particles = [];
+    const illuminatedTiles = [];
+    let plannedRareCellsByCol = [null, null, null, null, null];
+    let totalPlannedRareCount = 0;
     const sprites = {};
     let isDisposed = false;
 
@@ -837,6 +840,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         rightHandFxImg,
         rawLeftTallImg,
         rawRightTallImg,
+        rawTileAuraImg,
+        rawSupernovaImg,
       ] = await Promise.all([
         loadImage(THEME_ASSETS.reelNetImage),
         loadImage(THEME_ASSETS.wildGlowImage1),
@@ -845,9 +850,22 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         GUARDIANS.right.handFxImage ? loadImage(GUARDIANS.right.handFxImage) : Promise.resolve(null),
         loadImage(GUARDIANS.left.tallColumnImage),
         loadImage(GUARDIANS.right.tallColumnImage),
+        THEME_ASSETS.tileElectricFireAuraImage
+          ? loadImage(THEME_ASSETS.tileElectricFireAuraImage)
+          : Promise.resolve(null),
+        THEME_ASSETS.bonusSupernovaBurstImage
+          ? loadImage(THEME_ASSETS.bonusSupernovaBurstImage)
+          : Promise.resolve(null),
       ]);
 
       if (isDisposed) return;
+
+      if (rawTileAuraImg) {
+        sprites.tileElectricFireAura = createNeonKeyedCanvas(rawTileAuraImg, 22, 42);
+      }
+      if (rawSupernovaImg) {
+        sprites.bonusSupernovaBurst = createNeonKeyedCanvas(rawSupernovaImg, 22, 42);
+      }
 
       if (netImg) {
         buildStaticBackdrop(netImg);
@@ -1002,10 +1020,56 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       isDirty = true;
     })();
 
-    // Spin Controller with Turbo Flow Mode support
+    // Spin Controller with Turbo Flow Mode & 3-Tile Guardian Illumination Suspense support
     const startSpin = (targetGrid, targetExpanded, isTurbo = false) => {
       isDirty = true;
       lastTime = performance.now();
+      illuminatedTiles.length = 0;
+      plannedRareCellsByCol = [null, null, null, null, null];
+      totalPlannedRareCount = 0;
+
+      // Identify Rare Illumination Trigger Cells across the 5 columns:
+      // Priority 1: Bonus Scatters (2+ scatters build suspense for the 3rd scatter!)
+      // Priority 2: Guardian Awakener Relics (bastet_lotus / anubis_scepter)
+      // Priority 3: High-Tier Relic / Wild combinations (2+ columns with top relics)
+      const scatterCols = [];
+      const awakenerCols = [];
+      const highRelicCols = [];
+
+      for (let c = 0; c < COLS; c++) {
+        const colSyms = targetGrid[c] || [];
+        const bonusRow = colSyms.findIndex((s) => s?.isBonus);
+        if (bonusRow !== -1) {
+          scatterCols.push({ col: c, row: bonusRow, sym: colSyms[bonusRow], kind: 'bonus' });
+        }
+        const awakenerRow = colSyms.findIndex(
+          (s) => s?.isGuardianAwakener || s?.id === 'bastet_lotus' || s?.id === 'anubis_scepter'
+        );
+        if (awakenerRow !== -1) {
+          awakenerCols.push({ col: c, row: awakenerRow, sym: colSyms[awakenerRow], kind: 'awakener' });
+        }
+        const highRow = colSyms.findIndex(
+          (s) => s?.isTopHigh || s?.isWild || s?.id === 'eye' || s?.id === 'scarab'
+        );
+        if (highRow !== -1) {
+          highRelicCols.push({ col: c, row: highRow, sym: colSyms[highRow], kind: 'high' });
+        }
+      }
+
+      const chosenRareList =
+        scatterCols.length >= 2
+          ? scatterCols
+          : awakenerCols.length >= 2
+          ? awakenerCols
+          : highRelicCols.length >= 3
+          ? highRelicCols.slice(0, 3)
+          : [];
+
+      chosenRareList.forEach((item) => {
+        plannedRareCellsByCol[item.col] = item;
+      });
+      totalPlannedRareCount = chosenRareList.length;
+
       reels.forEach((reel) => {
         reel.tweens.forEach((t) => t.kill());
         reel.tweens = [];
@@ -1027,14 +1091,16 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
 
         if (
           reel.willExpand ||
+          Boolean(plannedRareCellsByCol[c]) ||
           targetGrid[c].some((s) => s.isBonus)
         ) {
           specialCountSoFar++;
         }
 
+        const suspenseExtraSec = reel.anticipation ? (c === 4 ? 0.52 : 0.34) : 0;
         const spinDurationSec = isTurbo
           ? 0.08 + c * 0.05
-          : 0.18 + c * 0.12 + (reel.anticipation ? 0.25 : 0);
+          : 0.18 + c * 0.12 + suspenseExtraSec;
         const peakVelocity = reel.anticipation ? 2600 : (isTurbo ? 2800 : 2200);
 
         reel.state = 'WINDUP';
@@ -1163,8 +1229,61 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                   reel.colIndex >= 3 ? '#c084fc' : '#00e5ff'
                 );
               }
+
+              // Check if this column landed a Rare Illumination Tile!
+              let rareTileHit = null;
+              const plannedRare = plannedRareCellsByCol[reel.colIndex];
+              if (plannedRare) {
+                const nowHit = performance.now();
+                const hitOrder = illuminatedTiles.length + 1;
+                const tileEntry = {
+                  col: plannedRare.col,
+                  row: plannedRare.row,
+                  sym: plannedRare.sym,
+                  kind: plannedRare.kind,
+                  order: hitOrder,
+                  bornAt: nowHit,
+                  explodeAt: 0,
+                };
+                illuminatedTiles.push(tileEntry);
+
+                const cellCenterX = plannedRare.col * COL_W + COL_W / 2;
+                const cellCenterY = plannedRare.row * ROW_H + ROW_H / 2;
+                spawnParticles(cellCenterX, cellCenterY, 22, hitOrder % 2 === 1 ? '#00f0ff' : '#fbbf24');
+
+                // If 3rd illuminated tile just hit -> trigger 3-Tile Supernova Detonation across all illuminated tiles!
+                const didExplode3 = illuminatedTiles.length >= 3;
+                if (didExplode3) {
+                  illuminatedTiles.forEach((it) => {
+                    if (!it.explodeAt) {
+                      it.explodeAt = nowHit + 220;
+                    }
+                    const ix = it.col * COL_W + COL_W / 2;
+                    const iy = it.row * ROW_H + ROW_H / 2;
+                    spawnParticles(ix, iy, 28, '#ffd700');
+                  });
+                }
+
+                rareTileHit = {
+                  col: plannedRare.col,
+                  row: plannedRare.row,
+                  sym: plannedRare.sym,
+                  kind: plannedRare.kind,
+                  count: illuminatedTiles.length,
+                  totalPlanned: totalPlannedRareCount,
+                  exploded: didExplode3,
+                  allIlluminatedCells: illuminatedTiles.map((it) => [it.col, it.row]),
+                };
+                isDirty = true;
+              }
+
               if (callbacksRef.current.onColumnStop) {
-                callbacksRef.current.onColumnStop(reel.colIndex, reel.willExpand, reel.targetSymbols);
+                callbacksRef.current.onColumnStop(
+                  reel.colIndex,
+                  reel.willExpand,
+                  reel.targetSymbols,
+                  rareTileHit
+                );
               }
             },
           }
@@ -1227,10 +1346,14 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       const anySpinning = reels.some((r) => r.state !== 'IDLE');
       const hasActiveWins = !anySpinning && wins && wins.length > 0;
       const hasParticles = particles.length > 0;
+      const hasIlluminated =
+        illuminatedTiles.length > 0 &&
+        (anySpinning || now - illuminatedTiles[illuminatedTiles.length - 1].bornAt < 3400);
       const hasTransitions = reels.some(
         (r) => r.offsetY !== 0 || (r.tallAlpha > 0.001 && r.tallAlpha < 0.999)
       );
-      const isActivelyAnimating = anySpinning || hasActiveWins || hasParticles || hasTransitions;
+      const isActivelyAnimating =
+        anySpinning || hasActiveWins || hasParticles || hasTransitions || hasIlluminated;
 
       // Intelligent Idle Throttling: If no reels are spinning and no animations/wins/particles are active,
       // draw the resting grid once and suspend drawing to yield 0% GPU load and eliminate thermal heat
@@ -1284,12 +1407,16 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           }
         }
 
-        // Anticipation spotlight
-        if (reel.state === 'SPINNING' && reel.anticipation) {
-          ctx.fillStyle = 'rgba(255, 215, 0, 0.14)';
+        // Anticipation & 2/3 Tile Suspense Spotlight
+        if (reel.state === 'SPINNING' && (reel.anticipation || illuminatedTiles.length === 2)) {
+          const pulseA = 0.14 + 0.08 * Math.sin(now * 0.018);
+          ctx.fillStyle =
+            illuminatedTiles.length === 2
+              ? `rgba(0, 240, 255, ${pulseA.toFixed(2)})`
+              : `rgba(255, 215, 0, ${pulseA.toFixed(2)})`;
           ctx.fillRect(reel.x, 0, COL_W, GAME_H);
-          ctx.strokeStyle = '#ffd700';
-          ctx.lineWidth = 3;
+          ctx.strokeStyle = illuminatedTiles.length === 2 ? '#00f0ff' : '#ffd700';
+          ctx.lineWidth = 3.5;
           ctx.strokeRect(reel.x + 2, 2, COL_W - 4, GAME_H - 4);
         }
 
@@ -1394,6 +1521,122 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
 
       if (sprites.staticShade) {
         ctx.drawImage(sprites.staticShade, 0, 0);
+      }
+
+      // =========================================================================
+      // 2026 GUARDIAN LIGHTNING & SOLAR FIRE TILE ILLUMINATION + 3-TILE SUPERNOVA
+      // =========================================================================
+      if (hasIlluminated) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+
+        // 1. If 2+ tiles are illuminated, draw crackling electric & solar tether arcs connecting them!
+        if (illuminatedTiles.length >= 2) {
+          for (let i = 0; i < illuminatedTiles.length - 1; i++) {
+            const a = illuminatedTiles[i];
+            const b = illuminatedTiles[i + 1];
+            const ax = a.col * COL_W + COL_W / 2;
+            const ay = a.row * ROW_H + ROW_H / 2;
+            const bx = b.col * COL_W + COL_W / 2;
+            const by = b.row * ROW_H + ROW_H / 2;
+
+            // Outer golden-cyan plasma beam
+            ctx.strokeStyle =
+              illuminatedTiles.length >= 3
+                ? 'rgba(251, 191, 36, 0.65)'
+                : 'rgba(0, 240, 255, 0.55)';
+            ctx.lineWidth = 10 + 3 * Math.sin(now * 0.025);
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            const steps = 6;
+            for (let s = 1; s < steps; s++) {
+              const t = s / steps;
+              const jx = ax + (bx - ax) * t + (Math.random() - 0.5) * 18;
+              const jy = ay + (by - ay) * t + (Math.random() - 0.5) * 18;
+              ctx.lineTo(jx, jy);
+            }
+            ctx.lineTo(bx, by);
+            ctx.stroke();
+
+            // Hot white-gold core filament
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+          }
+        }
+
+        // 2. Draw Electric & Fire Aura Sprite + Supernova Detonation around each Illuminated Tile
+        illuminatedTiles.forEach((it) => {
+          const cx = it.col * COL_W + COL_W / 2;
+          const cy = it.row * ROW_H + ROW_H / 2;
+          const ageMs = now - it.bornAt;
+          const entryScale = Math.min(1, ageMs / 140);
+          const pulse = 1 + 0.06 * Math.sin(now * 0.018 + it.order);
+
+          if (sprites.tileElectricFireAura) {
+            const auraSz = Math.round(ROW_H * 1.16 * entryScale * pulse);
+            ctx.drawImage(
+              sprites.tileElectricFireAura,
+              Math.round(cx - auraSz / 2),
+              Math.round(cy - auraSz / 2),
+              auraSz,
+              auraSz
+            );
+          } else {
+            ctx.strokeStyle = it.order % 2 === 1 ? '#00f0ff' : '#fbbf24';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(cx - COL_W * 0.44, cy - ROW_H * 0.44, COL_W * 0.88, ROW_H * 0.88);
+          }
+
+          // If 3rd tile hit -> Supernova Explosion Burst on all 3 tiles!
+          if (it.explodeAt > 0 && now >= it.explodeAt) {
+            const expElapsed = now - it.explodeAt;
+            if (expElapsed < 1650) {
+              const expProg = expElapsed / 1650;
+              const burstScale = 0.55 + Math.sin(expProg * Math.PI) * 1.35;
+              const burstAlpha = Math.max(0, 1 - expProg * 0.85);
+              ctx.save();
+              ctx.globalAlpha = burstAlpha;
+              ctx.translate(cx, cy);
+              ctx.rotate(expProg * 1.8);
+              if (sprites.bonusSupernovaBurst) {
+                const bSz = Math.round(ROW_H * 1.45 * burstScale);
+                ctx.drawImage(sprites.bonusSupernovaBurst, -bSz / 2, -bSz / 2, bSz, bSz);
+              }
+              ctx.restore();
+            }
+          }
+        });
+
+        ctx.restore();
+
+        // 3. Draw Crisp Charge Counter Badges on Illuminated Tiles ("⚡ 1/3", "⚡🔥 2/3 SUSPENSE!", "💥 3/3 BONUS!")
+        ctx.save();
+        illuminatedTiles.forEach((it) => {
+          const cx = it.col * COL_W + COL_W / 2;
+          const cy = it.row * ROW_H + ROW_H - 20;
+          const isTriple = illuminatedTiles.length >= 3;
+          const badgeText = isTriple
+            ? `💥 ${it.order}/3 BONUS!`
+            : `⚡ ${it.order}/3 CHARGED`;
+          const bw = isTriple ? 114 : 104;
+          const bh = 22;
+
+          ctx.fillStyle = isTriple ? 'rgba(180, 83, 9, 0.94)' : 'rgba(8, 25, 56, 0.92)';
+          ctx.strokeStyle = isTriple ? '#fde047' : '#00f0ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(cx - bw / 2, cy - bh / 2, bw, bh, 6);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = "900 11px 'Cinzel', sans-serif";
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(badgeText, cx, cy);
+        });
+        ctx.restore();
       }
 
       // Draw Multi-Layered Payline & Scatter Win Lasers

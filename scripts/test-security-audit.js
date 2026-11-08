@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import { SecurityServer } from '../server/SecurityServer.js';
 import { ServerRNG } from '../server/engine/ServerRNG.js';
 import { SecurityAuthService } from '../server/auth/SecurityAuthService.js';
+import { ApiRouter } from '../server/apiRouter.js';
 
 console.log('=================================================================');
 console.log('🔒 EXECUTING COMPREHENSIVE CYBERSECURITY & PENETRATION AUDIT');
@@ -253,6 +254,97 @@ const replayProcess = await server.handleStripeWebhook(webhookPayload);
 assert.strictEqual(replayProcess.status, 'ignored', 'Duplicate webhook event MUST be ignored');
 console.log('  ✔ [PASS] Webhook replay attack defeated: duplicate payment event ignored');
 
+// -------------------------------------------------------------------------
+// PILLAR 6: INTEGER-CENT PRECISION & PROVABLY FAIR SEED ROTATION / VERIFIER
+// -------------------------------------------------------------------------
+console.log('\n[PILLAR 6] Auditing Integer-Cent Precision & Provably Fair Spin Verifier...');
+
+// 6.1 Integer-cent arithmetic eliminates IEEE-754 floating-point drift (0.1 + 0.2 === 0.3)
+const centsSum = server.wallet.constructor.fromCents(
+  server.wallet.constructor.toCents(0.1) + server.wallet.constructor.toCents(0.2)
+);
+assert.strictEqual(centsSum, 0.3, 'Integer-cent addition 0.1 + 0.2 must equal exact 0.30');
+console.log('  ✔ [PASS] Integer-cent monetary representation eliminates IEEE-754 floating-point drift');
+
+// 6.2 Provably Fair Seed Rotation & Deterministic Spin Verification
+await new Promise((r) => setTimeout(r, 460));
+const verifiableSpin = await server.handleSpinRequest(aliceToken, {
+  currencyMode: 'GC',
+  betLevel: 1,
+  clientSeed: 'audit_verifier_seed_2026',
+});
+const rotated = server.rotateProvablyFairSeed();
+assert.ok(rotated.revealedServerSeed && rotated.newServerSeedHash, 'Seed rotation must reveal previous serverSeed and issue new hash');
+assert.strictEqual(
+  rotated.revealedServerSeedHash,
+  verifiableSpin.spin.serverSeedHash,
+  'Revealed server seed hash must match pre-spin commitment hash'
+);
+
+const verifyResult = server.verifyProvablyFairSpin({
+  serverSeed: rotated.revealedServerSeed,
+  clientSeed: verifiableSpin.spin.clientSeed,
+  nonce: verifiableSpin.spin.nonce,
+  betLevel: 1,
+  expectedStops: verifiableSpin.spin.stops,
+});
+assert.strictEqual(verifyResult.verified, true, 'Deterministic HMAC-SHA256 spin recomputation must match 100%');
+console.log('  ✔ [PASS] Provably Fair seed rotation & HMAC-SHA256 spin outcome verifier confirmed 100% deterministic');
+
+// 6.3 Full ApiRouter HTTP Dispatch & Ledger Queue Verification (Zero Crash Audit)
+const apiRouter = new ApiRouter({ adminSecret: ADMIN_SECRET });
+const healthRes = await apiRouter.handleRequest('GET', '/api/health');
+assert.strictEqual(healthRes.status, 200, '/api/health must return 200');
+
+const pfGetRes = await apiRouter.handleRequest('GET', '/api/provably-fair');
+assert.strictEqual(pfGetRes.status, 200, '/api/provably-fair must return 200');
+
+const spinApiRes = await apiRouter.handleRequest('POST', '/api/spin', {}, JSON.stringify({
+  userId: 'usr_router_test',
+  currencyMode: 'GC',
+  betLevel: 1,
+  selectedLines: 15,
+  clientSeed: 'router_seed_test',
+}));
+assert.strictEqual(spinApiRes.status, 200, '/api/spin must return 200');
+const guestToken = spinApiRes.body.token;
+
+const pfRotateRes = await apiRouter.handleRequest('POST', '/api/provably-fair/rotate');
+assert.strictEqual(pfRotateRes.status, 200, '/api/provably-fair/rotate must return 200');
+
+const pfVerifyRes = await apiRouter.handleRequest('POST', '/api/provably-fair/verify', {}, JSON.stringify({
+  serverSeed: pfRotateRes.body.revealedServerSeed,
+  clientSeed: spinApiRes.body.spin.clientSeed,
+  nonce: spinApiRes.body.spin.nonce,
+  betLevel: 1,
+  expectedStops: spinApiRes.body.spin.stops,
+}));
+assert.strictEqual(pfVerifyRes.status, 200, '/api/provably-fair/verify must return 200');
+assert.strictEqual(pfVerifyRes.body.verified, true, '/api/provably-fair/verify must confirm stops');
+
+const rdmPostRes = await apiRouter.handleRequest('POST', '/api/redemptions', {}, JSON.stringify({
+  id: 'rdm_router_test_1',
+  userId: 'usr_router_test',
+  amountSC: 50,
+  amountUsd: 50,
+  method: 'chime',
+  destinationMasked: '$TestWinner',
+}));
+assert.strictEqual(rdmPostRes.status, 200, 'POST /api/redemptions must return 200 without ledger crash');
+
+const rdmUpdateRes = await apiRouter.handleRequest('POST', '/api/redemptions/update', {}, JSON.stringify({
+  redemptionId: 'rdm_router_test_1',
+  action: 'approve',
+  updated: { status: 'completed', txHashOrReceipt: 'RCPT_OK_1' },
+}));
+assert.strictEqual(rdmUpdateRes.status, 200, 'POST /api/redemptions/update must return 200 without ledger crash');
+
+const userLedgerRes = await apiRouter.handleRequest('GET', '/api/ledger/user', {
+  Authorization: `Bearer ${guestToken}`,
+});
+assert.strictEqual(userLedgerRes.status, 200, 'GET /api/ledger/user must return 200');
+console.log('  ✔ [PASS] ApiRouter HTTP dispatch (/api/spin, /api/provably-fair/*, /api/redemptions/*, /api/ledger/user) verified crash-free');
+
 console.log('\n=================================================================');
-console.log('🎉 ALL 5 SECURITY PILLARS AUDITED & HARDENED (100% PASS RATE)');
+console.log('🎉 ALL 6 SECURITY PILLARS AUDITED & HARDENED (100% PASS RATE)');
 console.log('=================================================================');

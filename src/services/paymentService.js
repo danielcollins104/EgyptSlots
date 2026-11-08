@@ -20,7 +20,121 @@ const STORAGE_KEYS = {
   CLAIMED_CRYPTO_TXS: 'dc_claimed_crypto_tx_hashes',
   PLAYTHROUGH_STATE: 'dc_sc_playthrough_state',
   REDEMPTION_QUEUE: 'dc_redemption_queue',
+  PROVABLY_FAIR_STATE: 'dc_provably_fair_state_v1',
+  SPIN_RECEIPTS: 'dc_provably_fair_spin_receipts_v1',
+  RESPONSIBLE_GAMING: 'dc_responsible_gaming_state_v1',
+  SESSION_METRICS: 'dc_session_metrics_v1',
 };
+
+// Pure-JS synchronous SHA-256 & HMAC-SHA256 for 100% bit-identical parity with Node.js ServerRNG
+const SHA256_K = new Uint32Array([
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+]);
+
+function utf8ToBytes(str) {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(String(str));
+  }
+  const out = [];
+  for (let i = 0; i < str.length; i++) {
+    let c = str.charCodeAt(i);
+    if (c < 128) out.push(c);
+    else if (c < 2048) out.push((c >> 6) | 192, (c & 63) | 128);
+    else out.push((c >> 12) | 224, ((c >> 6) & 63) | 128, (c & 63) | 128);
+  }
+  return new Uint8Array(out);
+}
+
+function sha256Bytes(msgBytes) {
+  const rotr = (n, x) => (x >>> n) | (x << (32 - n));
+  const l = msgBytes.length;
+  const bitLenHi = Math.floor((l * 8) / 0x100000000);
+  const bitLenLo = (l * 8) >>> 0;
+  const padLen = ((l + 9 + 63) & ~63);
+  const buf = new Uint8Array(padLen);
+  buf.set(msgBytes);
+  buf[l] = 0x80;
+  const view = new DataView(buf.buffer);
+  view.setUint32(padLen - 8, bitLenHi, false);
+  view.setUint32(padLen - 4, bitLenLo, false);
+
+  let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+  let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+  const w = new Uint32Array(64);
+
+  for (let i = 0; i < padLen; i += 64) {
+    for (let t = 0; t < 16; t++) w[t] = view.getUint32(i + t * 4, false);
+    for (let t = 16; t < 64; t++) {
+      const s0 = rotr(7, w[t - 15]) ^ rotr(18, w[t - 15]) ^ (w[t - 15] >>> 3);
+      const s1 = rotr(17, w[t - 2]) ^ rotr(19, w[t - 2]) ^ (w[t - 2] >>> 10);
+      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
+    }
+    let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+    for (let t = 0; t < 64; t++) {
+      const S1 = rotr(6, e) ^ rotr(11, e) ^ rotr(25, e);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + S1 + ch + SHA256_K[t] + w[t]) >>> 0;
+      const S0 = rotr(2, a) ^ rotr(13, a) ^ rotr(22, a);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) >>> 0;
+      h = g; g = f; f = e; e = (d + temp1) >>> 0;
+      d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+    }
+    h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0; h5 = (h5 + f) >>> 0; h6 = (h6 + g) >>> 0; h7 = (h7 + h) >>> 0;
+  }
+
+  const out = new Uint8Array(32);
+  const outView = new DataView(out.buffer);
+  [h0, h1, h2, h3, h4, h5, h6, h7].forEach((v, idx) => outView.setUint32(idx * 4, v, false));
+  return out;
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function sha256Hex(str) {
+  return bytesToHex(sha256Bytes(utf8ToBytes(str)));
+}
+
+function hmacSha256Bytes(keyStr, messageStr) {
+  let keyBytes = utf8ToBytes(keyStr);
+  if (keyBytes.length > 64) keyBytes = sha256Bytes(keyBytes);
+  const oKeyPad = new Uint8Array(64);
+  const iKeyPad = new Uint8Array(64);
+  for (let i = 0; i < 64; i++) {
+    const k = keyBytes[i] || 0;
+    oKeyPad[i] = k ^ 0x5c;
+    iKeyPad[i] = k ^ 0x36;
+  }
+  const msgBytes = utf8ToBytes(messageStr);
+  const innerInput = new Uint8Array(64 + msgBytes.length);
+  innerInput.set(iKeyPad);
+  innerInput.set(msgBytes, 64);
+  const innerHash = sha256Bytes(innerInput);
+  const outerInput = new Uint8Array(64 + 32);
+  outerInput.set(oKeyPad);
+  outerInput.set(innerHash, 64);
+  return sha256Bytes(outerInput);
+}
+
+function generateSecureHex(byteLen = 16) {
+  const bytes = new Uint8Array(byteLen);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < byteLen; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return bytesToHex(bytes);
+}
 
 export const paymentService = {
   // Publishable keys come from build-time env
@@ -195,12 +309,15 @@ export const paymentService = {
     if (Number(sweepsCoins) > 0) {
       this.recordBonusScGranted(Number(sweepsCoins));
     }
+    if (Number(amountUsd) > 0) {
+      this.recordDepositForLimits(Number(amountUsd));
+    }
     const entry = this.logTransaction({
       type: `PURCHASE (${String(method).toUpperCase().replace(/_/g, ' ')})`,
       packageId: packageId || 'pkg_silver',
-      amountUsd: Number(amountUsd) || 0,
-      goldCoins: Number(goldCoins) || 0,
-      sweepsCoins: Number(sweepsCoins) || 0,
+      amountUsd: this.fromCents(this.toCents(amountUsd)),
+      goldCoins: Math.round(Number(goldCoins) || 0),
+      sweepsCoins: this.fromCents(this.toCents(sweepsCoins)),
       method,
       status,
       sessionId,
@@ -674,5 +791,419 @@ export const paymentService = {
       }
     } catch {}
     return await getLiveWalletBalancesStatus();
+  },
+
+  // =========================================================================
+  // EXACT INTEGER-CENT MONETARY HELPERS
+  // =========================================================================
+  toCents(amount) {
+    return Math.round((Number(amount) || 0) * 100);
+  },
+
+  fromCents(cents) {
+    return Number((Math.round(Number(cents) || 0) / 100).toFixed(2));
+  },
+
+  // =========================================================================
+  // PROVABLY FAIR CRYPTOGRAPHIC SEED & SPIN VERIFICATION ENGINE
+  // =========================================================================
+  hashSeed(seed) {
+    return sha256Hex(String(seed || ''));
+  },
+
+  /**
+   * Generates a deterministic float in [0, 1) from (serverSeed, clientSeed, nonce, cursor)
+   * using HMAC-SHA256 — 100% bit-identical to Node.js ServerRNG.provablyFairFloat
+   */
+  provablyFairFloat(serverSeed, clientSeed, nonce, cursor = 0) {
+    const hmacBytes = hmacSha256Bytes(String(serverSeed), `${clientSeed}:${nonce}:${cursor}`);
+    const view = new DataView(hmacBytes.buffer);
+    const uint32 = view.getUint32(0, false);
+    return uint32 / 0x100000000;
+  },
+
+  getProvablyFairState() {
+    let raw = null;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PROVABLY_FAIR_STATE);
+      raw = stored ? JSON.parse(stored) : null;
+    } catch {}
+
+    if (!raw || !raw.serverSeed || !raw.clientSeed) {
+      const initialServerSeed = generateSecureHex(32);
+      const initialClientSeed = `pharaoh_${generateSecureHex(8)}`;
+      raw = {
+        serverSeed: initialServerSeed,
+        serverSeedHash: sha256Hex(initialServerSeed),
+        clientSeed: initialClientSeed,
+        nonce: 0,
+        previousServerSeed: null,
+        previousServerSeedHash: null,
+        algorithm: 'HMAC-SHA256',
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem(STORAGE_KEYS.PROVABLY_FAIR_STATE, JSON.stringify(raw));
+      } catch {}
+    }
+    return raw;
+  },
+
+  saveProvablyFairState(nextState) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PROVABLY_FAIR_STATE, JSON.stringify(nextState));
+    } catch {}
+    return nextState;
+  },
+
+  setClientSeed(newClientSeed) {
+    const clean = String(newClientSeed || '').trim() || `pharaoh_${generateSecureHex(6)}`;
+    const current = this.getProvablyFairState();
+    return this.saveProvablyFairState({
+      ...current,
+      clientSeed: clean.slice(0, 64),
+      updatedAt: new Date().toISOString(),
+    });
+  },
+
+  /**
+   * Rotates the active server seed, reveals the previous unhashed serverSeed so the player
+   * can verify all historical spins made under that commitment, and creates a new commitment.
+   */
+  async rotateProvablyFairSeed(customClientSeed = null) {
+    const current = this.getProvablyFairState();
+    const revealedServerSeed = current.serverSeed;
+    const revealedServerSeedHash = current.serverSeedHash;
+    const nextServerSeed = generateSecureHex(32);
+    const nextServerSeedHash = sha256Hex(nextServerSeed);
+    const nextClientSeed = customClientSeed
+      ? String(customClientSeed).trim().slice(0, 64)
+      : current.clientSeed;
+
+    // Also mark all existing spin receipts matching revealedServerSeedHash with the revealed serverSeed
+    try {
+      const receipts = this.getSpinReceipts();
+      const updatedReceipts = receipts.map((r) =>
+        r.serverSeedHash === revealedServerSeedHash
+          ? { ...r, revealedServerSeed }
+          : r
+      );
+      localStorage.setItem(STORAGE_KEYS.SPIN_RECEIPTS, JSON.stringify(updatedReceipts));
+    } catch {}
+
+    // Best-effort sync with backend /api/provably-fair/rotate
+    try {
+      await fetch('/api/provably-fair/rotate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch {}
+
+    const updated = this.saveProvablyFairState({
+      ...current,
+      serverSeed: nextServerSeed,
+      serverSeedHash: nextServerSeedHash,
+      clientSeed: nextClientSeed,
+      nonce: 0,
+      previousServerSeed: revealedServerSeed,
+      previousServerSeedHash: revealedServerSeedHash,
+      rotatedAt: new Date().toISOString(),
+    });
+
+    return {
+      ...updated,
+      revealedServerSeed,
+      revealedServerSeedHash,
+      newServerSeedHash: nextServerSeedHash,
+    };
+  },
+
+  /**
+   * Advances nonce and returns a deterministic RNG callback for spinPhysicalReels
+   * plus the cryptographic commitment metadata for the spin receipt.
+   */
+  createNextSpinRng() {
+    const state = this.getProvablyFairState();
+    const nextNonce = (Number(state.nonce) || 0) + 1;
+    this.saveProvablyFairState({
+      ...state,
+      nonce: nextNonce,
+    });
+    let cursor = 0;
+    const rngFn = () => {
+      cursor += 1;
+      return this.provablyFairFloat(state.serverSeed, state.clientSeed, nextNonce, cursor);
+    };
+    return {
+      rngFn,
+      serverSeed: state.serverSeed,
+      serverSeedHash: state.serverSeedHash,
+      clientSeed: state.clientSeed,
+      nonce: nextNonce,
+    };
+  },
+
+  getSpinReceipts() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.SPIN_RECEIPTS);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  recordVerifiedSpin({
+    currencyMode = 'GC',
+    betAmount = 15,
+    winAmount = 0,
+    selectedLines = 15,
+    betLevel = 1,
+    stops = [],
+    serverSeed = '',
+    serverSeedHash = '',
+    clientSeed = '',
+    nonce = 1,
+    scatterCount = 0,
+  } = {}) {
+    const receipts = this.getSpinReceipts();
+    const payloadStr = `${serverSeedHash}:${clientSeed}:${nonce}:${stops.join(',')}:${betAmount}:${winAmount}`;
+    const receipt = {
+      id: `spn_${Date.now().toString(36).toUpperCase()}_${nonce}`,
+      timestamp: new Date().toISOString(),
+      currencyMode,
+      betAmount: currencyMode === 'SC' ? this.fromCents(this.toCents(betAmount)) : Math.round(betAmount),
+      winAmount: currencyMode === 'SC' ? this.fromCents(this.toCents(winAmount)) : Math.round(winAmount),
+      selectedLines,
+      betLevel,
+      stops,
+      serverSeed, // Stored locally so single-click verifier in PaytableModal can prove determinism
+      serverSeedHash,
+      clientSeed,
+      nonce,
+      scatterCount,
+      signature: sha256Hex(payloadStr).slice(0, 32),
+      algorithm: 'HMAC-SHA256',
+    };
+    receipts.unshift(receipt);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SPIN_RECEIPTS, JSON.stringify(receipts.slice(0, 50)));
+    } catch {}
+    return receipt;
+  },
+
+  /**
+   * Recomputes the exact 5 reel stops from (serverSeed, clientSeed, nonce) using HMAC-SHA256
+   * and verifies that the recorded stops and SHA-256 commitment match 100%.
+   */
+  verifySpinReceipt(receipt, reelHeights = [72, 72, 72, 72, 72]) {
+    if (!receipt || !receipt.serverSeed || !receipt.clientSeed) {
+      return { verified: false, error: 'Missing seed parameters for verification.' };
+    }
+    const computedHash = sha256Hex(receipt.serverSeed);
+    const hashMatches = computedHash === receipt.serverSeedHash;
+    const recomputedStops = reelHeights.map((len, idx) => {
+      const floatVal = this.provablyFairFloat(receipt.serverSeed, receipt.clientSeed, receipt.nonce, idx + 1);
+      return Math.floor(floatVal * len);
+    });
+    const stopsMatch =
+      Array.isArray(receipt.stops) &&
+      receipt.stops.length === recomputedStops.length &&
+      receipt.stops.every((s, idx) => s === recomputedStops[idx]);
+
+    return {
+      verified: hashMatches && stopsMatch,
+      hashMatches,
+      stopsMatch,
+      computedHash,
+      expectedHash: receipt.serverSeedHash,
+      recomputedStops,
+      recordedStops: receipt.stops,
+      clientSeed: receipt.clientSeed,
+      nonce: receipt.nonce,
+      algorithm: 'HMAC-SHA256',
+    };
+  },
+
+  // =========================================================================
+  // RESPONSIBLE GAMING (RG) & SESSION REALITY CHECK SUITE
+  // =========================================================================
+  getResponsibleGamingState() {
+    let raw = null;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.RESPONSIBLE_GAMING);
+      raw = stored ? JSON.parse(stored) : null;
+    } catch {}
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const base = raw || {
+      dailyDepositLimitUsd: 0, // 0 = no limit set
+      maxSpinBetSC: 0, // 0 = no limit set
+      maxSpinBetGC: 0, // 0 = no limit set
+      realityCheckMinutes: 0, // 0 = off, or 15 / 30 / 60
+      coolOffUntil: null, // ISO timestamp when cool-off expires
+      depositsTodayUsd: 0,
+      depositsDate: todayStr,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (base.depositsDate !== todayStr) {
+      base.depositsTodayUsd = 0;
+      base.depositsDate = todayStr;
+    }
+
+    const isCoolingOff = Boolean(base.coolOffUntil && new Date(base.coolOffUntil).getTime() > Date.now());
+    return {
+      ...base,
+      isCoolingOff,
+      coolOffRemainingMinutes: isCoolingOff
+        ? Math.max(1, Math.ceil((new Date(base.coolOffUntil).getTime() - Date.now()) / 60000))
+        : 0,
+    };
+  },
+
+  saveResponsibleGamingState(updates = {}) {
+    const current = this.getResponsibleGamingState();
+    const next = {
+      ...current,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(STORAGE_KEYS.RESPONSIBLE_GAMING, JSON.stringify(next));
+    } catch {}
+    return this.getResponsibleGamingState();
+  },
+
+  activateCoolOff(hours = 24) {
+    const until = new Date(Date.now() + Number(hours) * 3600 * 1000).toISOString();
+    return this.saveResponsibleGamingState({ coolOffUntil: until });
+  },
+
+  clearCoolOffForDemo() {
+    return this.saveResponsibleGamingState({ coolOffUntil: null });
+  },
+
+  checkDepositLimit(amountUsd) {
+    const rg = this.getResponsibleGamingState();
+    if (rg.isCoolingOff) {
+      return {
+        allowed: false,
+        reason: `Responsible Gaming Cool-Off Active: Your account is in a voluntary break until ${new Date(rg.coolOffUntil).toLocaleString()}.`,
+      };
+    }
+    const amt = Number(amountUsd) || 0;
+    if (rg.dailyDepositLimitUsd > 0) {
+      const projected = this.fromCents(this.toCents(rg.depositsTodayUsd) + this.toCents(amt));
+      if (projected > rg.dailyDepositLimitUsd) {
+        const remaining = Math.max(0, this.fromCents(this.toCents(rg.dailyDepositLimitUsd) - this.toCents(rg.depositsTodayUsd)));
+        return {
+          allowed: false,
+          reason: `Daily Deposit Limit Reached: Your Responsible Gaming daily limit is $${Number(rg.dailyDepositLimitUsd).toFixed(2)} USD ($${remaining.toFixed(2)} remaining today).`,
+        };
+      }
+    }
+    return { allowed: true };
+  },
+
+  recordDepositForLimits(amountUsd) {
+    const rg = this.getResponsibleGamingState();
+    const nextTotal = this.fromCents(this.toCents(rg.depositsTodayUsd) + this.toCents(amountUsd));
+    this.saveResponsibleGamingState({ depositsTodayUsd: nextTotal });
+  },
+
+  checkSpinAllowed({ currencyMode = 'GC', betAmount = 0 } = {}) {
+    const rg = this.getResponsibleGamingState();
+    if (rg.isCoolingOff) {
+      return {
+        allowed: false,
+        code: 'COOL_OFF',
+        reason: `Responsible Gaming Cool-Off Active (${rg.coolOffRemainingMinutes}m remaining). Take a break or manage settings in Player Protection.`,
+      };
+    }
+    if (currencyMode === 'SC' && rg.maxSpinBetSC > 0 && betAmount > rg.maxSpinBetSC + 0.001) {
+      return {
+        allowed: false,
+        code: 'MAX_BET_SC',
+        reason: `Wager exceeds your Responsible Gaming max spin limit of $${Number(rg.maxSpinBetSC).toFixed(2)} SC.`,
+      };
+    }
+    if (currencyMode === 'GC' && rg.maxSpinBetGC > 0 && betAmount > rg.maxSpinBetGC) {
+      return {
+        allowed: false,
+        code: 'MAX_BET_GC',
+        reason: `Wager exceeds your Responsible Gaming max spin limit of ${Number(rg.maxSpinBetGC).toLocaleString()} GC.`,
+      };
+    }
+    return { allowed: true };
+  },
+
+  getSessionMetrics() {
+    let raw = null;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.SESSION_METRICS);
+      raw = stored ? JSON.parse(stored) : null;
+    } catch {}
+    if (!raw || !raw.sessionStartedAt) {
+      raw = {
+        sessionStartedAt: Date.now(),
+        lastReminderAt: Date.now(),
+        totalSpins: 0,
+        wageredGC: 0,
+        wonGC: 0,
+        wageredSC: 0,
+        wonSC: 0,
+      };
+      try {
+        localStorage.setItem(STORAGE_KEYS.SESSION_METRICS, JSON.stringify(raw));
+      } catch {}
+    }
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - raw.sessionStartedAt) / 60000));
+    const sinceReminderMinutes = Math.max(0, Math.floor((Date.now() - (raw.lastReminderAt || raw.sessionStartedAt)) / 60000));
+    const netGC = Math.round((raw.wonGC || 0) - (raw.wageredGC || 0));
+    const netSC = this.fromCents(this.toCents(raw.wonSC || 0) - this.toCents(raw.wageredSC || 0));
+    return {
+      ...raw,
+      elapsedMinutes,
+      sinceReminderMinutes,
+      netGC,
+      netSC,
+    };
+  },
+
+  recordSessionSpin({ currencyMode = 'GC', betAmount = 0, winAmount = 0 } = {}) {
+    const m = this.getSessionMetrics();
+    const isSC = currencyMode === 'SC';
+    const next = {
+      sessionStartedAt: m.sessionStartedAt,
+      lastReminderAt: m.lastReminderAt,
+      totalSpins: (m.totalSpins || 0) + 1,
+      wageredGC: isSC ? m.wageredGC : Math.round((m.wageredGC || 0) + betAmount),
+      wonGC: isSC ? m.wonGC : Math.round((m.wonGC || 0) + winAmount),
+      wageredSC: isSC ? this.fromCents(this.toCents(m.wageredSC) + this.toCents(betAmount)) : m.wageredSC,
+      wonSC: isSC ? this.fromCents(this.toCents(m.wonSC) + this.toCents(winAmount)) : m.wonSC,
+    };
+    try {
+      localStorage.setItem(STORAGE_KEYS.SESSION_METRICS, JSON.stringify(next));
+    } catch {}
+    const rg = this.getResponsibleGamingState();
+    const updatedMetrics = this.getSessionMetrics();
+    const shouldTriggerRealityCheck =
+      rg.realityCheckMinutes > 0 && updatedMetrics.sinceReminderMinutes >= rg.realityCheckMinutes;
+    return {
+      ...updatedMetrics,
+      shouldTriggerRealityCheck,
+    };
+  },
+
+  acknowledgeRealityCheck() {
+    const m = this.getSessionMetrics();
+    const next = {
+      ...m,
+      lastReminderAt: Date.now(),
+    };
+    try {
+      localStorage.setItem(STORAGE_KEYS.SESSION_METRICS, JSON.stringify(next));
+    } catch {}
+    return this.getSessionMetrics();
   },
 };

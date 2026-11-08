@@ -193,6 +193,7 @@ export default function PaymentModal({
   const [adminGiftCodeInputs, setAdminGiftCodeInputs] = useState({});
   const [adminStatusToast, setAdminStatusToast] = useState('');
   const [expandedAdminQrId, setExpandedAdminQrId] = useState(null);
+  const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'purchases' | 'redemptions' | 'spins'
 
   useEffect(() => {
     if (isOpen) {
@@ -361,6 +362,14 @@ export default function PaymentModal({
     if (!selectedPkg || redirectingMethod) return;
     soundEngine.playButtonClick(660);
     setCheckoutError('');
+
+    // Enforce Responsible Gaming deposit limit & cool-off before purchase redirect
+    const rgCheck = paymentService.checkDepositLimit(selectedPkg.priceUsd);
+    if (!rgCheck.allowed) {
+      setCheckoutError(rgCheck.reason);
+      return;
+    }
+
     setRedirectingMethod(methodType);
 
     try {
@@ -395,8 +404,17 @@ export default function PaymentModal({
 
   const handleConfirmCryptoPayment = async () => {
     if (!selectedPkg || isProcessingCrypto) return;
+
+    // Enforce Responsible Gaming deposit limit & cool-off before crypto verification
+    const rgCheck = paymentService.checkDepositLimit(selectedPkg.priceUsd);
+    if (!rgCheck.allowed) {
+      setCheckoutError(rgCheck.reason);
+      return;
+    }
+
     setIsProcessingCrypto(true);
     setCheckoutError('');
+    // Verify via /api/crypto/verify (or legacy /api/verify-crypto-tx endpoint) with RPC fallback
     setCryptoVerifyState({
       status: 'scanning',
       message: `Scanning ${currentCryptoObj.network} RPC for incoming ${calculatedCryptoAmount} ${currentCryptoObj.unit}...`,
@@ -1507,12 +1525,54 @@ export default function PaymentModal({
               )}
 
               {redeemSuccessMsg && (
-                <div className="sc-success-banner">
-                  <CheckCircle2 size={16} />
-                  <div>
+                <div className="sc-success-banner" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <CheckCircle2 size={18} />
                     <div>{redeemSuccessMsg}</div>
-                    {lastSubmittedRedemption && (
-                      <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  </div>
+                  {lastSubmittedRedemption && (
+                    <div className="sc-withdrawal-tracker-card">
+                      <div className="sc-withdrawal-tracker-header">
+                        <span>⚡ Live Withdrawal Progress Tracker ({lastSubmittedRedemption.id})</span>
+                        <span className="sc-withdrawal-eta-pill">
+                          {lastSubmittedRedemption.method === 'giftcard'
+                            ? 'Instant Digital Delivery'
+                            : lastSubmittedRedemption.method === 'crypto'
+                            ? 'Est. 5–15 Mins On-Chain'
+                            : 'Priority Operator Queue'}
+                        </span>
+                      </div>
+                      <div className="sc-withdrawal-steps-grid">
+                        <div className="sc-withdrawal-step completed">
+                          <span className="sc-step-dot">✓</span>
+                          <div>
+                            <strong>1. Requested</strong>
+                            <span>${Number(lastSubmittedRedemption.amountUsd || 0).toFixed(2)} USD Locked</span>
+                          </div>
+                        </div>
+                        <div className="sc-withdrawal-step completed">
+                          <span className="sc-step-dot">✓</span>
+                          <div>
+                            <strong>2. 1× Rollover Verified</strong>
+                            <span>Playthrough &amp; AML Cleared</span>
+                          </div>
+                        </div>
+                        <div className={`sc-withdrawal-step ${lastSubmittedRedemption.status === 'completed' ? 'completed' : 'active'}`}>
+                          <span className="sc-step-dot">{lastSubmittedRedemption.status === 'completed' ? '✓' : '3'}</span>
+                          <div>
+                            <strong>3. Operator Dispatch</strong>
+                            <span>{lastSubmittedRedemption.status === 'completed' ? 'Dispatched' : 'In 1-Click Queue'}</span>
+                          </div>
+                        </div>
+                        <div className={`sc-withdrawal-step ${lastSubmittedRedemption.status === 'completed' ? 'completed' : ''}`}>
+                          <span className="sc-step-dot">{lastSubmittedRedemption.status === 'completed' ? '✓' : '4'}</span>
+                          <div>
+                            <strong>4. Settled</strong>
+                            <span>{lastSubmittedRedemption.destinationMasked || lastSubmittedRedemption.destination}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button
                           type="button"
                           className="sc-payout-pill active"
@@ -1520,9 +1580,16 @@ export default function PaymentModal({
                         >
                           👑 View in Admin 1-Click Payout Center →
                         </button>
+                        <button
+                          type="button"
+                          className="sc-payout-pill"
+                          onClick={() => setActiveTab('history')}
+                        >
+                          📜 View Audit Ledger →
+                        </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1659,46 +1726,179 @@ export default function PaymentModal({
           )}
 
           {/* ================================================================
-              TAB 3: TRANSACTION HISTORY
+              TAB 3: TRANSACTION HISTORY & UNIFIED CRYPTOGRAPHIC AUDIT LEDGER
              ================================================================ */}
-          {activeTab === 'history' && (
-            <div className="sc-history-list">
-              {txHistory.length === 0 ? (
-                <div className="sc-history-empty">
-                  <History size={32} />
-                  <p>No purchases or redemptions yet.</p>
-                </div>
-              ) : (
-                txHistory.map((tx) => (
-                  <div key={tx.id} className="sc-history-row">
-                    <div>
-                      <strong>{tx.type}</strong>
-                      <div className="sc-history-date">
-                        {new Date(tx.timestamp).toLocaleString()} • Status:{' '}
-                        <span style={{ textTransform: 'uppercase', fontWeight: 700 }}>
-                          {tx.status || 'completed'}
-                        </span>
-                        {tx.txHashOrReceipt ? ` • Ref: ${tx.txHashOrReceipt}` : ''}
-                        {tx.giftCardCode ? ` • Gift Code: ${tx.giftCardCode}` : ''}
-                      </div>
-                    </div>
-                    <div className="sc-history-amounts">
-                      {tx.goldCoins > 0 && (
-                        <span className="sc-hist-gc">+{tx.goldCoins.toLocaleString()} GC</span>
-                      )}
-                      {tx.sweepsCoins !== 0 && (
-                        <span className="sc-hist-sc">
-                          {tx.sweepsCoins > 0 ? '+' : ''}
-                          {Number(tx.sweepsCoins).toFixed(2)} SC
-                        </span>
-                      )}
-                      <span className="sc-hist-usd">${Number(tx.amountUsd || 0).toFixed(2)}</span>
-                    </div>
+          {activeTab === 'history' && (() => {
+            const spinReceipts = paymentService.getSpinReceipts();
+            const totalPurchasedUsd = txHistory
+              .filter((t) => String(t.type || '').toUpperCase().includes('PURCHASE'))
+              .reduce((acc, t) => acc + (Number(t.amountUsd) || 0), 0);
+            const totalRedeemedUsd = txHistory
+              .filter((t) => String(t.type || '').toUpperCase().includes('REDEMPTION'))
+              .reduce((acc, t) => acc + (Number(t.amountUsd) || 0), 0);
+
+            const filteredTxs = txHistory.filter((tx) => {
+              const tUpper = String(tx.type || '').toUpperCase();
+              if (historyFilter === 'purchases') return tUpper.includes('PURCHASE');
+              if (historyFilter === 'redemptions') return tUpper.includes('REDEMPTION');
+              if (historyFilter === 'spins') return false;
+              return true;
+            });
+
+            return (
+              <div className="sc-history-list">
+                {/* Summary KPI Strip */}
+                <div className="sc-ledger-kpi-grid">
+                  <div className="sc-ledger-kpi-card">
+                    <span>Total Purchased</span>
+                    <strong>${totalPurchasedUsd.toFixed(2)} USD</strong>
                   </div>
-                ))
-              )}
-            </div>
-          )}
+                  <div className="sc-ledger-kpi-card">
+                    <span>Total Redeemed</span>
+                    <strong style={{ color: '#4ade80' }}>${totalRedeemedUsd.toFixed(2)} USD</strong>
+                  </div>
+                  <div className="sc-ledger-kpi-card">
+                    <span>Redeemable SC (1× Verified)</span>
+                    <strong style={{ color: '#fde047' }}>{playthroughState.redeemableSC.toFixed(2)} SC</strong>
+                  </div>
+                  <div className="sc-ledger-kpi-card">
+                    <span>Verified Spins (HMAC-SHA256)</span>
+                    <strong style={{ color: '#38bdf8' }}>{spinReceipts.length}</strong>
+                  </div>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="sc-ledger-filter-bar">
+                  {[
+                    { id: 'all', label: `All Activity (${txHistory.length + spinReceipts.length})` },
+                    { id: 'purchases', label: '💳 Purchases' },
+                    { id: 'redemptions', label: '💸 Redemptions & Tracker' },
+                    { id: 'spins', label: `🛡️ Verified Spins (${spinReceipts.length})` },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className={`sc-payout-pill ${historyFilter === f.id ? 'active' : ''}`}
+                      onClick={() => setHistoryFilter(f.id)}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                {historyFilter !== 'spins' && filteredTxs.length === 0 && (historyFilter !== 'all' || spinReceipts.length === 0) ? (
+                  <div className="sc-history-empty">
+                    <History size={32} />
+                    <p>No matching transactions recorded yet.</p>
+                  </div>
+                ) : (
+                  <>
+                    {historyFilter !== 'spins' &&
+                      filteredTxs.map((tx) => {
+                        const isRedemption = String(tx.type || '').toUpperCase().includes('REDEMPTION');
+                        const isCompleted = (tx.status || 'completed') === 'completed';
+                        const isRejected = tx.status === 'rejected';
+                        return (
+                          <div key={tx.id} className="sc-history-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                              <div>
+                                <strong>{tx.type}</strong>
+                                <div className="sc-history-date">
+                                  {new Date(tx.timestamp).toLocaleString()} • ID: <code>{tx.id}</code> • Status:{' '}
+                                  <span style={{ textTransform: 'uppercase', fontWeight: 700, color: isCompleted ? '#4ade80' : isRejected ? '#f87171' : '#facc15' }}>
+                                    {tx.status || 'completed'}
+                                  </span>
+                                  {tx.txHashOrReceipt ? ` • Ref: ${tx.txHashOrReceipt}` : ''}
+                                  {tx.giftCardCode ? ` • Gift Code: ${tx.giftCardCode}` : ''}
+                                </div>
+                              </div>
+                              <div className="sc-history-amounts">
+                                {tx.goldCoins > 0 && (
+                                  <span className="sc-hist-gc">+{tx.goldCoins.toLocaleString()} GC</span>
+                                )}
+                                {tx.sweepsCoins !== 0 && (
+                                  <span className="sc-hist-sc">
+                                    {tx.sweepsCoins > 0 ? '+' : ''}
+                                    {Number(tx.sweepsCoins).toFixed(2)} SC
+                                  </span>
+                                )}
+                                <span className="sc-hist-usd">${Number(tx.amountUsd || 0).toFixed(2)}</span>
+                              </div>
+                            </div>
+
+                            {isRedemption && !isRejected && (
+                              <div className="sc-withdrawal-steps-grid compact">
+                                <div className="sc-withdrawal-step completed">
+                                  <span className="sc-step-dot">✓</span>
+                                  <div>
+                                    <strong>1. Requested</strong>
+                                  </div>
+                                </div>
+                                <div className="sc-withdrawal-step completed">
+                                  <span className="sc-step-dot">✓</span>
+                                  <div>
+                                    <strong>2. Rollover Verified</strong>
+                                  </div>
+                                </div>
+                                <div className={`sc-withdrawal-step ${isCompleted ? 'completed' : 'active'}`}>
+                                  <span className="sc-step-dot">{isCompleted ? '✓' : '3'}</span>
+                                  <div>
+                                    <strong>3. Approved &amp; Sent</strong>
+                                  </div>
+                                </div>
+                                <div className={`sc-withdrawal-step ${isCompleted ? 'completed' : ''}`}>
+                                  <span className="sc-step-dot">{isCompleted ? '✓' : '4'}</span>
+                                  <div>
+                                    <strong>4. {isCompleted ? 'Settled' : 'Pending Settlement'}</strong>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                    {(historyFilter === 'spins' || historyFilter === 'all') && spinReceipts.length > 0 && (
+                      <div className="sc-spin-audit-section">
+                        <div className="sc-spin-audit-header">
+                          <span>🛡️ Provably Fair Spin Receipts (HMAC-SHA256)</span>
+                          <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
+                            Every spin is cryptographically committed before reel evaluation
+                          </span>
+                        </div>
+                        {spinReceipts.slice(0, historyFilter === 'spins' ? 25 : 8).map((spn) => (
+                          <div key={spn.id} className="sc-history-row sc-spin-receipt-row">
+                            <div>
+                              <strong>
+                                Spin #{spn.nonce} • {spn.currencyMode === 'SC' ? `$${Number(spn.betAmount).toFixed(2)} SC` : `${Number(spn.betAmount).toLocaleString()} GC`} Wager
+                              </strong>
+                              <div className="sc-history-date">
+                                {spn.timestamp ? new Date(spn.timestamp).toLocaleTimeString() : 'Recent'} • Stops: <code>[{(spn.stops || []).join(', ')}]</code> • Seed Hash:{' '}
+                                <code>{String(spn.serverSeedHash || '').slice(0, 12)}…</code> • Sig: <code>{String(spn.signature || '').slice(0, 10)}…</code>
+                              </div>
+                            </div>
+                            <div className="sc-history-amounts">
+                              <span
+                                className={spn.winAmount > 0 ? 'sc-hist-sc' : 'sc-hist-usd'}
+                                style={{ color: spn.winAmount > 0 ? '#4ade80' : '#94a3b8' }}
+                              >
+                                {spn.winAmount > 0
+                                  ? spn.currencyMode === 'SC'
+                                    ? `+$${Number(spn.winAmount).toFixed(2)} SC`
+                                    : `+${Number(spn.winAmount).toLocaleString()} GC`
+                                  : '0 Win'}
+                              </span>
+                              <span className="sc-verified-pill">✓ HMAC-SHA256</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ================================================================
               TAB 4: ADMIN 1-CLICK PAYOUT & REDEMPTION QUEUE CENTER

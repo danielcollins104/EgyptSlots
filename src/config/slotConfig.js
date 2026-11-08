@@ -101,6 +101,8 @@ export const ACTIVE_THEME = {
     tallColumnBgImage: '/assets/psd/anubis_tall_bg.png',
     ambientSparksImage: '/assets/psd/fx_sparks.png',
     bonusCrestOverlayImage: '/assets/symbols/high/high_scarab_no_frame.png',
+    tileElectricFireAuraImage: '/assets/psd/tile_electric_fire_aura.webp',
+    bonusSupernovaBurstImage: '/assets/psd/bonus_supernova_burst.webp',
   },
 
   // 3. Left & Right Flanking Characters + 1×3 Expanding Reel Column Guardians

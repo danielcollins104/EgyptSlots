@@ -56,6 +56,7 @@ import { paymentService } from './services/paymentService';
 import PaymentModal from './components/PaymentModal';
 import LowBalanceOfferModal from './components/LowBalanceOfferModal';
 import VipPromoAdModal from './components/VipPromoAdModal';
+import ResponsibleGamingModal from './components/ResponsibleGamingModal';
 import { soundEngine } from './audio/soundEngine';
 import SplashScreen from './components/SplashScreen';
 import BigWinPopup from './components/BigWinPopup';
@@ -644,6 +645,8 @@ export default function App() {
   const landedSymbolsByColRef = useRef([null, null, null, null, null]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [responsibleGamingOpen, setResponsibleGamingOpen] = useState(false);
+  const [paytableInitialTab, setPaytableInitialTab] = useState('symbols');
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -970,35 +973,130 @@ export default function App() {
     [currencyMode, lineBetSC, lineBetGC, selectedLines]
   );
 
-  const handleColumnStop = useCallback((colIdx, didExpand, targetSymbols) => {
-    if (targetSymbols) {
-      landedSymbolsByColRef.current[colIdx] = targetSymbols;
-    }
-    if (didExpand) {
-      setGuardianAction(true);
-      soundEngine.playAnubisExpand();
-      setTimeout(() => setGuardianAction(false), 1200);
-    }
+  const handleColumnStop = useCallback(
+    (colIdx, didExpand, targetSymbols, rareTileHit = null) => {
+      if (targetSymbols) {
+        landedSymbolsByColRef.current[colIdx] = targetSymbols;
+      }
+      if (didExpand) {
+        setGuardianAction(true);
+        soundEngine.playAnubisExpand();
+        setTimeout(() => setGuardianAction(false), 1200);
+      }
 
-    // Dynamic Guardian Perched & Illumination Suspense Evaluation:
-    // Check symbols landed across stopped reels (col 0 through colIdx)
-    let scattersLanded = 0;
-    let highMatchingCount = 0;
-    const landedCols = landedSymbolsByColRef.current.slice(0, colIdx + 1).filter(Boolean);
-    landedCols.forEach((colSyms) => {
-      colSyms.forEach((sym) => {
-        if (sym?.isBonus) scattersLanded++;
-        if (sym?.isTopHigh || sym?.id === 'high_scarab' || sym?.id === 'high_eye' || sym?.id === 'high_ankh') {
-          highMatchingCount++;
+      // =========================================================================
+      // 2026 REAL-TIME REEL-BY-REEL GUARDIAN LIGHTNING & FIRE TILE ILLUMINATION
+      // When a rare/scatter/awakener tile lands on a stopping column:
+      //  - 1st Tile Hit: Anubis shoots lightning at [col, row] -> Tile 1/3 Illuminated!
+      //  - 2nd Tile Hit: Bastet shoots solar fire at [col, row] -> Tile 2/3 Illuminated + Suspense Riser!
+      //  - 3rd Tile Hit: Both Guardians fire converging beams -> 3/3 Supernova Bonus Explosion!
+      // =========================================================================
+      if (rareTileHit) {
+        const hitCell = [rareTileHit.col, rareTileHit.row];
+        const hitCount = rareTileHit.count;
+        setGuardianAction(true);
+        setTimeout(() => setGuardianAction(false), 950);
+
+        if (hitCount === 1) {
+          // 1st Illuminated Tile: Lord Anubis shoots High-Voltage Lightning Bolt!
+          triggerAnubisPowerUp(Math.max(2, anubisChargeRef.current));
+          setGuardianStrikeEvent({
+            id: `strike_1_${Date.now()}`,
+            strikes: [
+              {
+                from: 'left',
+                type: 'lightning',
+                targetCells: [hitCell],
+                delay: 0,
+                duration: 420,
+              },
+            ],
+          });
+          soundEngine.playThunderStrike();
+          setStatusMessage(
+            `⚡ LORD ANUBIS STRIKES TILE (1/3 ILLUMINATED)! WATCH FOR 2 MORE TO DETONATE SUPERNOVA BONUS!`
+          );
+        } else if (hitCount === 2) {
+          // 2nd Illuminated Tile: Queen Bastet shoots Solar Fireball + High-Suspense Mode!
+          triggerBastetPowerUp(Math.max(3, bastetChargeRef.current));
+          setGuardianStrikeEvent({
+            id: `strike_2_${Date.now()}`,
+            strikes: [
+              {
+                from: 'right',
+                type: 'fire',
+                targetCells: [hitCell],
+                delay: 0,
+                duration: 440,
+              },
+            ],
+          });
+          soundEngine.playSolarFireball();
+          if (colIdx < COLS - 1) {
+            soundEngine.playAnticipationRiser();
+          }
+          triggerCabinetImpact('win');
+          setStatusMessage(
+            `⚡🔥 2/3 TILES ILLUMINATED WITH LIGHTNING & FIRE! SUSPENSE BUILDING — WILL THE 3RD TILE HIT?!`
+          );
+        } else if (hitCount >= 3) {
+          // 3rd Illuminated Tile: Twin Guardian Supernova Convergence + 3-Tile Explosion!
+          triggerAnubisPowerUp(4);
+          triggerBastetPowerUp(4);
+          const allTargets =
+            Array.isArray(rareTileHit.allIlluminatedCells) &&
+            rareTileHit.allIlluminatedCells.length > 0
+              ? rareTileHit.allIlluminatedCells
+              : [hitCell];
+
+          setGuardianStrikeEvent({
+            id: `strike_3_${Date.now()}`,
+            strikes: [
+              {
+                from: 'left',
+                type: 'lightning',
+                targetCells: allTargets,
+                delay: 0,
+                duration: 520,
+              },
+              {
+                from: 'right',
+                type: 'fire',
+                targetCells: allTargets,
+                delay: 60,
+                duration: 520,
+              },
+            ],
+          });
+          soundEngine.playThunderStrike();
+          setTimeout(() => soundEngine.playSolarFireball(), 90);
+          setTimeout(() => soundEngine.playBonusTrigger(), 260);
+          triggerCabinetImpact('mega');
+          setIlluminatedCells(allTargets);
+          setMajorIlluminationActive(true);
+          setTimeout(() => setMajorIlluminationActive(false), 1800);
+          setStatusMessage(
+            `💥⚡🔥 3/3 TILES ILLUMINATED — TRIPLE SUPERNOVA BONUS EXPLOSION UNLEASHED!`
+          );
         }
-      });
-    });
+        return;
+      }
 
-    if (scattersLanded >= 2 && colIdx < COLS - 1) {
-      // 2 Scatters landed: anticipation riser audio cue
-      soundEngine.playAnticipationRiser();
-    }
-  }, []);
+      // Fallback suspense check
+      let scattersLanded = 0;
+      const landedCols = landedSymbolsByColRef.current.slice(0, colIdx + 1).filter(Boolean);
+      landedCols.forEach((colSyms) => {
+        colSyms.forEach((sym) => {
+          if (sym?.isBonus) scattersLanded++;
+        });
+      });
+
+      if (scattersLanded >= 2 && colIdx < COLS - 1) {
+        soundEngine.playAnticipationRiser();
+      }
+    },
+    [triggerAnubisPowerUp, triggerBastetPowerUp, triggerCabinetImpact]
+  );
 
   const handleSpinComplete = useCallback(() => {
     isSpinningRef.current = false;
@@ -1036,6 +1134,32 @@ export default function App() {
     const isSC = currencyMode === 'SC';
     const finalWin = totalCoinsWon;
     const finalScatterWin = scatterWinCoins;
+
+    // Record Provably Fair Cryptographic Spin Receipt & Session Reality Check Metrics
+    if (stripMetadata?.pfSpin && Array.isArray(stripMetadata.stops)) {
+      paymentService.recordVerifiedSpin({
+        currencyMode,
+        betAmount: spinBet,
+        winAmount: finalWin,
+        selectedLines: linesCount || selectedLines,
+        betLevel: activeLevel,
+        stops: stripMetadata.stops,
+        serverSeed: stripMetadata.pfSpin.serverSeed,
+        serverSeedHash: stripMetadata.pfSpin.serverSeedHash,
+        clientSeed: stripMetadata.pfSpin.clientSeed,
+        nonce: stripMetadata.pfSpin.nonce,
+        scatterCount: bonusCount,
+      });
+    }
+    const sessionCheck = paymentService.recordSessionSpin({
+      currencyMode,
+      betAmount: spinBet,
+      winAmount: finalWin,
+    });
+    if (sessionCheck.shouldTriggerRealityCheck) {
+      setAutoPlayCount(0);
+      setResponsibleGamingOpen(true);
+    }
 
     if (totalCoinsWon > 0) {
       if (isSC) {
@@ -1703,6 +1827,19 @@ export default function App() {
 
       const activeLevel = Math.max(1, Math.round(isSC ? activeSpinBet / 0.15 : activeSpinBet / 15));
 
+      // Responsible Gaming (RG) & Player Protection Check (Cool-Off & Max Wager Limit)
+      const rgSpinCheck = paymentService.checkSpinAllowed({
+        currencyMode: effectiveCurrency,
+        betAmount: activeSpinBet,
+      });
+      if (!rgSpinCheck.allowed) {
+        setAutoPlayCount(0);
+        soundEngine.playButtonClick(400);
+        setStatusMessage(`🛡️ ${rgSpinCheck.reason}`);
+        setResponsibleGamingOpen(true);
+        return;
+      }
+
       if (isSC) {
         paymentService.recordScWagered(activeSpinBet);
         setSweepsCoins((prev) => {
@@ -1815,18 +1952,19 @@ export default function App() {
           [topHigh, wildSym, topHigh],
           [wildSym, topHigh, wildSym],
         ];
-      } else if (forcedMode === 'bonus') {
+      } else if (forcedMode === 'bonus' || forcedMode === 'lightning_suspense') {
         nextGrid = [
           [r(4), bonusSym, r(6)],
-          [r(2), r(5), r(7)],
-          [r(6), bonusSym, r(1)],
+          [r(2), bonusSym, r(7)],
+          [r(6), r(3), r(1)],
           [r(3), r(4), r(5)],
           [r(7), bonusSym, r(2)],
         ];
       } else {
-        // Phase 1 Math Core: Authentic Casino Physical Reel Strip RNG
-        const stripResult = spinPhysicalReels();
-        stripMetadata = stripResult;
+        // Phase 1 Math Core: Provably Fair HMAC-SHA256 Physical Reel Strip RNG
+        const pfSpin = paymentService.createNextSpinRng();
+        const stripResult = spinPhysicalReels(pfSpin.rngFn);
+        stripMetadata = { ...stripResult, pfSpin };
         const symbolMap = new Map();
         activeSymbols.forEach((s) => {
           symbolMap.set(s.id, s);
@@ -1844,11 +1982,11 @@ export default function App() {
           col.map((id) => symbolMap.get(id) || symbolMap.get('neon_10') || activeSymbols[0])
         );
 
-        // Check expanding wild columns (Reels 2, 3, 4) — calibrated authentic casino feature rate
+        // Check expanding wild columns (Reels 2, 3, 4) — calibrated authentic casino feature rate using deterministic RNG
         let expandedCount = 0;
         for (let c = 1; c <= 3; c++) {
           const hasPhysicalExpand = nextGrid[c].some((s) => s.isExpanding);
-          if ((hasPhysicalExpand && expandedCount < 2) || (!hasPhysicalExpand && expandedCount === 0 && Math.random() < 0.0015)) {
+          if ((hasPhysicalExpand && expandedCount < 2) || (!hasPhysicalExpand && expandedCount === 0 && pfSpin.rngFn() < 0.0015)) {
             nextExpanded[c] = true;
             nextGrid[c] = [expSym, expSym, expSym];
             expandedCount++;
@@ -2550,6 +2688,16 @@ export default function App() {
 
           <button
             className="dc-action-btn special-bonus"
+            onClick={() => triggerSpin('lightning_suspense')}
+            disabled={isSpinning}
+            title="Watch Guardians shoot Lightning & Fire at 2 tiles (building suspense!) before the 3rd tile explodes into the Bonus!"
+          >
+            <Zap size={15} color="#00f0ff" />
+            <span>⚡ 3-Tile Strike</span>
+          </button>
+
+          <button
+            className="dc-action-btn special-bonus"
             onClick={() => triggerSpin('bonus')}
             disabled={isSpinning}
             title={THEME_COPY.bonusSpinButtonTooltip}
@@ -2697,6 +2845,7 @@ export default function App() {
             className="dc-action-btn"
             onClick={() => {
               soundEngine.playButtonClick();
+              setPaytableInitialTab('symbols');
               setPaytableOpen(true);
             }}
             onMouseEnter={() => soundEngine.playButtonHover()}
@@ -2705,6 +2854,35 @@ export default function App() {
           >
             <BookOpen size={15} />
             <span>Paytable &amp; Rules</span>
+          </button>
+
+          <button
+            className="dc-action-btn"
+            onClick={() => {
+              soundEngine.playButtonClick(640);
+              setPaytableInitialTab('fairness');
+              setPaytableOpen(true);
+            }}
+            onMouseEnter={() => soundEngine.playButtonHover()}
+            title="Verify Provably Fair HMAC-SHA256 Seeds, Spin Receipts & Certified 90.0% RTP"
+            aria-label="Verify Provably Fair & RTP"
+          >
+            <ShieldCheck size={15} color="#4ade80" />
+            <span>Provably Fair</span>
+          </button>
+
+          <button
+            className="dc-action-btn"
+            onClick={() => {
+              soundEngine.playButtonClick(620);
+              setResponsibleGamingOpen(true);
+            }}
+            onMouseEnter={() => soundEngine.playButtonHover()}
+            title="Responsible Gaming: Session Reality Check, Deposit & Wager Limits, Cool-Off"
+            aria-label="Responsible Gaming & Player Limits"
+          >
+            <ShieldCheck size={15} color="#38bdf8" />
+            <span>RG Limits</span>
           </button>
 
           <button
@@ -3096,6 +3274,22 @@ export default function App() {
               <div className="card-txt">
                 <strong>{turboFlow ? '⚡ Turbo Flow: ON' : '⚡ Turbo Flow: OFF'}</strong>
                 <small>Hypnotic rapid cadence</small>
+              </div>
+            </button>
+
+            <button
+              className="mobile-drawer-card bonus-card"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerSpin('lightning_suspense');
+              }}
+              disabled={isSpinning}
+              style={{ borderColor: 'rgba(0, 240, 255, 0.55)', background: 'linear-gradient(135deg, rgba(0,240,255,0.16), rgba(255,140,0,0.16))' }}
+            >
+              <Zap size={20} className="card-icon" color="#00f0ff" />
+              <div className="card-txt">
+                <strong>⚡ 3-Tile Lightning Suspense</strong>
+                <small>Anubis &amp; Bastet Strike 3 Tiles → Supernova</small>
               </div>
             </button>
 
@@ -4394,12 +4588,21 @@ export default function App() {
         }}
       />
 
-      {/* Paytable Modal */}
+      {/* Paytable & Provably Fair Verifier Modal */}
       <PaytableModal
         isOpen={paytableOpen}
         onClose={() => setPaytableOpen(false)}
         level={level}
         currencyMode={currencyMode}
+        initialTab={paytableInitialTab}
+      />
+
+      {/* Responsible Gaming, Session Reality Check & Player Limits Modal */}
+      <ResponsibleGamingModal
+        isOpen={responsibleGamingOpen}
+        onClose={() => setResponsibleGamingOpen(false)}
+        coins={goldCoinsRef.current ?? goldCoins}
+        sweepsCoins={sweepsCoinsRef.current ?? sweepsCoins}
       />
 
       {/* Non-Disruptive Smart Low Balance Offer / Rescue Modal */}

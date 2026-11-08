@@ -116,3 +116,7 @@ export function spinPhysicalReels(randomFn = Math.random) {
 
   return { stops, grid, peeksAbove, peeksBelow };
 }
+
+export function getReelHeights() {
+  return REEL_STRIPS.map((s) => s.length);
+}

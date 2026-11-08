@@ -293,12 +293,20 @@ export class ApiRouter {
         this.redemptionQueue.unshift(entry);
         this.redemptionQueue = this.redemptionQueue.slice(0, 100);
         if (this.server && this.server.ledger) {
-          this.server.ledger.append('REDEMPTION_QUEUED', {
-            redemptionId: entry.id,
-            amountSC: entry.amountSC,
-            amountUsd: entry.amountUsd,
-            method: entry.method,
-            destinationMasked: entry.destinationMasked,
+          this.server.ledger.append({
+            userId: entry.userId || entry.playerEmail || 'SYSTEM_REDEMPTION_QUEUE',
+            type: 'REDEMPTION_QUEUED',
+            currency: 'SC',
+            amount: -(Number(entry.amountSC) || 0),
+            balanceBefore: Number(entry.balanceBefore) || 0,
+            balanceAfter: Number(entry.balanceAfter) || 0,
+            metadata: {
+              redemptionId: entry.id,
+              amountSC: entry.amountSC,
+              amountUsd: entry.amountUsd,
+              method: entry.method,
+              destinationMasked: entry.destinationMasked,
+            },
           });
         }
         return { status: 200, headers: corsHeaders, body: { success: true, redemption: entry } };
@@ -313,11 +321,19 @@ export class ApiRouter {
           this.redemptionQueue.unshift(updated);
         }
         if (this.server && this.server.ledger) {
-          this.server.ledger.append('REDEMPTION_UPDATED', {
-            redemptionId,
-            action,
-            status: updated?.status,
-            txHashOrReceipt: updated?.txHashOrReceipt,
+          this.server.ledger.append({
+            userId: updated?.userId || 'ADMIN_OPERATOR',
+            type: 'REDEMPTION_UPDATED',
+            currency: 'SC',
+            amount: 0,
+            balanceBefore: 0,
+            balanceAfter: 0,
+            metadata: {
+              redemptionId,
+              action,
+              status: updated?.status,
+              txHashOrReceipt: updated?.txHashOrReceipt,
+            },
           });
         }
         return { status: 200, headers: corsHeaders, body: { success: true, redemptionId, action } };
@@ -379,10 +395,27 @@ export class ApiRouter {
         return { status: 200, headers: corsHeaders, body: { success: true, chain, integrity } };
       }
 
-      // 7. PROVABLY FAIR PUBLIC COMMITMENT
+      // 7. PROVABLY FAIR PUBLIC COMMITMENT, SEED ROTATION & SPIN VERIFIER
       if (path === '/api/provably-fair' && method === 'GET') {
         const commitment = this.server.getProvablyFairCommitment();
         return { status: 200, headers: corsHeaders, body: { success: true, ...commitment } };
+      }
+
+      if (path === '/api/provably-fair/rotate' && method === 'POST') {
+        const rotated = this.server.rotateProvablyFairSeed();
+        return { status: 200, headers: corsHeaders, body: { success: true, ...rotated } };
+      }
+
+      if (path === '/api/provably-fair/verify' && method === 'POST') {
+        const verification = this.server.verifyProvablyFairSpin(parsedBody);
+        return { status: 200, headers: corsHeaders, body: { success: true, ...verification } };
+      }
+
+      // 7.5 USER PERSONAL AUDIT LEDGER
+      if (path === '/api/ledger/user' && (method === 'GET' || method === 'POST')) {
+        if (!token) return { status: 401, headers: corsHeaders, body: { error: 'Authentication required' } };
+        const history = this.server.getUserAuditHistory(token, Number(parsedBody?.limit) || 50);
+        return { status: 200, headers: corsHeaders, body: { success: true, history } };
       }
 
       // 8. STRIPE PAYMENT WEBHOOK
@@ -406,7 +439,7 @@ export class ApiRouter {
       }
 
       // 8.5 LIVE ON-CHAIN CRYPTO VERIFICATION & WALLET STATUS
-      if (path === '/api/crypto/verify' && method === 'POST') {
+      if ((path === '/api/crypto/verify' || path === '/api/verify-crypto-tx') && method === 'POST') {
         const verification = await verifyCryptoDeposit({
           symbol: parsedBody.symbol || 'USDT',
           expectedAmount: Number(parsedBody.expectedAmount) || 0,

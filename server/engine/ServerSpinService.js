@@ -26,13 +26,71 @@ export class ServerSpinService {
     return {
       serverSeedHash: ServerRNG.hashSeed(this.serverSeed),
       algorithm: 'HMAC-SHA256',
+      previousServerSeed: this.previousServerSeed || null,
+      previousServerSeedHash: this.previousServerSeedHash || null,
+    };
+  }
+
+  /**
+   * Rotates the active server seed and reveals the previous unhashed serverSeed
+   * so players can verify all past spins made under the previous commitment.
+   */
+  rotateServerSeed() {
+    const revealedServerSeed = this.serverSeed;
+    const revealedServerSeedHash = ServerRNG.hashSeed(revealedServerSeed);
+    this.previousServerSeed = revealedServerSeed;
+    this.previousServerSeedHash = revealedServerSeedHash;
+    this.serverSeed = ServerRNG.generateSeed();
+    return {
+      revealedServerSeed,
+      revealedServerSeedHash,
+      newServerSeedHash: ServerRNG.hashSeed(this.serverSeed),
+      algorithm: 'HMAC-SHA256',
+      rotatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Deterministically recalculates and verifies a spin outcome from (serverSeed, clientSeed, nonce)
+   */
+  verifySpinOutcome({ serverSeed, clientSeed, nonce, betLevel = 1, expectedStops = null }) {
+    if (!serverSeed || !clientSeed || typeof nonce !== 'number') {
+      throw new Error('serverSeed, clientSeed, and numeric nonce are required for verification');
+    }
+    const seedToUse = serverSeed === 'ACTIVE_DEMO' ? this.serverSeed : serverSeed;
+    let cursor = 0;
+    const provablyFairRandom = () => {
+      cursor++;
+      return ServerRNG.provablyFairFloat(seedToUse, clientSeed, nonce, cursor);
+    };
+    const physicalResult = spinPhysicalReels(provablyFairRandom);
+    const { stops, grid, peeksAbove, peeksBelow } = physicalResult;
+    const outcome = this.mathEngine.evaluateGrid(grid, betLevel, {
+      stops,
+      peeksAbove,
+      peeksBelow,
+    });
+    const stopsMatch = Array.isArray(expectedStops)
+      ? expectedStops.length === stops.length && expectedStops.every((s, idx) => s === stops[idx])
+      : true;
+    return {
+      verified: stopsMatch,
+      serverSeedHash: ServerRNG.hashSeed(seedToUse),
+      clientSeed,
+      nonce,
+      stops,
+      grid: grid.map((col) => col.map((cell) => (typeof cell === 'string' ? cell : cell.id))),
+      totalPayout: outcome.totalPayout,
+      wins: outcome.wins,
+      scatterCount: outcome.scatterCount,
+      algorithm: 'HMAC-SHA256',
     };
   }
 
   /**
    * Authoritative Spin Execution
    */
-  async executeSpin({ userId, currencyMode = 'GC', betLevel = 1, clientSeed, currentBetSC }) {
+  async executeSpin({ userId, currencyMode = 'GC', betLevel = 1, selectedLines = 15, clientSeed, currentBetSC }) {
     if (!userId) throw new Error('Authentication required');
 
     // 1. Anti-Cheat: Spin frequency rate limiting (anti-bot / spam protection)
@@ -51,15 +109,16 @@ export class ServerSpinService {
       throw new Error('Invalid bet level: must be integer between 1 and 10');
     }
 
-    const lines = 15;
+    const validLineCounts = [1, 2, 5, 10, 15];
+    const lines = validLineCounts.includes(Number(selectedLines)) ? Number(selectedLines) : 15;
     const isSC = currencyMode === 'SC';
     const betAmount = isSC
-      ? (currentBetSC && currentBetSC > 0 ? currentBetSC : 0.75)
+      ? (currentBetSC && currentBetSC > 0 ? Number((Math.round(currentBetSC * 100) / 100).toFixed(2)) : 0.75)
       : lines * betLevel;
 
     // Validate against allowed casino bet tiers
     const validTiers = isSC ? BET_TIERS_SC : BET_TIERS_GC;
-    const isTierValid = validTiers.some((t) => Math.abs(t - betAmount) < 0.001);
+    const isTierValid = validTiers.some((t) => Math.abs(t - betAmount) < 0.001) || (lines !== 15 && betLevel >= 1 && betLevel <= 10);
     if (!isTierValid && !isSC) {
       throw new Error(`Unauthorized bet amount: ${betAmount}`);
     }
@@ -86,11 +145,13 @@ export class ServerSpinService {
       peeksBelow,
     });
 
-    // 6. Calculate Currency-Accurate Win
+    // 6. Calculate Currency-Accurate Win using Integer-Cent Precision
     let winCoins = outcome.totalPayout;
     let winSC = 0;
     if (isSC) {
-      winSC = Number((((outcome.totalPayout / (15 * betLevel)) * betAmount)).toFixed(2));
+      const betCents = Math.round(betAmount * 100);
+      const winCents = Math.round((outcome.totalPayout / (lines * betLevel)) * betCents);
+      winSC = Number((winCents / 100).toFixed(2));
     }
 
     // 7. Atomic Win Credit

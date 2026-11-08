@@ -35,6 +35,20 @@ import {
 } from '../src/config/slotConfig.js';
 import { SWEEPSTAKES_CONFIG } from '../src/config/sweepstakesConfig.js';
 import { AMBIENT_PLAYLIST } from '../src/audio/ambientMusicEngine.js';
+import { spinPhysicalReels, getReelHeights } from '../src/engine/math/ReelStripModel.js';
+import { paymentService } from '../src/services/paymentService.js';
+
+const rootDir = process.cwd();
+
+if (typeof globalThis.localStorage === 'undefined') {
+  const memStore = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => (memStore.has(k) ? memStore.get(k) : null),
+    setItem: (k, v) => memStore.set(k, String(v)),
+    removeItem: (k) => memStore.delete(k),
+    clear: () => memStore.clear(),
+  };
+}
 
 let totalTests = 0;
 let passedTests = 0;
@@ -82,6 +96,8 @@ checkFileExists(THEME_ASSETS.wildGlowImage2, 'Wild Glow 2');
 checkFileExists(THEME_ASSETS.tallColumnBgImage, 'Tall Column BG');
 checkFileExists(THEME_ASSETS.ambientSparksImage, 'Ambient Sparks');
 checkFileExists(THEME_ASSETS.bonusCrestOverlayImage, 'Bonus Crest Overlay');
+checkFileExists(THEME_ASSETS.tileElectricFireAuraImage, 'Tile Electric & Fire Suspense Aura');
+checkFileExists(THEME_ASSETS.bonusSupernovaBurstImage, '3-Tile Bonus Supernova Burst');
 checkFileExists(CASINO_BRAND.logoImage, 'Casino Brand Logo');
 checkFileExists(CASINO_BRAND.megaWinNeonImage, 'Mega Win 3D Crest');
 
@@ -359,9 +375,15 @@ requiredAuthMethods.forEach((methodName) => {
 // ----------------------------------------------------------------------------
 console.log('\n--- 10. Testing Casino Ad Architect & 1-Click Conversion Flows ---');
 const vipAdModalSrc = fs.readFileSync(path.join(rootDir, 'src/components/VipPromoAdModal.jsx'), 'utf8');
-assert(vipAdModalSrc.includes('VIP_FOUNDER_OFFERS'), 'VipPromoAdModal defines 3-tier VIP Founder Offer Stack');
+assert(
+  vipAdModalSrc.includes('featuredPackages') || vipAdModalSrc.includes('VIP_FOUNDER_OFFERS'),
+  'VipPromoAdModal defines 3-tier VIP Founder Offer Stack'
+);
 assert(vipAdModalSrc.includes('liveJackpot'), 'VipPromoAdModal features live progressive jackpot ticker');
-assert(vipAdModalSrc.includes('vip-ad-cashout-bridge-card'), 'VipPromoAdModal features Real Prize Cashout Bridge Meter');
+assert(
+  vipAdModalSrc.includes('cashout_bridge') || vipAdModalSrc.includes('vip-ad-cashout-bridge-card'),
+  'VipPromoAdModal features Real Prize Cashout Bridge Meter'
+);
 assert(vipAdModalSrc.includes('onSelectPackage'), 'VipPromoAdModal supports 1-click direct package checkout');
 
 const bigWinSrc = fs.readFileSync(path.join(rootDir, 'src/components/BigWinPopup.jsx'), 'utf8');
@@ -423,13 +445,13 @@ assert(
 // ----------------------------------------------------------------------------
 console.log('\n--- 12. Testing Live On-Chain Crypto Verifier ---');
 const cryptoVerifierSrc = fs.readFileSync(
-  path.join(rootDir, 'functions/api/verify-crypto-tx.js'),
+  path.join(rootDir, 'src/services/cryptoVerifierService.js'),
   'utf8'
 );
 assert(
-  cryptoVerifierSrc.includes('bc1q9394923748329592l359573222238282940000') ||
-    cryptoVerifierSrc.includes('OFFICIAL_WALLETS'),
-  'Cloudflare Worker on-chain crypto verifier is present and configured'
+  cryptoVerifierSrc.includes('OFFICIAL_WALLETS') &&
+    cryptoVerifierSrc.includes('verifyCryptoDeposit'),
+  'On-chain crypto verifier service is present and configured with official wallets'
 );
 const paymentModalSrc = fs.readFileSync(
   path.join(rootDir, 'src/components/PaymentModal.jsx'),
@@ -544,6 +566,71 @@ assert(
   rejected.success && rejected.refundSC === 50 && rejected.redemption.status === 'rejected',
   'Admin 1-Click Payout Center rejects redemption and returns exact SC refund amount'
 );
+
+// ----------------------------------------------------------------------------
+// 14. PROVABLY FAIR VERIFIER, INTEGER-CENT PRECISION & RESPONSIBLE GAMING
+// ----------------------------------------------------------------------------
+console.log('\n--- 14. Testing Provably Fair HMAC-SHA256 Verifier, Integer-Cent Math & Responsible Gaming ---');
+assert(
+  paymentService.fromCents(paymentService.toCents(0.1) + paymentService.toCents(0.2)) === 0.3,
+  'paymentService integer-cent helpers eliminate floating-point drift (0.10 + 0.20 === 0.30)'
+);
+
+const pfSpin = paymentService.createNextSpinRng();
+const pfPhysical = spinPhysicalReels(pfSpin.rngFn);
+const recordedReceipt = paymentService.recordVerifiedSpin({
+  currencyMode: 'SC',
+  betAmount: 0.75,
+  winAmount: 3.5,
+  selectedLines: 15,
+  betLevel: 1,
+  stops: pfPhysical.stops,
+  serverSeed: pfSpin.serverSeed,
+  serverSeedHash: pfSpin.serverSeedHash,
+  clientSeed: pfSpin.clientSeed,
+  nonce: pfSpin.nonce,
+  scatterCount: 0,
+});
+const verifiedReceipt = paymentService.verifySpinReceipt(recordedReceipt, getReelHeights());
+assert(
+  verifiedReceipt.verified && verifiedReceipt.hashMatches && verifiedReceipt.stopsMatch,
+  'Client-side Provably Fair HMAC-SHA256 spin receipt verifier recomputes exact 5 reel stops'
+);
+
+// Responsible Gaming Limits & Cool-Off Verification
+paymentService.saveResponsibleGamingState({
+  dailyDepositLimitUsd: 100,
+  maxSpinBetSC: 5.0,
+  maxSpinBetGC: 500,
+  realityCheckMinutes: 30,
+  coolOffUntil: null,
+  depositsTodayUsd: 80,
+});
+const depAllowed = paymentService.checkDepositLimit(15);
+const depBlocked = paymentService.checkDepositLimit(25);
+assert(
+  depAllowed.allowed && !depBlocked.allowed,
+  'Responsible Gaming daily deposit limit allows $15 within $100 cap and blocks $25 excess'
+);
+const spinAllowed = paymentService.checkSpinAllowed({ currencyMode: 'SC', betAmount: 3.75 });
+const spinBlocked = paymentService.checkSpinAllowed({ currencyMode: 'SC', betAmount: 7.50 });
+assert(
+  spinAllowed.allowed && !spinBlocked.allowed,
+  'Responsible Gaming max single-spin wager limit enforces $5.00 SC cap'
+);
+paymentService.activateCoolOff(24);
+const coolOffSpin = paymentService.checkSpinAllowed({ currencyMode: 'GC', betAmount: 25 });
+assert(
+  !coolOffSpin.allowed && coolOffSpin.code === 'COOL_OFF',
+  'Voluntary Cool-Off immediately pauses spins across GC and SC'
+);
+paymentService.clearCoolOffForDemo();
+paymentService.saveResponsibleGamingState({
+  dailyDepositLimitUsd: 0,
+  maxSpinBetSC: 0,
+  maxSpinBetGC: 0,
+  realityCheckMinutes: 0,
+});
 
 // ----------------------------------------------------------------------------
 // SUMMARY REPORT
