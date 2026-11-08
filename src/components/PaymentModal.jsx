@@ -158,6 +158,7 @@ export default function PaymentModal({
   );
   const [customAmountInput, setCustomAmountInput] = useState('25');
   const [vaultShowcaseMode, setVaultShowcaseMode] = useState('standard'); // 'standard' | 'highroller'
+  const [showCustomDrawer, setShowCustomDrawer] = useState(false);
   const [liveJackpotPool, setLiveJackpotPool] = useState(1284592.45);
   const [promoSecondsLeft, setPromoSecondsLeft] = useState(14 * 60 + 47);
   const [winnerFeedIdx, setWinnerFeedIdx] = useState(0);
@@ -671,23 +672,24 @@ export default function PaymentModal({
   return (
     <div className="sc-cashier-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div className="sc-cashier-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Header Bar */}
-        <header className="sc-cashier-header">
+        {/* Clean Header Bar */}
+        <header className="sc-cashier-header sc-clean-header">
           <div className="sc-cashier-title-wrap">
             <div className="sc-cashier-logo-badge">
               <Coins size={20} />
             </div>
             <div>
-              <h2 className="sc-cashier-title">COIN STORE &amp; CASHIER</h2>
-              <p className="sc-cashier-subtitle">
+              <h2 className="sc-cashier-title">
                 {activeTab === 'store'
-                  ? step === 1
-                    ? 'Choose a Gold Coin package — Every package includes FREE Sweeps Coins (SC)!'
-                    : 'Choose how you want to pay'
+                  ? step === 2
+                    ? 'EXPRESS CHECKOUT'
+                    : 'GET COINS'
                   : activeTab === 'redeem'
-                  ? 'Redeem Sweeps Coins for Real Money (1 SC = $1.00 USD)'
-                  : 'Purchase & Redemption History'}
-              </p>
+                  ? 'CASH OUT PRIZES'
+                  : activeTab === 'payout_admin'
+                  ? 'PAYOUT CENTER'
+                  : 'HISTORY & RECEIPTS'}
+              </h2>
             </div>
           </div>
 
@@ -700,7 +702,7 @@ export default function PaymentModal({
               <span className="sc-bal-sep">|</span>
               <span className="sc-bal-sc">
                 <Gem size={14} />
-                {sweepsCoins.toFixed(2)} SC
+                ${sweepsCoins.toFixed(2)} SC
               </span>
             </div>
 
@@ -715,8 +717,8 @@ export default function PaymentModal({
           </div>
         </header>
 
-        {/* Top Navigation Tabs */}
-        <nav className="sc-cashier-tabs">
+        {/* Streamlined Top Navigation Tabs */}
+        <nav className="sc-cashier-tabs sc-clean-tabs">
           <button
             type="button"
             className={`sc-cashier-tab ${activeTab === 'store' ? 'active' : ''}`}
@@ -727,7 +729,7 @@ export default function PaymentModal({
             }}
           >
             <Coins size={15} />
-            <span>Get Coins</span>
+            <span>Buy Coins</span>
           </button>
 
           <button
@@ -739,7 +741,7 @@ export default function PaymentModal({
             }}
           >
             <DollarSign size={15} />
-            <span>Redeem SC</span>
+            <span>Cash Out</span>
           </button>
 
           <button
@@ -751,12 +753,12 @@ export default function PaymentModal({
             }}
           >
             <History size={15} />
-            <span>History ({txHistory.length})</span>
+            <span>History</span>
           </button>
 
           <button
             type="button"
-            className={`sc-cashier-tab ${activeTab === 'payout_admin' ? 'active' : ''}`}
+            className={`sc-cashier-tab sc-admin-mini-tab ${activeTab === 'payout_admin' ? 'active' : ''}`}
             onClick={() => {
               setRedemptionQueue(paymentService.getRedemptionQueue());
               setActiveTab('payout_admin');
@@ -764,9 +766,12 @@ export default function PaymentModal({
             }}
             title="Admin 1-Click Payout & Redemption Queue Center"
           >
-            <Crown size={15} />
+            <Crown size={14} />
             <span>
-              Payout Center ({redemptionQueue.filter((r) => r.status === 'processing').length})
+              Admin
+              {redemptionQueue.filter((r) => r.status === 'processing').length > 0
+                ? ` (${redemptionQueue.filter((r) => r.status === 'processing').length})`
+                : ''}
             </span>
           </button>
         </nav>
@@ -777,131 +782,45 @@ export default function PaymentModal({
           {purchaseCompletedPkg && (
             <div className="sc-cashier-success-box">
               <CheckCircle2 size={54} className="sc-success-icon" />
-              <h3>Purchase Complete!</h3>
+              <h3>Coins Added!</h3>
               <p>
-                Added <strong>+{purchaseCompletedPkg.goldCoins.toLocaleString()} Gold Coins</strong> &amp;{' '}
+                <strong>+{purchaseCompletedPkg.goldCoins.toLocaleString()} Gold Coins</strong> &amp;{' '}
                 <strong className="sc-green-text">
-                  +{purchaseCompletedPkg.freeSweepsCoins.toFixed(2)} FREE Sweeps Coins
-                </strong>{' '}
-                to your balance!
+                  +${purchaseCompletedPkg.freeSweepsCoins.toFixed(2)} FREE Sweeps Coins
+                </strong>
               </p>
               <span className="sc-returning-note">Returning to game...</span>
             </div>
           )}
 
           {/* ================================================================
-              TAB 1: GET COINS (ROYAL TREASURY HIGH-CONVERTING SALES SHOWCASE)
+              TAB 1: GET COINS — ULTRA-CLEAN ROYAL MATCH / CHUMBA / PULSZ STORE
              ================================================================ */}
           {!purchaseCompletedPkg && activeTab === 'store' && (
             <>
-              {/* STEP 1: CHOOSE A PACKAGE */}
+              {/* STEP 1: TAP ANY BUNDLE TO BUY */}
               {step === 1 && (
-                <div className="sc-packages-step">
-                  {/* Vegas Marquee & Pharaoh's Golden Hour VIP Hero Banner */}
-                  <div className="sc-promo-hero-banner">
-                    <div className="sc-promo-hero-bg-art" />
-                    <div className="sc-promo-hero-shimmer" />
-
-                    <div className="sc-promo-hero-top-row">
-                      <span className="sc-promo-flash-pill">
-                        <Flame size={13} className="sc-flame-pulse" />
-                        <span>
-                          PHARAOH&apos;S GOLDEN HOUR • EXTRA FREE SC ENDS IN{' '}
-                          <strong>
-                            {String(Math.floor(promoSecondsLeft / 60)).padStart(2, '0')}:
-                            {String(promoSecondsLeft % 60).padStart(2, '0')}
-                          </strong>
-                        </span>
-                      </span>
-
-                      <span className="sc-promo-rating-seal">
-                        <Star size={12} fill="#fde047" color="#fde047" />
-                        <Star size={12} fill="#fde047" color="#fde047" />
-                        <Star size={12} fill="#fde047" color="#fde047" />
-                        <Star size={12} fill="#fde047" color="#fde047" />
-                        <Star size={12} fill="#fde047" color="#fde047" />
-                        <span>4.9★ VERIFIED INSTANT PAYOUTS</span>
+                <div className="sc-packages-step sc-clean-store-step">
+                  {/* Single Sleek Golden Bonus Ribbon */}
+                  <div className="sc-clean-bonus-ribbon">
+                    <div className="sc-clean-bonus-left">
+                      <Gift size={16} className="sc-emerald-icon" />
+                      <span>
+                        Every pack includes <strong>FREE Sweeps Coins</strong> (1 SC = $1.00 Cash Prize)
                       </span>
                     </div>
-
-                    <div className="sc-promo-hero-main">
-                      <div className="sc-promo-hero-copy">
-                        <h3 className="sc-promo-hero-headline">
-                          UNLOCK THE ROYAL TREASURY &amp; CLAIM{' '}
-                          <span className="sc-emerald-highlight">100% FREE SWEEPS COINS!</span>
-                        </h3>
-                        <p className="sc-promo-hero-sub">
-                          Every Gold Coin bundle includes <strong>FREE promotional Sweeps Coins</strong>{' '}
-                          redeemable 1-to-1 for real USD cash prizes (<strong>1.00 SC = $1.00 USD</strong>).
-                        </p>
-                      </div>
-
-                      <div className="sc-promo-jackpot-ticker-box">
-                        <span className="sc-jackpot-ticker-label">
-                          <Trophy size={12} /> LIVE VIP PRIZE POOL
-                        </span>
-                        <strong className="sc-jackpot-ticker-digits">
-                          $
-                          {liveJackpotPool.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </strong>
-                        <span className="sc-jackpot-ticker-sub">⚡ INSTANT CASH REDEMPTIONS ACTIVE</span>
-                      </div>
-                    </div>
-
-                    {/* Live Social Proof Winner & Cashout Ticker */}
-                    <div className="sc-live-winners-strip" key={winnerFeedIdx}>
-                      <span className="sc-live-dot" />
-                      <span className="sc-winner-emoji">
-                        {RECENT_VIP_WINNERS_FEED[winnerFeedIdx].icon}
+                    <span className="sc-clean-timer-pill">
+                      <Flame size={13} className="sc-flame-pulse" />
+                      <span>
+                        +EXTRA FREE SC • {String(Math.floor(promoSecondsLeft / 60)).padStart(2, '0')}:
+                        {String(promoSecondsLeft % 60).padStart(2, '0')}
                       </span>
-                      <span className="sc-winner-text">
-                        <strong>{RECENT_VIP_WINNERS_FEED[winnerFeedIdx].user}</strong> (
-                        {RECENT_VIP_WINNERS_FEED[winnerFeedIdx].location}){' '}
-                        {RECENT_VIP_WINNERS_FEED[winnerFeedIdx].action}
-                      </span>
-                      <span className="sc-winner-time">
-                        {RECENT_VIP_WINNERS_FEED[winnerFeedIdx].time}
-                      </span>
-                    </div>
+                    </span>
                   </div>
 
-                  {/* Store Tier Switcher: Standard Treasure Chests vs. High-Roller Dynasty Vaults */}
-                  <div className="sc-showcase-toggle-bar">
-                    <button
-                      type="button"
-                      className={`sc-showcase-toggle-btn ${
-                        vaultShowcaseMode === 'standard' ? 'active' : ''
-                      }`}
-                      onClick={() => {
-                        setVaultShowcaseMode('standard');
-                        soundEngine.playButtonClick(500);
-                      }}
-                    >
-                      <Sparkles size={15} />
-                      <span>ROYAL TREASURE CHESTS ($4.99 – $249.99)</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`sc-showcase-toggle-btn highroller-btn ${
-                        vaultShowcaseMode === 'highroller' ? 'active-hr' : ''
-                      }`}
-                      onClick={() => {
-                        setVaultShowcaseMode('highroller');
-                        soundEngine.playButtonClick(580);
-                      }}
-                    >
-                      <Crown size={15} />
-                      <span>VIP DYNASTY VAULTS ($5,000 – $50,000 • UP TO +25% FREE SC)</span>
-                    </button>
-                  </div>
-
-                  {/* 3D Relic Package Grid */}
+                  {/* Clean 3x2 Visual Coin Grid (Royal Match / Monopoly GO / Chumba Style) */}
                   <div
-                    className={`sc-packages-grid ${
+                    className={`sc-packages-grid sc-clean-grid ${
                       vaultShowcaseMode === 'highroller' ? 'hr-packages-grid' : ''
                     }`}
                   >
@@ -915,295 +834,264 @@ export default function PaymentModal({
                         ]
                     ).map((pkg) => {
                       const extraFreeScBonus = Math.max(0, pkg.freeSweepsCoins - pkg.priceUsd);
+                      const bonusPct =
+                        pkg.priceUsd > 0
+                          ? Math.round(((pkg.freeSweepsCoins - pkg.priceUsd) / pkg.priceUsd) * 100)
+                          : 0;
+                      const shortBadge = pkg.popular
+                        ? '🔥 MOST POPULAR'
+                        : pkg.featuredSpotlight
+                        ? '👑 BEST VALUE'
+                        : pkg.priceUsd <= 5
+                        ? '⚡ 50% OFF STARTER'
+                        : bonusPct > 0
+                        ? `+${bonusPct}% EXTRA FREE`
+                        : pkg.badge;
+
                       return (
                         <div
                           key={pkg.id}
-                          className={`sc-pkg-card ${pkg.popular ? 'popular' : ''} ${
+                          className={`sc-pkg-card sc-clean-card ${pkg.popular ? 'popular' : ''} ${
                             pkg.featuredSpotlight ? 'featured-spotlight' : ''
                           } ${pkg.auraClass || ''}`}
                           onClick={() => handleSelectPackage(pkg)}
                           role="button"
                           tabIndex={0}
                         >
-                          <div className="sc-pkg-ambient-glow" />
-
-                          {pkg.badge && (
-                            <div className={`sc-pkg-ribbon ${pkg.popular ? 'popular-ribbon' : ''}`}>
-                              <Crown size={11} />
-                              <span>{pkg.badge}</span>
+                          {/* 1. Crisp Top Badge */}
+                          {shortBadge && (
+                            <div
+                              className={`sc-pkg-ribbon ${
+                                pkg.popular
+                                  ? 'popular-ribbon'
+                                  : pkg.featuredSpotlight
+                                  ? 'best-value-ribbon'
+                                  : ''
+                              }`}
+                            >
+                              <span>{shortBadge}</span>
                             </div>
                           )}
 
-                          {/* 3D Floating Treasure Relic Emblem */}
-                          <div className="sc-pkg-relic-showcase">
+                          {/* 2. Glowing 3D Treasure Icon */}
+                          <div className="sc-pkg-relic-showcase sc-clean-relic">
                             <div className="sc-pkg-relic-halo" />
                             <img
                               src={pkg.relicArt || '/assets/symbols/high/high_scarab_no_frame.png'}
-                              alt={pkg.tierTitle || 'Treasure Chest'}
+                              alt={pkg.tierTitle || 'Coin Pack'}
                               className="sc-pkg-relic-img"
                               draggable={false}
                             />
                             {extraFreeScBonus > 0 && (
                               <span className="sc-pkg-extra-burst-tag">
-                                +${extraFreeScBonus.toFixed(2)} EXTRA FREE!
+                                +${extraFreeScBonus.toFixed(0)} FREE
                               </span>
                             )}
                           </div>
 
-                          <div className="sc-pkg-tier-name">
-                            {pkg.tierTitle || pkg.tierName || 'Royal Coin Bundle'}
+                          {/* 3. The 2 Numbers Players Care About: Gold Coins + FREE SC */}
+                          <div className="sc-clean-gc-number">
+                            <Coins size={17} className="sc-gold-icon" />
+                            <span>{pkg.goldCoins.toLocaleString()} GC</span>
                           </div>
 
-                          <div className="sc-pkg-gc-section">
-                            <div className="sc-pkg-gc-amount">
-                              <Coins size={18} className="sc-gold-icon" />
-                              <span>{pkg.goldCoins.toLocaleString()}</span>
-                            </div>
-                            <span className="sc-pkg-gc-label">GOLD COINS INCLUDED</span>
-                          </div>
-
-                          {/* High-Impact FREE Sweeps Coins Gift Box */}
-                          <div className="sc-pkg-sc-bonus">
-                            <div className="sc-pkg-sc-top">
-                              <Gift size={14} className="sc-emerald-icon" />
-                              <span>
-                                +FREE $
-                                {pkg.freeSweepsCoins.toLocaleString('en-US', {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}{' '}
-                                SC
-                              </span>
-                            </div>
-                            <span className="sc-pkg-sc-sub">
-                              (${pkg.freeSweepsCoins.toLocaleString()} USD Real Prize Value)
+                          <div className="sc-clean-sc-pill">
+                            <Gift size={13} />
+                            <span>
+                              + FREE $
+                              {pkg.freeSweepsCoins.toLocaleString('en-US', {
+                                minimumFractionDigits: pkg.freeSweepsCoins % 1 === 0 ? 0 : 2,
+                                maximumFractionDigits: 2,
+                              })}{' '}
+                              SC
                             </span>
                           </div>
 
-                          {pkg.vipPerk && (
-                            <div className="sc-pkg-vip-perk-pill">
-                              <span>{pkg.vipPerk}</span>
-                            </div>
-                          )}
-
+                          {/* 4. Glossy Green Price CTA Button */}
                           <button
                             type="button"
-                            className="sc-pkg-buy-btn"
+                            className="sc-clean-price-btn"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSelectPackage(pkg);
                             }}
                           >
-                            <div className="sc-pkg-btn-price-group">
-                              {pkg.originalPriceUsd && (
-                                <span className="sc-pkg-old-price">
-                                  ${pkg.originalPriceUsd.toLocaleString()}
-                                </span>
-                              )}
-                              <span className="sc-pkg-now-price">
-                                CLAIM ${pkg.priceUsd.toLocaleString('en-US', { minimumFractionDigits: pkg.priceUsd % 1 === 0 ? 0 : 2 })}
+                            {pkg.originalPriceUsd && (
+                              <span className="sc-clean-old-price">
+                                ${pkg.originalPriceUsd.toLocaleString()}
                               </span>
-                            </div>
-                            <ArrowRight size={15} className="sc-pkg-btn-arrow" />
+                            )}
+                            <span className="sc-clean-now-price">
+                              $
+                              {pkg.priceUsd.toLocaleString('en-US', {
+                                minimumFractionDigits: pkg.priceUsd % 1 === 0 ? 0 : 2,
+                              })}
+                            </span>
                           </button>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Custom Amount Builder Card with Interactive Bonus Tier Unlock Bar */}
-                  <div className="sc-custom-amount-card">
-                    <div className="sc-custom-amount-header">
-                      <div>
-                        <span className="sc-custom-eyebrow">
-                          ⚡ BESPOKE PHARAOH VIP BUILDER ($1 – $1,000,000)
-                        </span>
-                        <h4 className="sc-custom-title">
-                          Name Your Own Price &amp; Unlock Instant Extra Free SC
-                        </h4>
-                      </div>
-                      {customPkgPreview.badge && (
-                        <span className="sc-custom-bonus-pill">
-                          <Sparkles size={12} /> {customPkgPreview.badge}
-                        </span>
-                      )}
-                    </div>
+                  {/* Subtle Collapsible Footer Toggle for Custom Amount & High-Roller Packs */}
+                  <div className="sc-clean-more-options-row">
+                    <button
+                      type="button"
+                      className={`sc-clean-option-pill ${showCustomDrawer ? 'active' : ''}`}
+                      onClick={() => {
+                        setShowCustomDrawer(!showCustomDrawer);
+                        soundEngine.playButtonClick(500);
+                      }}
+                    >
+                      <Sparkles size={13} />
+                      <span>
+                        {showCustomDrawer ? 'Hide Custom Amount' : 'Custom Amount ($1+)'}
+                      </span>
+                    </button>
 
-                    {/* Interactive Bonus Multiplier Tier Milestones */}
-                    <div className="sc-custom-tier-track">
-                      {[
-                        { min: 10, label: '$10+ • +5% FREE SC' },
-                        { min: 20, label: '$20+ • +10% FREE SC' },
-                        { min: 100, label: '$100+ • +15% FREE SC' },
-                        { min: 10000, label: '$10K+ • UP TO +25% SC' },
-                      ].map((tier) => {
-                        const unlocked = parsedCustomUsd >= tier.min;
-                        return (
-                          <div
-                            key={tier.min}
-                            className={`sc-custom-tier-step ${unlocked ? 'unlocked' : ''}`}
-                            onClick={() => {
-                              setCustomAmountInput(String(tier.min));
-                              soundEngine.playButtonClick(540);
-                            }}
-                            role="button"
-                            tabIndex={0}
-                          >
-                            <CheckCircle2 size={12} />
-                            <span>{tier.label}</span>
-                          </div>
+                    <button
+                      type="button"
+                      className={`sc-clean-option-pill ${
+                        vaultShowcaseMode === 'highroller' ? 'active' : ''
+                      }`}
+                      onClick={() => {
+                        setVaultShowcaseMode(
+                          vaultShowcaseMode === 'highroller' ? 'standard' : 'highroller'
                         );
-                      })}
-                    </div>
-
-                    <div className="sc-custom-quick-chips">
-                      {[15, 25, 50, 100, 250, 500, 1000].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          className={`sc-custom-chip ${
-                            Number(customAmountInput) === preset ? 'active' : ''
-                          }`}
-                          onClick={() => {
-                            setCustomAmountInput(String(preset));
-                            soundEngine.playButtonClick(520);
-                          }}
-                        >
-                          ${preset.toLocaleString()}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="sc-custom-controls-row">
-                      <div className="sc-custom-input-wrap">
-                        <span className="sc-custom-dollar-prefix">$</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max="1000000"
-                          step="any"
-                          value={customAmountInput}
-                          onChange={(e) => setCustomAmountInput(e.target.value)}
-                          className="sc-custom-input"
-                          placeholder="25.00"
-                          aria-label="Custom USD Amount"
-                        />
-                        <span className="sc-custom-usd-suffix">USD</span>
-                      </div>
-
-                      <div className="sc-custom-live-preview">
-                        <span className="sc-custom-preview-gc">
-                          <Coins size={15} className="sc-gold-icon" />
-                          <strong>{customPkgPreview.goldCoins.toLocaleString()} GC</strong>
-                        </span>
-                        <span className="sc-custom-preview-plus">+</span>
-                        <span className="sc-custom-preview-sc">
-                          <Gem size={15} className="sc-emerald-icon" />
-                          <strong>FREE ${customPkgPreview.freeSweepsCoins.toFixed(2)} SC</strong>
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="sc-custom-continue-btn"
-                        onClick={handleSelectCustomAmount}
-                      >
-                        <span>Claim ${customPkgPreview.priceUsd.toFixed(2)} Bundle</span>
-                        <ArrowRight size={16} />
-                      </button>
-                    </div>
+                        soundEngine.playButtonClick(540);
+                      }}
+                    >
+                      <Crown size={13} />
+                      <span>
+                        {vaultShowcaseMode === 'highroller'
+                          ? '← Back to Standard Packs ($4.99–$249.99)'
+                          : 'VIP High-Roller Packs ($5K–$50K)'}
+                      </span>
+                    </button>
                   </div>
 
-                  {/* Luxury Guarantees & Trust Strip */}
+                  {/* Compact Expandable Custom Amount Bar (Hidden by Default to Keep Store Clean) */}
+                  {showCustomDrawer && (
+                    <div className="sc-clean-custom-drawer">
+                      <div className="sc-custom-quick-chips">
+                        {[10, 25, 50, 100, 250, 500].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            className={`sc-custom-chip ${
+                              Number(customAmountInput) === preset ? 'active' : ''
+                            }`}
+                            onClick={() => {
+                              setCustomAmountInput(String(preset));
+                              soundEngine.playButtonClick(520);
+                            }}
+                          >
+                            ${preset}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="sc-custom-controls-row">
+                        <div className="sc-custom-input-wrap">
+                          <span className="sc-custom-dollar-prefix">$</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="1000000"
+                            step="any"
+                            value={customAmountInput}
+                            onChange={(e) => setCustomAmountInput(e.target.value)}
+                            className="sc-custom-input"
+                            placeholder="25"
+                            aria-label="Custom USD Amount"
+                          />
+                        </div>
+
+                        <div className="sc-custom-live-preview">
+                          <span className="sc-custom-preview-gc">
+                            <strong>{customPkgPreview.goldCoins.toLocaleString()} GC</strong>
+                          </span>
+                          <span className="sc-custom-preview-plus">+</span>
+                          <span className="sc-custom-preview-sc">
+                            <strong>FREE ${customPkgPreview.freeSweepsCoins.toFixed(2)} SC</strong>
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="sc-custom-continue-btn"
+                          onClick={handleSelectCustomAmount}
+                        >
+                          <span>Buy ${customPkgPreview.priceUsd.toFixed(2)}</span>
+                          <ArrowRight size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Minimalist 1-Line Trust Footer */}
                   <div className="sc-cashier-trust-footer">
                     <span>
-                      <ShieldCheck size={14} color="#34d399" /> 256-Bit Bank-Grade SSL
+                      <ShieldCheck size={13} color="#34d399" /> 256-Bit SSL Secure
                     </span>
                     <span>•</span>
                     <span>
-                      <Zap size={14} color="#fde047" /> Instant Auto-Credited Coins
+                      <Zap size={13} color="#fde047" /> Instant Coin Delivery
                     </span>
                     <span>•</span>
-                    <span>
-                      <CheckCircle2 size={14} color="#38bdf8" /> 1 SC = $1.00 USD Cash Redemption
-                    </span>
-                    <span>•</span>
-                    <span>Powered by Stripe &amp; Cash App Pay</span>
+                    <span>Apple Pay, Card, Cash App &amp; Crypto</span>
                   </div>
                 </div>
               )}
 
-              {/* STEP 2: CHOOSE PAYMENT METHOD (Pay with Card, Cash App Pay, or Crypto) */}
+              {/* STEP 2: ULTRA-SIMPLE 1-TAP EXPRESS CHECKOUT */}
               {step === 2 && selectedPkg && (
-                <div className="sc-payment-step">
-                  <div className="sc-step2-top-bar">
-                    <button
-                      type="button"
-                      className="sc-back-btn"
-                      onClick={() => {
-                        setStep(1);
-                        setShowCryptoBox(false);
-                        setCheckoutError('');
-                        soundEngine.playButtonClick(420);
-                      }}
-                    >
-                      <ArrowLeft size={16} />
-                      <span>Back to Royal Store</span>
-                    </button>
-
-                    <span className="sc-step2-reserved-pill">
-                      <Gift size={13} />
-                      <span>VIP BONUS LOCKED IN FOR {String(Math.floor(promoSecondsLeft / 60)).padStart(2, '0')}:{String(promoSecondsLeft % 60).padStart(2, '0')}</span>
-                    </span>
-                  </div>
-
-                  {/* Selected Package Summary Box (with 3D Relic Emblem & inline Custom Amount editor) */}
-                  <div className="sc-selected-summary-card">
-                    <div className="sc-summary-relic-badge">
+                <div className="sc-payment-step sc-clean-checkout-step">
+                  {/* Compact Selected Pack Summary Bar */}
+                  <div className="sc-clean-checkout-summary">
+                    <div className="sc-clean-summary-pack">
                       <img
                         src={
                           selectedPkg.relicArt || '/assets/symbols/high/high_necklace_no_frame.png'
                         }
                         alt=""
-                        className="sc-summary-relic-img"
+                        className="sc-clean-summary-icon"
                         draggable={false}
                       />
+                      <div className="sc-clean-summary-text">
+                        <div className="sc-clean-summary-amounts">
+                          <span className="sc-clean-sum-gc">
+                            {selectedPkg.goldCoins.toLocaleString()} GC
+                          </span>
+                          <span className="sc-clean-sum-plus">+</span>
+                          <span className="sc-clean-sum-sc">
+                            FREE ${selectedPkg.freeSweepsCoins.toFixed(2)} SC
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="sc-clean-change-link"
+                          onClick={() => {
+                            setStep(1);
+                            setShowCryptoBox(false);
+                            setCheckoutError('');
+                            soundEngine.playButtonClick(420);
+                          }}
+                        >
+                          ← Change Package
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="sc-summary-left">
-                      <span className="sc-summary-eyebrow">
-                        {selectedPkg.isCustom
-                          ? '⚡ CUSTOM VIP TREASURY PACKAGE'
-                          : `👑 ${selectedPkg.tierTitle || 'SELECTED VIP TREASURY PACKAGE'}`}
-                      </span>
-                      <div className="sc-summary-coins">
-                        <strong>{selectedPkg.goldCoins.toLocaleString()} Gold Coins</strong>
-                        <span className="sc-summary-plus">+</span>
-                        <strong className="sc-summary-sc">
-                          FREE ${selectedPkg.freeSweepsCoins.toFixed(2)} SC ($
-                          {selectedPkg.freeSweepsCoins.toFixed(2)} USD Prize Value)
-                        </strong>
-                      </div>
-                      <span className="sc-summary-perk-note">
-                        ✨ Includes Instant Balance Credit + Full Access to All 4 Bonus Chambers
-                      </span>
-                    </div>
-                    <div className="sc-summary-price">
-                      <span className="sc-summary-price-label">Total Due (USD)</span>
-                      <div className="sc-step2-custom-price-box">
-                        <span className="sc-step2-dollar">$</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max="1000000"
-                          step="any"
-                          value={selectedPkg.isCustom ? customAmountInput : selectedPkg.priceUsd}
-                          onChange={(e) => handleStep2CustomAmountChange(e.target.value)}
-                          className="sc-step2-price-input"
-                          title="Enter any custom USD amount"
-                          aria-label="Total USD Amount"
-                        />
-                      </div>
+                    <div className="sc-clean-summary-total">
+                      <span>Total</span>
+                      <strong>
+                        $
+                        {Number(selectedPkg.priceUsd).toLocaleString('en-US', {
+                          minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </strong>
                     </div>
                   </div>
 
@@ -1214,90 +1102,95 @@ export default function PaymentModal({
                     </div>
                   )}
 
-                  <h3 className="sc-choose-method-heading">Choose Payment Method</h3>
-
-                  {/* 3 Clean Payment Option Buttons */}
-                  <div className="sc-method-buttons-stack">
-                    {/* 1. Pay with Card -> Redirects straight to Stripe */}
+                  {/* Big, Unmistakable 1-Tap Checkout Buttons */}
+                  <div className="sc-express-pay-stack">
+                    {/* 1. Primary 1-Tap Card / Apple Pay / Google Pay Button */}
                     <button
                       type="button"
-                      className="sc-method-choice-btn card-method"
+                      className="sc-express-pay-btn express-card-btn"
                       onClick={() => handleStripeRedirect('card')}
                       disabled={Boolean(redirectingMethod)}
                     >
-                      <div className="sc-method-icon-box card-icon-box">
-                        <CreditCard size={24} />
-                      </div>
-                      <div className="sc-method-info">
-                        <div className="sc-method-title-row">
-                          <strong>Pay with Card</strong>
-                          <span className="sc-method-tag stripe-tag">STRIPE CHECKOUT</span>
+                      <div className="sc-express-btn-left">
+                        <div className="sc-method-icon-box card-icon-box">
+                          <CreditCard size={22} />
                         </div>
-                        <span className="sc-method-sub">
-                          Visa, Mastercard, Amex, Apple Pay &amp; Google Pay — Opens Stripe Payment Page
-                        </span>
+                        <div className="sc-express-btn-copy">
+                          <strong>Card / Apple Pay / Google Pay</strong>
+                          <span>Instant 1-Tap Checkout • Visa, Mastercard, Amex</span>
+                        </div>
                       </div>
-                      <div className="sc-method-action">
+                      <div className="sc-express-btn-cta">
                         {redirectingMethod === 'card' ? (
                           <Loader2 size={20} className="sc-spin" />
                         ) : (
-                          <ExternalLink size={18} />
+                          <span>
+                            Pay $
+                            {Number(selectedPkg.priceUsd).toLocaleString('en-US', {
+                              minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
+                              maximumFractionDigits: 2,
+                            })}{' '}
+                            →
+                          </span>
                         )}
                       </div>
                     </button>
 
-                    {/* 2. Cash App Pay -> Redirects straight to Stripe Cash App Pay */}
+                    {/* 2. Signature 1-Tap Cash App Pay Button */}
                     <button
                       type="button"
-                      className="sc-method-choice-btn cashapp-method"
+                      className="sc-express-pay-btn express-cashapp-btn"
                       onClick={() => handleStripeRedirect('cashapp')}
                       disabled={Boolean(redirectingMethod)}
                     >
-                      <div className="sc-method-icon-box cashapp-icon-box">
-                        <span>$</span>
-                      </div>
-                      <div className="sc-method-info">
-                        <div className="sc-method-title-row">
-                          <strong>Cash App Pay</strong>
-                          <span className="sc-method-tag cashapp-tag">INSTANT</span>
+                      <div className="sc-express-btn-left">
+                        <div className="sc-method-icon-box cashapp-icon-box">
+                          <span>$</span>
                         </div>
-                        <span className="sc-method-sub">
-                          1-Tap Mobile &amp; QR Checkout via Cash App Pay
-                        </span>
+                        <div className="sc-express-btn-copy">
+                          <strong>Cash App Pay</strong>
+                          <span>Instant 1-Tap Mobile &amp; QR Checkout</span>
+                        </div>
                       </div>
-                      <div className="sc-method-action">
+                      <div className="sc-express-btn-cta">
                         {redirectingMethod === 'cashapp' ? (
                           <Loader2 size={20} className="sc-spin" />
                         ) : (
-                          <ExternalLink size={18} />
+                          <span>
+                            Pay $
+                            {Number(selectedPkg.priceUsd).toLocaleString('en-US', {
+                              minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
+                              maximumFractionDigits: 2,
+                            })}{' '}
+                            →
+                          </span>
                         )}
                       </div>
                     </button>
 
-                    {/* 3. Pay with Crypto */}
+                    {/* 3. Clean Crypto Option */}
                     <button
                       type="button"
-                      className={`sc-method-choice-btn crypto-method ${showCryptoBox ? 'active' : ''}`}
+                      className={`sc-express-pay-btn express-crypto-btn ${
+                        showCryptoBox ? 'active' : ''
+                      }`}
                       onClick={() => {
                         setShowCryptoBox(!showCryptoBox);
                         soundEngine.playButtonClick(500);
                       }}
                       disabled={Boolean(redirectingMethod)}
                     >
-                      <div className="sc-method-icon-box crypto-icon-box">
-                        <Bitcoin size={24} />
-                      </div>
-                      <div className="sc-method-info">
-                        <div className="sc-method-title-row">
-                          <strong>Pay with Crypto</strong>
-                          <span className="sc-method-tag crypto-tag">0% FEE</span>
+                      <div className="sc-express-btn-left">
+                        <div className="sc-method-icon-box crypto-icon-box">
+                          <Bitcoin size={22} />
                         </div>
-                        <span className="sc-method-sub">
-                          Instant USDT, Bitcoin (BTC), Ethereum (ETH), or Solana (SOL)
-                        </span>
+                        <div className="sc-express-btn-copy">
+                          <strong>Pay with Crypto (0% Fee)</strong>
+                          <span>USDT, Solana (SOL), Bitcoin (BTC), or Ethereum (ETH)</span>
+                        </div>
                       </div>
-                      <div className="sc-method-action">
-                        <ArrowRight size={18} />
+                      <div className="sc-express-btn-cta">
+                        <span>{showCryptoBox ? 'Hide ▲' : 'Select ▼'}</span>
                       </div>
                     </button>
                   </div>
@@ -1330,15 +1223,12 @@ export default function PaymentModal({
                               alt={`Scan to pay ${calculatedCryptoAmount} ${currentCryptoObj.unit}`}
                               className="sc-crypto-qr-img"
                             />
-                            <span className="sc-crypto-qr-caption">
-                              SCAN WITH WALLET APP
-                            </span>
+                            <span className="sc-crypto-qr-caption">SCAN QR</span>
                           </div>
 
                           <div className="sc-crypto-info-col">
                             <div className="sc-crypto-amount-line">
-                              Send <strong>{calculatedCryptoAmount} {currentCryptoObj.unit}</strong> on{' '}
-                              <span>{currentCryptoObj.network}</span>:
+                              Send <strong>{calculatedCryptoAmount} {currentCryptoObj.unit}</strong> ({currentCryptoObj.network}):
                             </div>
 
                             <div className="sc-crypto-address-bar">
@@ -1359,71 +1249,38 @@ export default function PaymentModal({
                               onClick={() => soundEngine.playButtonClick(540)}
                             >
                               <ExternalLink size={14} />
-                              <span>Open in Crypto Wallet App</span>
+                              <span>Open in Wallet App</span>
                             </a>
                           </div>
                         </div>
 
-                        {/* Live On-Chain RPC Node Monitor & Optional TXID Input */}
-                        <div className="sc-crypto-verifier-box">
-                          <div className="sc-crypto-verifier-header">
-                            <span className="sc-verifier-live-badge">
-                              <span className="sc-live-dot" />
-                              LIVE ON-CHAIN RPC VERIFIER ACTIVE (AUTO-SCANNING EVERY 9S)
-                            </span>
-                            {walletsLiveStatus && (
-                              <span className="sc-verifier-nodes-pill">
-                                {walletsLiveStatus.BTC?.online ? '🟢 BTC' : '⚪ BTC'} •{' '}
-                                {walletsLiveStatus.ETH?.online ? '🟢 ETH/EVM' : '⚪ ETH'} •{' '}
-                                {walletsLiveStatus.SOL?.online ? '🟢 SOL' : '⚪ SOL'}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="sc-crypto-txhash-row">
-                            <input
-                              type="text"
-                              value={cryptoTxHashInput}
-                              onChange={(e) => setCryptoTxHashInput(e.target.value)}
-                              className="sc-crypto-txhash-input"
-                              placeholder={
-                                selectedCrypto === 'BTC'
-                                  ? 'Optional: Paste Bitcoin TXID for instant verification...'
-                                  : selectedCrypto === 'ETH' || selectedCrypto === 'USDT-ERC20'
-                                  ? 'Paste 0x... Transaction Hash from MetaMask / Wallet for instant check'
-                                  : 'Optional: Paste Solana Transaction Signature for instant check...'
-                              }
-                              aria-label="Blockchain Transaction Hash or Signature"
-                            />
-                          </div>
-
-                          {cryptoVerifyState && (
-                            <div
-                              className={`sc-crypto-verify-status status-${cryptoVerifyState.status}`}
-                            >
-                              {cryptoVerifyState.status === 'scanning' && (
-                                <Loader2 size={15} className="sc-spin" />
-                              )}
-                              {cryptoVerifyState.status === 'verified' && (
-                                <CheckCircle2 size={15} color="#34d399" />
-                              )}
-                              {cryptoVerifyState.status === 'unconfirmed' && (
-                                <AlertCircle size={15} color="#fbbf24" />
-                              )}
-                              <span>{cryptoVerifyState.message}</span>
-                              {cryptoVerifyState.explorerUrl && (
-                                <a
-                                  href={cryptoVerifyState.explorerUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="sc-explorer-link"
-                                >
-                                  View on Block Explorer ↗
-                                </a>
-                              )}
-                            </div>
-                          )}
+                        <div className="sc-crypto-txhash-row">
+                          <input
+                            type="text"
+                            value={cryptoTxHashInput}
+                            onChange={(e) => setCryptoTxHashInput(e.target.value)}
+                            className="sc-crypto-txhash-input"
+                            placeholder="Optional: Paste TXID / Signature for instant check..."
+                            aria-label="Blockchain Transaction Hash or Signature"
+                          />
                         </div>
+
+                        {cryptoVerifyState && (
+                          <div
+                            className={`sc-crypto-verify-status status-${cryptoVerifyState.status}`}
+                          >
+                            {cryptoVerifyState.status === 'scanning' && (
+                              <Loader2 size={15} className="sc-spin" />
+                            )}
+                            {cryptoVerifyState.status === 'verified' && (
+                              <CheckCircle2 size={15} color="#34d399" />
+                            )}
+                            {cryptoVerifyState.status === 'unconfirmed' && (
+                              <AlertCircle size={15} color="#fbbf24" />
+                            )}
+                            <span>{cryptoVerifyState.message}</span>
+                          </div>
+                        )}
 
                         <button
                           type="button"
@@ -1434,10 +1291,10 @@ export default function PaymentModal({
                           {isProcessingCrypto ? (
                             <>
                               <Loader2 size={16} className="sc-spin" />
-                              <span>Querying {currentCryptoObj.network} Blockchain...</span>
+                              <span>Checking Blockchain...</span>
                             </>
                           ) : (
-                            <span>Verify On-Chain Transfer &amp; Credit My Coins</span>
+                            <span>I&apos;ve Sent the Crypto — Credit My Coins</span>
                           )}
                         </button>
                       </div>
@@ -1447,7 +1304,7 @@ export default function PaymentModal({
                   <div className="sc-redirect-note">
                     <Lock size={13} />
                     <span>
-                      After completing payment on Stripe, you will be automatically redirected back to the game with your coins credited.
+                      Instant automatic coin delivery • 256-bit SSL encrypted checkout
                     </span>
                   </div>
                 </div>

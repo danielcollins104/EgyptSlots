@@ -21309,6 +21309,448 @@ button:disabled,
   color: #fde68a;
 }
 
+/* ============================================================================
+   ULTRA-CLEAN ROYAL MATCH / CHUMBA / PULSZ COIN STORE & 1-TAP EXPRESS CHECKOUT
+   ============================================================================ */
+
+.sc-clean-header {
+  padding: 12px 18px !important;
+}
+
+.sc-clean-tabs {
+  align-items: center;
+}
+
+.sc-admin-mini-tab {
+  margin-left: auto;
+  opacity: 0.75;
+  font-size: 0.74rem !important;
+  padding: 8px 10px !important;
+}
+
+.sc-admin-mini-tab:hover,
+.sc-admin-mini-tab.active {
+  opacity: 1;
+}
+
+.sc-clean-bonus-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(6, 78, 59, 0.65) 0%, rgba(30, 27, 75, 0.85) 55%, rgba(120, 53, 15, 0.65) 100%);
+  border: 1.5px solid rgba(52, 211, 153, 0.55);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.sc-clean-bonus-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #f8fafc;
+}
+
+.sc-clean-bonus-left strong {
+  color: #4ade80;
+}
+
+.sc-clean-timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid rgba(253, 224, 71, 0.65);
+  color: #fde047;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.sc-clean-grid {
+  gap: 12px !important;
+}
+
+.sc-clean-card {
+  padding: 14px 12px 12px !important;
+  gap: 6px;
+  border-radius: 18px !important;
+}
+
+.sc-pkg-ribbon.best-value-ribbon {
+  background: linear-gradient(90deg, #9333ea 0%, #f59e0b 55%, #fde047 100%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.7);
+}
+
+.sc-clean-relic {
+  width: 68px !important;
+  height: 68px !important;
+  margin: 2px auto 4px !important;
+}
+
+.sc-clean-gc-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 1.22rem;
+  font-weight: 900;
+  color: #fde047;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+  margin-top: 2px;
+}
+
+.sc-clean-sc-pill {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.85) 0%, rgba(4, 120, 87, 0.78) 100%);
+  border: 1.5px solid #34d399;
+  color: #ecfdf5;
+  font-size: 0.84rem;
+  font-weight: 900;
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.28);
+  margin: 2px 0 6px;
+  box-sizing: border-box;
+}
+
+.sc-clean-sc-pill svg {
+  color: #fde047;
+  flex-shrink: 0;
+}
+
+/* Royal Match / Monopoly GO Glossy Green Price CTA Button */
+.sc-clean-price-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #a7f3d0;
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 55%, #15803d 100%);
+  color: #ffffff;
+  font-size: 1.04rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #14532d, 0 6px 16px rgba(34, 197, 94, 0.4);
+  transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
+}
+
+.sc-pkg-card.popular .sc-clean-price-btn,
+.sc-pkg-card.featured-spotlight .sc-clean-price-btn {
+  border-color: #fef08a;
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 55%, #d97706 100%);
+  color: #0b0816;
+  box-shadow: 0 4px 0 #92400e, 0 6px 18px rgba(245, 158, 11, 0.55);
+}
+
+.sc-clean-price-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.sc-clean-price-btn:active {
+  transform: translateY(2px);
+}
+
+.sc-clean-old-price {
+  font-size: 0.74rem;
+  font-weight: 800;
+  opacity: 0.72;
+  text-decoration: line-through;
+}
+
+.sc-clean-now-price {
+  font-size: 1.04rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+/* Collapsible Custom Amount & High-Roller Option Pills */
+.sc-clean-more-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.sc-clean-option-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #cbd5e1;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.sc-clean-option-pill:hover,
+.sc-clean-option-pill.active {
+  border-color: #fde047;
+  color: #fde047;
+  background: rgba(253, 224, 71, 0.12);
+}
+
+.sc-clean-custom-drawer {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1.5px solid rgba(251, 191, 36, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Step 2: 1-Tap Express Checkout Sheet */
+.sc-clean-checkout-step {
+  gap: 14px;
+}
+
+.sc-clean-checkout-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.96) 100%);
+  border: 1.5px solid rgba(253, 224, 71, 0.6);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.sc-clean-summary-pack {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sc-clean-summary-icon {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(253, 224, 71, 0.55));
+}
+
+.sc-clean-summary-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.sc-clean-summary-amounts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 1.02rem;
+  font-weight: 900;
+}
+
+.sc-clean-sum-gc {
+  color: #fde047;
+}
+
+.sc-clean-sum-plus {
+  color: #94a3b8;
+}
+
+.sc-clean-sum-sc {
+  color: #4ade80;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+}
+
+.sc-clean-change-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #93c5fd;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.sc-clean-change-link:hover {
+  color: #fde047;
+}
+
+.sc-clean-summary-total {
+  text-align: right;
+  margin-left: auto;
+}
+
+.sc-clean-summary-total span {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.sc-clean-summary-total strong {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.sc-express-pay-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sc-express-pay-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 18px;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.9);
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.sc-express-pay-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.sc-express-pay-btn.express-card-btn {
+  background: linear-gradient(135deg, rgba(67, 56, 202, 0.55) 0%, rgba(30, 27, 75, 0.95) 100%);
+  border-color: #818cf8;
+  box-shadow: 0 6px 22px rgba(99, 102, 241, 0.32);
+}
+
+.sc-express-pay-btn.express-card-btn:hover:not(:disabled) {
+  border-color: #fde047;
+  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.5);
+}
+
+.sc-express-pay-btn.express-cashapp-btn {
+  background: linear-gradient(135deg, rgba(0, 214, 50, 0.28) 0%, rgba(6, 78, 59, 0.92) 100%);
+  border-color: #00d632;
+  box-shadow: 0 6px 22px rgba(0, 214, 50, 0.25);
+}
+
+.sc-express-pay-btn.express-cashapp-btn:hover:not(:disabled) {
+  border-color: #86efac;
+  box-shadow: 0 8px 28px rgba(0, 214, 50, 0.45);
+}
+
+.sc-express-pay-btn.express-crypto-btn {
+  padding: 12px 18px;
+  background: rgba(15, 23, 42, 0.78);
+  border-color: rgba(247, 147, 26, 0.5);
+}
+
+.sc-express-pay-btn.express-crypto-btn.active,
+.sc-express-pay-btn.express-crypto-btn:hover:not(:disabled) {
+  border-color: #f7931a;
+  background: rgba(30, 24, 16, 0.92);
+}
+
+.sc-express-btn-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sc-express-btn-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-express-btn-copy strong {
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.sc-express-btn-copy span {
+  font-size: 0.76rem;
+  color: #cbd5e1;
+}
+
+.sc-express-btn-cta {
+  padding: 9px 16px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 100%);
+  color: #0b0816;
+  font-size: 0.92rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+.express-cashapp-btn .sc-express-btn-cta {
+  background: #00d632;
+  color: #022c0c;
+}
+
+.express-crypto-btn .sc-express-btn-cta {
+  background: rgba(247, 147, 26, 0.2);
+  border: 1px solid rgba(247, 147, 26, 0.55);
+  color: #fde047;
+  font-size: 0.78rem;
+  padding: 7px 12px;
+}
+
+@media (max-width: 600px) {
+  .sc-clean-gc-number {
+    font-size: 1.02rem;
+  }
+  .sc-clean-sc-pill {
+    font-size: 0.72rem;
+    padding: 5px 6px;
+  }
+  .sc-clean-price-btn {
+    padding: 9px 8px;
+    font-size: 0.92rem;
+  }
+  .sc-express-pay-btn {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+  }
+  .sc-express-btn-cta {
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+
 
 
 
