@@ -23,7 +23,7 @@ export class ApiRouter {
       adminSecret:
         options.adminSecret ||
         (typeof process !== 'undefined' && process.env?.DC_ADMIN_SECRET) ||
-        'dc_admin_super_secret_pharaoh_999!',
+        null,
       initialAccounts: options.initialAccounts || {},
     });
     this.stripeSecretKey =
@@ -276,6 +276,11 @@ export class ApiRouter {
       }
 
       if (path === '/api/redemptions' && method === 'GET') {
+        // Payout queue contains player payout destinations (PII) — ADMIN role required
+        if (!token) {
+          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
+        }
+        this.server.authService.validateSession(token, 'ADMIN');
         return {
           status: 200,
           headers: corsHeaders,
@@ -313,6 +318,11 @@ export class ApiRouter {
       }
 
       if (path === '/api/redemptions/update' && method === 'POST') {
+        // Approving / rejecting payouts moves real money — ADMIN role required
+        if (!token) {
+          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
+        }
+        this.server.authService.validateSession(token, 'ADMIN');
         const { redemptionId, action, updated } = parsedBody;
         const idx = this.redemptionQueue.findIndex((r) => r.id === redemptionId);
         if (idx !== -1 && updated) {
@@ -380,6 +390,22 @@ export class ApiRouter {
         const { adminKey } = parsedBody;
         const res = this.server.adminLogin(adminKey);
         return { status: 200, headers: corsHeaders, body: { success: true, ...res } };
+      }
+
+      if (path === '/api/admin/verify' && method === 'GET') {
+        if (!token) {
+          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
+        }
+        const session = this.server.authService.validateSession(token, 'ADMIN');
+        return {
+          status: 200,
+          headers: corsHeaders,
+          body: {
+            success: true,
+            user: { id: session.userId, name: session.name, email: session.email, role: session.role },
+            expiresAt: session.expiresAt,
+          },
+        };
       }
 
       if (path === '/api/admin/adjust-balance' && method === 'POST') {

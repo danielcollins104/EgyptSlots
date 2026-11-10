@@ -421,32 +421,142 @@ class SoundEngine {
   }
 
   /**
-   * DOPAMINE ANTICIPATION CUE (Reward Prediction Error [RPE] Primer)
-   * Replaced the obnoxious 240->780Hz sawtooth siren with a warm, breathing
-   * C-Major9 suspended pad swell (C4 + G4 + D5). Throttled with a 1.4s cooldown
-   * so it only plays on genuine 2-scatter near-misses and never spams.
+   * DOPAMINE ANTICIPATION & FINAL-TILE SUSPENSE RISER
+   * Plays an accelerating tempo pulse roll + rising volume & harmonic pitch crescendo
+   * as the final reel spins longer in suspense waiting for the 3rd special tile.
    */
-  playAnticipationRiser() {
-    if (this.muted || !this._canPlay('anticipationRiser', 1400)) return;
+  playAnticipationRiser(durationSec = 1.65) {
+    if (this.muted || !this._canPlay('anticipationRiser', 900)) return;
     this.init();
     if (!this.ctx) return;
 
-    this.triggerHaptics([18, 22, 30]);
+    this.triggerHaptics([22, 30, 40, 25, 50]);
     const now = this.ctx.currentTime;
+    const totalSec = Math.max(0.6, Math.min(2.6, Number(durationSec) || 1.65));
 
-    // Warm Csus2 -> CMaj9 harmonic shimmer pad
-    const notes = [HARMONIC_SCALE.C4, HARMONIC_SCALE.G4, HARMONIC_SCALE.D5, HARMONIC_SCALE.E5];
-    notes.forEach((freq, idx) => {
+    // 1. Sustained rising harmonic tension pad that swells in volume over totalSec
+    const padNotes = [HARMONIC_SCALE.C4, HARMONIC_SCALE.G4, HARMONIC_SCALE.D5, HARMONIC_SCALE.E5];
+    padNotes.forEach((freq, idx) => {
       this._playWarmNote({
         freq,
-        endFreq: freq * 1.02,
-        startTime: now + idx * 0.045,
-        duration: 0.42,
-        peakGain: 0.036,
+        endFreq: freq * 1.12,
+        startTime: now + idx * 0.04,
+        duration: totalSec,
+        peakGain: 0.055 + idx * 0.012,
         type: 'sine',
-        filterCutoff: 1100,
-        attackSec: 0.08,
+        filterCutoff: 1650,
+        attackSec: totalSec * 0.65,
       });
+    });
+
+    // 2. Accelerating Tempo Heartbeat / Drum Roll + Rising Volume & Pitch Crescendo!
+    // Pulse intervals shrink from ~135ms down to ~42ms while gain ramps from 0.038 up to 0.145
+    const scaleLadder = [
+      HARMONIC_SCALE.C4,
+      HARMONIC_SCALE.D4,
+      HARMONIC_SCALE.E4,
+      HARMONIC_SCALE.G4,
+      HARMONIC_SCALE.A4,
+      HARMONIC_SCALE.C5,
+      HARMONIC_SCALE.D5,
+      HARMONIC_SCALE.E5,
+      HARMONIC_SCALE.G5,
+      HARMONIC_SCALE.A5,
+      HARMONIC_SCALE.C6,
+    ];
+    let cursor = 0.04;
+    let stepIdx = 0;
+    while (cursor < totalSec - 0.04 && stepIdx < 24) {
+      const progress = Math.min(1, cursor / totalSec);
+      // Accelerating tempo: interval shrinks from 0.135s -> 0.042s
+      const stepInterval = 0.135 - progress * 0.093;
+      // Increasing volume: gain ramps 3.6x louder as the final tile approaches!
+      const pulseGain = 0.038 + Math.pow(progress, 1.35) * 0.11;
+      const noteFreq =
+        scaleLadder[Math.min(scaleLadder.length - 1, Math.floor(progress * scaleLadder.length))];
+
+      // Low heartbeat thud that accelerates in tempo
+      this._playWarmNote({
+        freq: 72 + progress * 48,
+        endFreq: 38,
+        startTime: now + cursor,
+        duration: Math.max(0.038, stepInterval * 0.82),
+        peakGain: pulseGain * 1.15,
+        type: 'triangle',
+        filterCutoff: 320 + progress * 480,
+        attackSec: 0.005,
+      });
+
+      // Shimmering harmonic pulse climbing in pitch & volume
+      this._playWarmNote({
+        freq: noteFreq,
+        startTime: now + cursor,
+        duration: Math.max(0.045, stepInterval * 0.9),
+        peakGain: pulseGain * 0.78,
+        type: 'sine',
+        filterCutoff: 1200 + progress * 1400,
+        attackSec: 0.006,
+      });
+
+      cursor += stepInterval;
+      stepIdx++;
+    }
+  }
+
+  /**
+   * HEAVY SPECIAL TILE SLAM IMPACT
+   * Triggered when a Scatter, Guardian Awakener Relic, or Expanding Wild slams into place.
+   * Delivers a seismic sub-bass stone thud + crisp mechanical lock + ascending harmonic bell.
+   */
+  playSpecialTileSlam(colIndex = 0, hitOrder = 1) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const safeOrder = Math.max(1, Math.min(4, hitOrder));
+    this.triggerHaptics(safeOrder >= 3 ? [45, 30, 65] : [32, 24, 42]);
+    const now = this.ctx.currentTime;
+
+    // 1. Seismic Sub-Bass Stone Tablet Slam (128 Hz -> 32 Hz punch)
+    this._playWarmNote({
+      freq: 128 + safeOrder * 10,
+      endFreq: 32,
+      startTime: now,
+      duration: 0.22,
+      peakGain: Math.min(0.22, 0.145 + safeOrder * 0.022),
+      type: 'sine',
+      filterCutoff: 280,
+      attackSec: 0.004,
+    });
+
+    // 2. Crisp Stone Pillar Anvil Impact Body
+    this._playWarmNote({
+      freq: HARMONIC_SCALE.G3 * (1 + (safeOrder - 1) * 0.12),
+      endFreq: HARMONIC_SCALE.C3,
+      startTime: now + 0.004,
+      duration: 0.13,
+      peakGain: 0.095 + safeOrder * 0.015,
+      type: 'triangle',
+      filterCutoff: 680,
+      attackSec: 0.004,
+    });
+
+    // 3. Ascending High-Voltage Harmonic Chime (climbs with hitOrder 1 -> 2 -> 3!)
+    const slamBellByOrder = [
+      HARMONIC_SCALE.C5,
+      HARMONIC_SCALE.E5,
+      HARMONIC_SCALE.G5,
+      HARMONIC_SCALE.C6,
+    ];
+    const bellFreq = slamBellByOrder[safeOrder - 1] || HARMONIC_SCALE.C5;
+    this._playWarmNote({
+      freq: bellFreq,
+      startTime: now + 0.01,
+      duration: 0.34,
+      peakGain: 0.075 + safeOrder * 0.015,
+      type: 'sine',
+      filterCutoff: 2200,
+      attackSec: 0.008,
     });
   }
 

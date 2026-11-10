@@ -505,7 +505,7 @@ export const paymentService = {
   /**
    * Admin 1-Click Action: Marks a pending redemption as Paid/Completed and attaches a TX Hash, Receipt, or Gift Card Code
    */
-  approveRedemption(redemptionId, { txHashOrReceipt = '', giftCardCode = '', operatorNote = '' } = {}) {
+  approveRedemption(redemptionId, { txHashOrReceipt = '', giftCardCode = '', operatorNote = '', authToken = null } = {}) {
     const queue = this.getRedemptionQueue();
     const idx = queue.findIndex((r) => r.id === redemptionId);
     if (idx === -1) {
@@ -532,9 +532,11 @@ export const paymentService = {
     } catch {}
 
     if (typeof fetch !== 'undefined') {
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
       fetch('/api/redemptions/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ redemptionId, action: 'approve', updated }),
       }).catch(() => {});
     }
@@ -545,7 +547,7 @@ export const paymentService = {
   /**
    * Admin 1-Click Action: Rejects a pending redemption and returns the SC amount to refund to the player's balance
    */
-  rejectRedemption(redemptionId, { reason = 'Rejected by Operator — SC Refunded to Balance' } = {}) {
+  rejectRedemption(redemptionId, { reason = 'Rejected by Operator — SC Refunded to Balance', authToken = null } = {}) {
     const queue = this.getRedemptionQueue();
     const idx = queue.findIndex((r) => r.id === redemptionId);
     if (idx === -1) {
@@ -575,9 +577,11 @@ export const paymentService = {
     } catch {}
 
     if (typeof fetch !== 'undefined') {
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
       fetch('/api/redemptions/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ redemptionId, action: 'reject', updated }),
       }).catch(() => {});
     }

@@ -1,0 +1,2 @@
+Job log: C:\Users\Mee\AppData\Local\Temp\video_generation-job-itc5zxvf\worker.log
+Job PID file: C:\Users\Mee\AppData\Local\Temp\video_generation-job-itc5zxvf\worker.pid

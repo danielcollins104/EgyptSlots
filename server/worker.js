@@ -36,7 +36,14 @@ export default {
 
     // Pass-through to Cloudflare Workers static assets binding if available
     if (env && env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const assetRes = await env.ASSETS.fetch(request);
+      const newHeaders = new Headers(assetRes.headers);
+      newHeaders.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+      return new Response(assetRes.body, {
+        status: assetRes.status,
+        statusText: assetRes.statusText,
+        headers: newHeaders,
+      });
     }
 
     return new Response('Not Found', { status: 404 });

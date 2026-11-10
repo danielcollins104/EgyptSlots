@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
-  ArrowLeft,
   Gem,
   Coins,
   DollarSign,
@@ -19,11 +18,7 @@ import {
   Lock,
   Loader2,
   Sparkles,
-  Flame,
-  Trophy,
-  Gift,
   Zap,
-  Star,
 } from 'lucide-react';
 import {
   SWEEPSTAKES_CONFIG,
@@ -36,44 +31,6 @@ import {
 import { paymentService } from '../services/paymentService';
 import { authService } from '../services/authService';
 import { soundEngine } from '../audio/soundEngine';
-
-const RECENT_VIP_WINNERS_FEED = [
-  {
-    user: 'Marcus T.',
-    location: 'Austin, TX',
-    action: 'redeemed $485.00 SC via Cash App Pay',
-    time: '1m ago',
-    icon: '💸',
-  },
-  {
-    user: 'Elena R.',
-    location: 'Miami, FL',
-    action: 'claimed Pharaoh Crown Dynasty (+115.00 FREE SC)',
-    time: 'Just now',
-    icon: '👑',
-  },
-  {
-    user: 'Devon K.',
-    location: 'Las Vegas, NV',
-    action: 'hit $1,240.00 SC Mega Win on Hold & Win Respins',
-    time: '2m ago',
-    icon: '🏆',
-  },
-  {
-    user: 'Sophia L.',
-    location: 'phoenix, AZ',
-    action: 'unlocked Royal Necklace Treasury (+22.00 FREE SC)',
-    time: 'Just now',
-    icon: '💎',
-  },
-  {
-    user: 'Brandon W.',
-    location: 'Chicago, IL',
-    action: 'redeemed $920.00 SC Instant Debit Payout',
-    time: '3m ago',
-    icon: '⚡',
-  },
-];
 
 const CRYPTO_PAYMENT_OPTIONS = [
   {
@@ -142,13 +99,12 @@ function buildCryptoPaymentUri(cryptoObj, amount) {
 export default function PaymentModal({
   isOpen,
   onClose,
-  initialTab = 'store', // 'store' | 'redeem' | 'history' | 'payout_admin'
+  initialTab = 'store', // 'store' | 'redeem' | 'history'
   initialPackage = null,
   goldCoins = 0,
   sweepsCoins = 0,
   onPurchaseSuccess,
   onRedeemSuccess,
-  onRefundSC,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   // Step 1 = Choose Package, Step 2 = Choose Payment Method (Card -> Stripe, Cash App Pay -> Stripe, or Crypto)
@@ -159,9 +115,6 @@ export default function PaymentModal({
   const [customAmountInput, setCustomAmountInput] = useState('25');
   const [vaultShowcaseMode, setVaultShowcaseMode] = useState('standard'); // 'standard' | 'highroller'
   const [showCustomDrawer, setShowCustomDrawer] = useState(false);
-  const [liveJackpotPool, setLiveJackpotPool] = useState(1284592.45);
-  const [promoSecondsLeft, setPromoSecondsLeft] = useState(14 * 60 + 47);
-  const [winnerFeedIdx, setWinnerFeedIdx] = useState(0);
   const [showCryptoBox, setShowCryptoBox] = useState(false);
   const [selectedCrypto, setSelectedCrypto] = useState('USDT');
   const [copiedAddress, setCopiedAddress] = useState(false);
@@ -186,14 +139,6 @@ export default function PaymentModal({
   const [redeemError, setRedeemError] = useState('');
   const [lastSubmittedRedemption, setLastSubmittedRedemption] = useState(null);
 
-  // Admin 1-Click Payout Center state
-  const [redemptionQueue, setRedemptionQueue] = useState(() =>
-    paymentService.getRedemptionQueue()
-  );
-  const [adminTxInputs, setAdminTxInputs] = useState({});
-  const [adminGiftCodeInputs, setAdminGiftCodeInputs] = useState({});
-  const [adminStatusToast, setAdminStatusToast] = useState('');
-  const [expandedAdminQrId, setExpandedAdminQrId] = useState(null);
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'purchases' | 'redemptions' | 'spins'
 
   useEffect(() => {
@@ -217,8 +162,6 @@ export default function PaymentModal({
       setRedeemSuccessMsg('');
       setRedeemError('');
       setLastSubmittedRedemption(null);
-      setRedemptionQueue(paymentService.getRedemptionQueue());
-      setAdminStatusToast('');
     }
   }, [isOpen, initialTab, initialPackage]);
 
@@ -296,25 +239,6 @@ export default function PaymentModal({
     isProcessingCrypto,
     purchaseCompletedPkg,
   ]);
-
-  // Live Progressive Jackpot Ticker, Flash Boost Countdown & Social Proof Feed
-  useEffect(() => {
-    if (!isOpen) return;
-    const jackpotTimer = setInterval(() => {
-      setLiveJackpotPool((prev) => Number((prev + (Math.random() * 1.85 + 0.35)).toFixed(2)));
-    }, 1100);
-    const countdownTimer = setInterval(() => {
-      setPromoSecondsLeft((prev) => (prev > 60 ? prev - 1 : 14 * 60 + 59));
-    }, 1000);
-    const feedTimer = setInterval(() => {
-      setWinnerFeedIdx((prev) => (prev + 1) % RECENT_VIP_WINNERS_FEED.length);
-    }, 3800);
-    return () => {
-      clearInterval(jackpotTimer);
-      clearInterval(countdownTimer);
-      clearInterval(feedTimer);
-    };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -557,7 +481,6 @@ export default function PaymentModal({
 
     if (res.success) {
       if (onRedeemSuccess) onRedeemSuccess(amount);
-      setRedemptionQueue(paymentService.getRedemptionQueue());
       setLastSubmittedRedemption(res);
       const payoutStr = `$${res.amountUsd.toFixed(2)} USD${
         res.bonusUsd > 0 ? ` (includes +$${res.bonusUsd.toFixed(2)} 5% Gift Card Bonus!)` : ''
@@ -569,86 +492,6 @@ export default function PaymentModal({
       soundEngine.playWinCelebration(false);
     } else {
       setRedeemError(res.error || 'Failed to submit redemption request.');
-    }
-  };
-
-  const handleAdminApprove = (rdm) => {
-    const txVal =
-      adminTxInputs[rdm.id] ||
-      (rdm.method === 'giftcard'
-        ? `GC-${rdm.giftCardBrand?.toUpperCase() || 'VISA'}-${Math.random()
-            .toString(36)
-            .substring(2, 8)
-            .toUpperCase()}`
-        : `PAID_${Date.now().toString(36).toUpperCase()}`);
-    const giftCode =
-      adminGiftCodeInputs[rdm.id] ||
-      (rdm.method === 'giftcard'
-        ? `${(rdm.giftCardBrand || 'VISA').slice(0, 4).toUpperCase()}-${Math.random()
-            .toString(36)
-            .substring(2, 6)
-            .toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
-        : '');
-
-    const res = paymentService.approveRedemption(rdm.id, {
-      txHashOrReceipt: txVal,
-      giftCardCode: giftCode,
-      operatorNote: `Fulfilled via Admin 1-Click Payout Center (${rdm.method.toUpperCase()})`,
-    });
-    if (res.success) {
-      setRedemptionQueue(paymentService.getRedemptionQueue());
-      setAdminStatusToast(
-        `✅ Approved & Marked Paid: ${rdm.id} ($${Number(rdm.amountUsd || 0).toFixed(2)} USD)`
-      );
-      soundEngine.playWinCelebration(false);
-    }
-  };
-
-  const handleAdminReject = (rdm) => {
-    const res = paymentService.rejectRedemption(rdm.id, {
-      reason: 'Canceled / Refunded via Admin Payout Center — SC Restored to Player Balance',
-    });
-    if (res.success) {
-      setRedemptionQueue(paymentService.getRedemptionQueue());
-      if (res.refundSC > 0 && onRefundSC) {
-        onRefundSC(res.refundSC);
-      }
-      setAdminStatusToast(
-        `↩️ Rejected & Refunded +${Number(res.refundSC || 0).toFixed(2)} SC for ${rdm.id}`
-      );
-      soundEngine.playButtonClick(420);
-    }
-  };
-
-  const handleCreateSampleAdminRedemption = (sampleType = 'chime') => {
-    const samplePayload =
-      sampleType === 'giftcard'
-        ? {
-            sweepsCoins: 25,
-            method: 'giftcard',
-            giftCardBrand: 'visa_virtual',
-            destination: 'vip.winner@oopsiwon.com',
-            playerName: 'Elena R. (VIP Demo)',
-          }
-        : sampleType === 'crypto'
-        ? {
-            sweepsCoins: 100,
-            method: 'crypto',
-            cryptoAsset: 'USDT_SOL',
-            destination: 'Ejj7hyePNeC9yHQKuEnRvjSiSdJ7sZfNsdmm3YZxFS1f',
-            playerName: 'Devon K. (VIP Demo)',
-          }
-        : {
-            sweepsCoins: 50,
-            method: 'chime',
-            destination: '$MarcusVIP777',
-            playerName: 'Marcus T. (VIP Demo)',
-          };
-    const res = paymentService.requestRedemption(samplePayload);
-    if (res.success) {
-      setRedemptionQueue(paymentService.getRedemptionQueue());
-      setAdminStatusToast(`🧪 Added Sample ${sampleType.toUpperCase()} Redemption (${res.redemptionId}) to Queue!`);
-      soundEngine.playButtonClick(620);
     }
   };
 
@@ -671,7 +514,7 @@ export default function PaymentModal({
 
   return (
     <div className="sc-cashier-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="sc-cashier-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="sc-cashier-modal cashier-v2" onClick={(e) => e.stopPropagation()}>
         {/* Clean Header Bar */}
         <header className="sc-cashier-header sc-clean-header">
           <div className="sc-cashier-title-wrap">
@@ -686,8 +529,6 @@ export default function PaymentModal({
                     : 'GET COINS'
                   : activeTab === 'redeem'
                   ? 'CASH OUT PRIZES'
-                  : activeTab === 'payout_admin'
-                  ? 'PAYOUT CENTER'
                   : 'HISTORY & RECEIPTS'}
               </h2>
             </div>
@@ -755,25 +596,6 @@ export default function PaymentModal({
             <History size={15} />
             <span>History</span>
           </button>
-
-          <button
-            type="button"
-            className={`sc-cashier-tab sc-admin-mini-tab ${activeTab === 'payout_admin' ? 'active' : ''}`}
-            onClick={() => {
-              setRedemptionQueue(paymentService.getRedemptionQueue());
-              setActiveTab('payout_admin');
-              soundEngine.playButtonClick(520);
-            }}
-            title="Admin 1-Click Payout & Redemption Queue Center"
-          >
-            <Crown size={14} />
-            <span>
-              Admin
-              {redemptionQueue.filter((r) => r.status === 'processing').length > 0
-                ? ` (${redemptionQueue.filter((r) => r.status === 'processing').length})`
-                : ''}
-            </span>
-          </button>
         </nav>
 
         {/* Main Body */}
@@ -801,26 +623,14 @@ export default function PaymentModal({
               {/* STEP 1: TAP ANY BUNDLE TO BUY */}
               {step === 1 && (
                 <div className="sc-packages-step sc-clean-store-step">
-                  {/* Single Sleek Golden Bonus Ribbon */}
-                  <div className="sc-clean-bonus-ribbon">
-                    <div className="sc-clean-bonus-left">
-                      <Gift size={16} className="sc-emerald-icon" />
-                      <span>
-                        Every pack includes <strong>FREE Sweeps Coins</strong> (1 SC = $1.00 Cash Prize)
-                      </span>
-                    </div>
-                    <span className="sc-clean-timer-pill">
-                      <Flame size={13} className="sc-flame-pulse" />
-                      <span>
-                        +EXTRA FREE SC • {String(Math.floor(promoSecondsLeft / 60)).padStart(2, '0')}:
-                        {String(promoSecondsLeft % 60).padStart(2, '0')}
-                      </span>
-                    </span>
-                  </div>
+                  {/* Simple one-line value note */}
+                  <p className="cx-store-note">
+                    Every pack includes <strong>FREE Sweeps Coins</strong> — 1 SC = $1.00 cash prize
+                  </p>
 
                   {/* Clean 3x2 Visual Coin Grid (Royal Match / Monopoly GO / Chumba Style) */}
                   <div
-                    className={`sc-packages-grid sc-clean-grid ${
+                    className={`cx-grid ${
                       vaultShowcaseMode === 'highroller' ? 'hr-packages-grid' : ''
                     }`}
                   >
@@ -833,7 +643,6 @@ export default function PaymentModal({
                             : []),
                         ]
                     ).map((pkg) => {
-                      const extraFreeScBonus = Math.max(0, pkg.freeSweepsCoins - pkg.priceUsd);
                       const bonusPct =
                         pkg.priceUsd > 0
                           ? Math.round(((pkg.freeSweepsCoins - pkg.priceUsd) / pkg.priceUsd) * 100)
@@ -851,83 +660,69 @@ export default function PaymentModal({
                       return (
                         <div
                           key={pkg.id}
-                          className={`sc-pkg-card sc-clean-card ${pkg.popular ? 'popular' : ''} ${
+                          className={`cx-card ${pkg.popular ? 'popular' : ''} ${
                             pkg.featuredSpotlight ? 'featured-spotlight' : ''
-                          } ${pkg.auraClass || ''}`}
+                          }`}
                           onClick={() => handleSelectPackage(pkg)}
                           role="button"
                           tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleSelectPackage(pkg);
+                            }
+                          }}
                         >
-                          {/* 1. Crisp Top Badge */}
+                          {/* 1. Compact Top Badge */}
                           {shortBadge && (
-                            <div
-                              className={`sc-pkg-ribbon ${
+                            <span
+                              className={`cx-badge ${
                                 pkg.popular
-                                  ? 'popular-ribbon'
+                                  ? 'cx-badge-popular'
                                   : pkg.featuredSpotlight
-                                  ? 'best-value-ribbon'
+                                  ? 'cx-badge-best'
                                   : ''
                               }`}
                             >
-                              <span>{shortBadge}</span>
-                            </div>
+                              {shortBadge}
+                            </span>
                           )}
 
-                          {/* 2. Glowing 3D Treasure Icon */}
-                          <div className="sc-pkg-relic-showcase sc-clean-relic">
-                            <div className="sc-pkg-relic-halo" />
-                            <img
-                              src={pkg.relicArt || '/assets/symbols/high/high_scarab_no_frame.png'}
-                              alt={pkg.tierTitle || 'Coin Pack'}
-                              className="sc-pkg-relic-img"
-                              draggable={false}
-                            />
-                            {extraFreeScBonus > 0 && (
-                              <span className="sc-pkg-extra-burst-tag">
-                                +${extraFreeScBonus.toFixed(0)} FREE
-                              </span>
-                            )}
-                          </div>
+                          {/* 2. Relic Icon */}
+                          <img
+                            src={pkg.relicArt || '/assets/symbols/high/high_scarab_no_frame.png'}
+                            alt={pkg.tierTitle || 'Coin Pack'}
+                            className="cx-relic"
+                            draggable={false}
+                          />
 
                           {/* 3. The 2 Numbers Players Care About: Gold Coins + FREE SC */}
-                          <div className="sc-clean-gc-number">
-                            <Coins size={17} className="sc-gold-icon" />
+                          <div className="cx-gc-line">
+                            <Coins size={15} />
                             <span>{pkg.goldCoins.toLocaleString()} GC</span>
                           </div>
 
-                          <div className="sc-clean-sc-pill">
-                            <Gift size={13} />
-                            <span>
-                              + FREE $
+                          <div className="cx-sc-line">
+                            + $
                               {pkg.freeSweepsCoins.toLocaleString('en-US', {
                                 minimumFractionDigits: pkg.freeSweepsCoins % 1 === 0 ? 0 : 2,
                                 maximumFractionDigits: 2,
                               })}{' '}
-                              SC
-                            </span>
+                              SC FREE
                           </div>
 
-                          {/* 4. Glossy Green Price CTA Button */}
-                          <button
-                            type="button"
-                            className="sc-clean-price-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSelectPackage(pkg);
-                            }}
-                          >
+                          {/* 4. Flat Price CTA */}
+                          <span className="cx-price-btn">
                             {pkg.originalPriceUsd && (
-                              <span className="sc-clean-old-price">
+                              <span className="cx-old-price">
                                 ${pkg.originalPriceUsd.toLocaleString()}
                               </span>
                             )}
-                            <span className="sc-clean-now-price">
-                              $
-                              {pkg.priceUsd.toLocaleString('en-US', {
-                                minimumFractionDigits: pkg.priceUsd % 1 === 0 ? 0 : 2,
-                              })}
-                            </span>
-                          </button>
+                            $
+                            {pkg.priceUsd.toLocaleString('en-US', {
+                              minimumFractionDigits: pkg.priceUsd % 1 === 0 ? 0 : 2,
+                            })}
+                          </span>
                         </div>
                       );
                     })}
@@ -1030,16 +825,12 @@ export default function PaymentModal({
                   )}
 
                   {/* Minimalist 1-Line Trust Footer */}
-                  <div className="sc-cashier-trust-footer">
-                    <span>
-                      <ShieldCheck size={13} color="#34d399" /> 256-Bit SSL Secure
-                    </span>
+                  <div className="sc-cashier-trust-footer cx-trust">
+                    <ShieldCheck size={14} />
+                    <span>Secure checkout</span>
                     <span>•</span>
-                    <span>
-                      <Zap size={13} color="#fde047" /> Instant Coin Delivery
-                    </span>
-                    <span>•</span>
-                    <span>Apple Pay, Card, Cash App &amp; Crypto</span>
+                    <Zap size={14} />
+                    <span>Coins credited instantly</span>
                   </div>
                 </div>
               )}
@@ -1047,43 +838,35 @@ export default function PaymentModal({
               {/* STEP 2: ULTRA-SIMPLE 1-TAP EXPRESS CHECKOUT */}
               {step === 2 && selectedPkg && (
                 <div className="sc-payment-step sc-clean-checkout-step">
-                  {/* Compact Selected Pack Summary Bar */}
-                  <div className="sc-clean-checkout-summary">
-                    <div className="sc-clean-summary-pack">
-                      <img
-                        src={
-                          selectedPkg.relicArt || '/assets/symbols/high/high_necklace_no_frame.png'
-                        }
-                        alt=""
-                        className="sc-clean-summary-icon"
-                        draggable={false}
-                      />
-                      <div className="sc-clean-summary-text">
-                        <div className="sc-clean-summary-amounts">
-                          <span className="sc-clean-sum-gc">
-                            {selectedPkg.goldCoins.toLocaleString()} GC
-                          </span>
-                          <span className="sc-clean-sum-plus">+</span>
-                          <span className="sc-clean-sum-sc">
-                            FREE ${selectedPkg.freeSweepsCoins.toFixed(2)} SC
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          className="sc-clean-change-link"
-                          onClick={() => {
-                            setStep(1);
-                            setShowCryptoBox(false);
-                            setCheckoutError('');
-                            soundEngine.playButtonClick(420);
-                          }}
-                        >
-                          ← Change Package
-                        </button>
-                      </div>
+                  {/* Simple Selected Pack Summary */}
+                  <div className="cx-summary">
+                    <img
+                      src={
+                        selectedPkg.relicArt || '/assets/symbols/high/high_necklace_no_frame.png'
+                      }
+                      alt=""
+                      className="cx-summary-icon"
+                      draggable={false}
+                    />
+                    <div className="cx-summary-text">
+                      <span className="cx-summary-coins">
+                        {selectedPkg.goldCoins.toLocaleString()} GC + $
+                        {selectedPkg.freeSweepsCoins.toFixed(2)} SC FREE
+                      </span>
+                      <button
+                        type="button"
+                        className="cx-change-link"
+                        onClick={() => {
+                          setStep(1);
+                          setShowCryptoBox(false);
+                          setCheckoutError('');
+                          soundEngine.playButtonClick(420);
+                        }}
+                      >
+                        ← Change package
+                      </button>
                     </div>
-
-                    <div className="sc-clean-summary-total">
+                    <div className="cx-summary-total">
                       <span>Total</span>
                       <strong>
                         $
@@ -1103,75 +886,53 @@ export default function PaymentModal({
                   )}
 
                   {/* Big, Unmistakable 1-Tap Checkout Buttons */}
-                  <div className="sc-express-pay-stack">
+                  <div className="sc-express-pay-stack cx-pay-stack">
                     {/* 1. Primary 1-Tap Card / Apple Pay / Google Pay Button */}
                     <button
                       type="button"
-                      className="sc-express-pay-btn express-card-btn"
+                      className="cx-pay-btn cx-pay-primary"
                       onClick={() => handleStripeRedirect('card')}
                       disabled={Boolean(redirectingMethod)}
                     >
-                      <div className="sc-express-btn-left">
-                        <div className="sc-method-icon-box card-icon-box">
-                          <CreditCard size={22} />
-                        </div>
-                        <div className="sc-express-btn-copy">
-                          <strong>Card / Apple Pay / Google Pay</strong>
-                          <span>Instant 1-Tap Checkout • Visa, Mastercard, Amex</span>
-                        </div>
-                      </div>
-                      <div className="sc-express-btn-cta">
+                      <CreditCard size={20} />
+                      <span className="cx-pay-label">Card / Apple Pay / Google Pay</span>
+                      <span className="cx-pay-cta">
                         {redirectingMethod === 'card' ? (
-                          <Loader2 size={20} className="sc-spin" />
+                          <Loader2 size={18} className="sc-spin" />
                         ) : (
-                          <span>
-                            Pay $
-                            {Number(selectedPkg.priceUsd).toLocaleString('en-US', {
-                              minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
-                              maximumFractionDigits: 2,
-                            })}{' '}
-                            →
-                          </span>
+                          `Pay $${Number(selectedPkg.priceUsd).toLocaleString('en-US', {
+                            minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
+                            maximumFractionDigits: 2,
+                          })}`
                         )}
-                      </div>
+                      </span>
                     </button>
 
                     {/* 2. Signature 1-Tap Cash App Pay Button */}
                     <button
                       type="button"
-                      className="sc-express-pay-btn express-cashapp-btn"
+                      className="cx-pay-btn cx-pay-cashapp"
                       onClick={() => handleStripeRedirect('cashapp')}
                       disabled={Boolean(redirectingMethod)}
                     >
-                      <div className="sc-express-btn-left">
-                        <div className="sc-method-icon-box cashapp-icon-box">
-                          <span>$</span>
-                        </div>
-                        <div className="sc-express-btn-copy">
-                          <strong>Cash App Pay</strong>
-                          <span>Instant 1-Tap Mobile &amp; QR Checkout</span>
-                        </div>
-                      </div>
-                      <div className="sc-express-btn-cta">
+                      <span className="cx-cashapp-mark">$</span>
+                      <span className="cx-pay-label">Cash App Pay</span>
+                      <span className="cx-pay-cta">
                         {redirectingMethod === 'cashapp' ? (
-                          <Loader2 size={20} className="sc-spin" />
+                          <Loader2 size={18} className="sc-spin" />
                         ) : (
-                          <span>
-                            Pay $
-                            {Number(selectedPkg.priceUsd).toLocaleString('en-US', {
-                              minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
-                              maximumFractionDigits: 2,
-                            })}{' '}
-                            →
-                          </span>
+                          `Pay $${Number(selectedPkg.priceUsd).toLocaleString('en-US', {
+                            minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
+                            maximumFractionDigits: 2,
+                          })}`
                         )}
-                      </div>
+                      </span>
                     </button>
 
                     {/* 3. Clean Crypto Option */}
                     <button
                       type="button"
-                      className={`sc-express-pay-btn express-crypto-btn ${
+                      className={`cx-pay-btn cx-pay-crypto ${
                         showCryptoBox ? 'active' : ''
                       }`}
                       onClick={() => {
@@ -1180,18 +941,9 @@ export default function PaymentModal({
                       }}
                       disabled={Boolean(redirectingMethod)}
                     >
-                      <div className="sc-express-btn-left">
-                        <div className="sc-method-icon-box crypto-icon-box">
-                          <Bitcoin size={22} />
-                        </div>
-                        <div className="sc-express-btn-copy">
-                          <strong>Pay with Crypto (0% Fee)</strong>
-                          <span>USDT, Solana (SOL), Bitcoin (BTC), or Ethereum (ETH)</span>
-                        </div>
-                      </div>
-                      <div className="sc-express-btn-cta">
-                        <span>{showCryptoBox ? 'Hide ▲' : 'Select ▼'}</span>
-                      </div>
+                      <Bitcoin size={20} />
+                      <span className="cx-pay-label">Crypto — USDT, SOL, BTC, ETH (0% fee)</span>
+                      <span className="cx-pay-cta">{showCryptoBox ? 'Hide ▲' : 'Select ▼'}</span>
                     </button>
                   </div>
 
@@ -1430,13 +1182,6 @@ export default function PaymentModal({
                         </div>
                       </div>
                       <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          className="sc-payout-pill active"
-                          onClick={() => setActiveTab('payout_admin')}
-                        >
-                          👑 View in Admin 1-Click Payout Center →
-                        </button>
                         <button
                           type="button"
                           className="sc-payout-pill"
@@ -1757,228 +1502,6 @@ export default function PaymentModal({
             );
           })()}
 
-          {/* ================================================================
-              TAB 4: ADMIN 1-CLICK PAYOUT & REDEMPTION QUEUE CENTER
-             ================================================================ */}
-          {activeTab === 'payout_admin' && (
-            <div className="sc-admin-payout-center">
-              <div className="sc-admin-payout-banner">
-                <div>
-                  <h3 className="sc-admin-payout-title">
-                    👑 Operator 1-Click Payout &amp; Redemption Center
-                  </h3>
-                  <p className="sc-admin-payout-desc">
-                    Review player prize redemptions and fulfill them in 1 click via Cash App Deep-Link,
-                    On-Chain Crypto URI/QR, or +5% Digital Gift Card Code.
-                  </p>
-                </div>
-                <div className="sc-admin-sample-btns">
-                  <button
-                    type="button"
-                    className="sc-payout-pill"
-                    onClick={() => handleCreateSampleAdminRedemption('chime')}
-                  >
-                    + Test $Cashtag Payout
-                  </button>
-                  <button
-                    type="button"
-                    className="sc-payout-pill"
-                    onClick={() => handleCreateSampleAdminRedemption('crypto')}
-                  >
-                    + Test Crypto Payout
-                  </button>
-                  <button
-                    type="button"
-                    className="sc-payout-pill"
-                    onClick={() => handleCreateSampleAdminRedemption('giftcard')}
-                  >
-                    + Test +5% Gift Card
-                  </button>
-                </div>
-              </div>
-
-              {adminStatusToast && (
-                <div className="sc-success-banner" style={{ marginBottom: '12px' }}>
-                  <CheckCircle2 size={16} />
-                  <span>{adminStatusToast}</span>
-                </div>
-              )}
-
-              {redemptionQueue.length === 0 ? (
-                <div className="sc-history-empty">
-                  <Crown size={32} />
-                  <p>No pending or historical redemptions in queue yet.</p>
-                  <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-                    Submit a redemption in the &ldquo;Redeem SC&rdquo; tab or click one of the &ldquo;+ Test&rdquo;
-                    buttons above to preview 1-Click Operator Fulfillment.
-                  </span>
-                </div>
-              ) : (
-                <div className="sc-admin-queue-list">
-                  {redemptionQueue.map((rdm) => {
-                    const isPending = rdm.status === 'processing';
-                    return (
-                      <div
-                        key={rdm.id}
-                        className={`sc-admin-queue-card status-${rdm.status || 'processing'}`}
-                      >
-                        <div className="sc-admin-queue-top">
-                          <div>
-                            <span className="sc-admin-rdm-id">{rdm.id}</span>
-                            <strong className="sc-admin-rdm-type">{rdm.type}</strong>
-                            <div className="sc-history-date">
-                              Player: {rdm.playerName || 'VIP Player'} •{' '}
-                              {new Date(rdm.timestamp).toLocaleString()} • Destination:{' '}
-                              <code>{rdm.destination || rdm.destinationMasked}</code>
-                            </div>
-                          </div>
-                          <div className="sc-admin-rdm-amounts">
-                            <span className="sc-admin-usd-amt">
-                              ${Number(rdm.amountUsd || 0).toFixed(2)} USD
-                            </span>
-                            <span className="sc-admin-sc-amt">
-                              ({Math.abs(Number(rdm.amountSC || rdm.sweepsCoins || 0)).toFixed(2)} SC
-                              {rdm.bonusUsd > 0 ? ` + $${Number(rdm.bonusUsd).toFixed(2)} Bonus` : ''})
-                            </span>
-                            <span className={`sc-admin-status-pill ${rdm.status}`}>
-                              {rdm.status === 'completed'
-                                ? '✅ PAID'
-                                : rdm.status === 'rejected'
-                                ? '↩️ REFUNDED'
-                                : '⏳ PENDING 1-CLICK PAYOUT'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 1-Click Action Bar for Pending Redemptions */}
-                        {isPending && (
-                          <div className="sc-admin-actions-bar">
-                            {rdm.cashAppPayoutLink && (
-                              <a
-                                href={rdm.cashAppPayoutLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="sc-admin-action-btn cashapp"
-                              >
-                                <ExternalLink size={14} />
-                                <span>
-                                  💸 1-Click Send ${Number(rdm.amountUsd).toFixed(2)} on Cash App
-                                </span>
-                              </a>
-                            )}
-
-                            {rdm.cryptoPayoutUri && (
-                              <>
-                                <a
-                                  href={rdm.cryptoPayoutUri}
-                                  className="sc-admin-action-btn crypto"
-                                >
-                                  <Zap size={14} />
-                                  <span>
-                                    ⚡ 1-Tap Sign {rdm.cryptoAmount} {rdm.cryptoAsset} Wallet Payout
-                                  </span>
-                                </a>
-                                <button
-                                  type="button"
-                                  className="sc-payout-pill"
-                                  onClick={() =>
-                                    setExpandedAdminQrId(
-                                      expandedAdminQrId === rdm.id ? null : rdm.id
-                                    )
-                                  }
-                                >
-                                  {expandedAdminQrId === rdm.id ? 'Hide Wallet QR' : '📱 Scan Wallet QR'}
-                                </button>
-                              </>
-                            )}
-
-                            {rdm.method === 'giftcard' && (
-                              <input
-                                type="text"
-                                className="sc-input sc-admin-inline-input"
-                                placeholder="Paste Gift Card Claim Code (or leave blank to auto-issue)..."
-                                value={adminGiftCodeInputs[rdm.id] || ''}
-                                onChange={(e) =>
-                                  setAdminGiftCodeInputs((prev) => ({
-                                    ...prev,
-                                    [rdm.id]: e.target.value,
-                                  }))
-                                }
-                              />
-                            )}
-
-                            <input
-                              type="text"
-                              className="sc-input sc-admin-inline-input"
-                              placeholder="Optional TX Hash / Cash App Receipt ID..."
-                              value={adminTxInputs[rdm.id] || ''}
-                              onChange={(e) =>
-                                setAdminTxInputs((prev) => ({
-                                  ...prev,
-                                  [rdm.id]: e.target.value,
-                                }))
-                              }
-                            />
-
-                            <button
-                              type="button"
-                              className="sc-admin-action-btn approve"
-                              onClick={() => handleAdminApprove(rdm)}
-                            >
-                              <Check size={14} />
-                              <span>Mark Paid &amp; Complete</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              className="sc-admin-action-btn reject"
-                              onClick={() => handleAdminReject(rdm)}
-                            >
-                              <X size={14} />
-                              <span>Reject &amp; Refund SC</span>
-                            </button>
-                          </div>
-                        )}
-
-                        {expandedAdminQrId === rdm.id && rdm.cryptoQrUrl && (
-                          <div className="sc-admin-qr-drawer">
-                            <img
-                              src={rdm.cryptoQrUrl}
-                              alt="Crypto Payout QR"
-                              width={140}
-                              height={140}
-                            />
-                            <div>
-                              <strong>Scan with Phantom, MetaMask, or Bitcoin Wallet</strong>
-                              <p style={{ fontSize: '0.78rem', opacity: 0.85, margin: '4px 0' }}>
-                                URI: <code>{rdm.cryptoPayoutUri}</code>
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {!isPending && (
-                          <div className="sc-admin-completed-meta">
-                            {rdm.txHashOrReceipt && (
-                              <span>
-                                Receipt / TXID: <code>{rdm.txHashOrReceipt}</code>
-                              </span>
-                            )}
-                            {rdm.giftCardCode && (
-                              <span>
-                                • Gift Card Code: <code>{rdm.giftCardCode}</code>
-                              </span>
-                            )}
-                            {rdm.operatorNote && <span> • {rdm.operatorNote}</span>}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

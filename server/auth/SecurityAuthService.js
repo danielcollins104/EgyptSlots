@@ -13,7 +13,12 @@ import crypto from 'node:crypto';
 export class SecurityAuthService {
   constructor(ledger, options = {}) {
     this.ledger = ledger;
-    this.adminSecret = options.adminSecret || process.env.DC_ADMIN_SECRET || 'dc_admin_super_secret_pharaoh_999!';
+    // Fail closed: when no admin secret is configured, admin login is disabled entirely.
+    // Never ship a default/shared secret in the bundle or repo.
+    this.adminSecret =
+      options.adminSecret ||
+      (typeof process !== 'undefined' && process.env?.DC_ADMIN_SECRET) ||
+      null;
     this.users = new Map(); // userId -> UserRecord
     this.sessions = new Map(); // token -> SessionRecord
     this.failedAttempts = new Map(); // ip/identifier -> { count, lockedUntil }
@@ -144,13 +149,27 @@ export class SecurityAuthService {
 
   /**
    * Secure Administrator Authentication
+   * - Disabled (fail-closed) unless DC_ADMIN_SECRET is configured server-side
+   * - Brute-force protected: 5 failed attempts locks the console for 15 minutes
    */
   authenticateAdmin(adminKey) {
-    if (!adminKey) throw new Error('Admin key required');
+    if (!this.adminSecret) {
+      throw new Error(
+        'Admin access is disabled: DC_ADMIN_SECRET is not configured on the server.'
+      );
+    }
+    const lockId = '__admin_console__';
+    this._checkBruteForce(lockId);
+    if (!adminKey) {
+      this._recordFailedAttempt(lockId);
+      throw new Error('Admin key required');
+    }
     const isValid = SecurityAuthService.timingSafeEqual(adminKey, this.adminSecret);
     if (!isValid) {
+      this._recordFailedAttempt(lockId);
       throw new Error('Unauthorized: Invalid administrator credentials.');
     }
+    this._clearFailedAttempts(lockId);
 
     const adminUser = {
       id: 'admin_master_01',
@@ -186,7 +205,11 @@ export class SecurityAuthService {
       expiresAt: Date.now() + ttlMs,
     };
     this.sessions.set(token, session);
-    return { user: { id: user.id, name: user.name, email: user.email, role: user.role }, token };
+    return {
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      token,
+      expiresAt: session.expiresAt,
+    };
   }
 
   /**

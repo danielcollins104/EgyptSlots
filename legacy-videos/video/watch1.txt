@@ -1,0 +1,5 @@
+[2026-11-10T03:58:37-06:00] pending: C:\Users\Mee\AppData\Local\Temp\video_generation-job-i_n8csas\worker.log (checking again in 30 seconds)
+[2026-11-10T03:59:07-06:00] pending: C:\Users\Mee\AppData\Local\Temp\video_generation-job-i_n8csas\worker.log (checking again in 30 seconds)
+[2026-11-10T03:59:37-06:00] pending: C:\Users\Mee\AppData\Local\Temp\video_generation-job-i_n8csas\worker.log (checking again in 30 seconds)
+[2026-11-10T04:00:07-06:00] pending: C:\Users\Mee\AppData\Local\Temp\video_generation-job-i_n8csas\worker.log (checking again in 30 seconds)
+done: C:\Users\Mee\Downloads\drive-download-20261024T081911Z-1-001\legacy-videos\video\EP01-shot1.mp4

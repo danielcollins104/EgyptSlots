@@ -54,6 +54,7 @@ import {
 import { SWEEPSTAKES_CONFIG, calculateCustomPackage } from './config/sweepstakesConfig';
 import { paymentService } from './services/paymentService';
 import PaymentModal from './components/PaymentModal';
+import AdminPayoutCenter from './components/AdminPayoutCenter';
 import LowBalanceOfferModal from './components/LowBalanceOfferModal';
 import VipPromoAdModal from './components/VipPromoAdModal';
 import ResponsibleGamingModal from './components/ResponsibleGamingModal';
@@ -180,7 +181,7 @@ export default function App() {
   }, []);
 
   // Asset Preloading & Instant Spin Lock Telemetry
-  const [isAssetsLoaded, setIsAssetsLoaded] = useState(() => assetPreloader.isComplete);
+  const [isAssetsLoaded, setIsAssetsLoaded] = useState(() => assetPreloader.isComplete || !showSplash);
   const [isHighResBgLoaded, setIsHighResBgLoaded] = useState(() => assetPreloader.highResLoaded);
 
   useEffect(() => {
@@ -190,6 +191,30 @@ export default function App() {
     });
     return unsubscribe;
   }, []);
+
+  // Synchronize Frame-0 #preboot-splash DOM shell with showSplash state so it never stays stuck on reload
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const prebootSplash = document.getElementById('preboot-splash');
+    if (prebootSplash) {
+      if (!showSplash) {
+        prebootSplash.classList.remove('splash-exit');
+        prebootSplash.style.display = 'none';
+        prebootSplash.style.pointerEvents = 'none';
+      } else {
+        prebootSplash.style.display = '';
+        prebootSplash.style.pointerEvents = 'auto';
+      }
+    }
+    const onPrebootEnter = () => {
+      setShowSplash(false);
+      setIsAssetsLoaded(true);
+    };
+    window.addEventListener('dc-enter-casino', onPrebootEnter);
+    return () => {
+      window.removeEventListener('dc-enter-casino', onPrebootEnter);
+    };
+  }, [showSplash]);
 
   // Player Authentication & VIP Verification for Sweeps Coins (SC)
   const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
@@ -252,6 +277,9 @@ export default function App() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentModalTab, setPaymentModalTab] = useState('store');
   const [selectedStorePackage, setSelectedStorePackage] = useState(null);
+
+  // Operator-Only Admin Payout Center State (Ctrl+Shift+A or #admin hash)
+  const [adminCenterOpen, setAdminCenterOpen] = useState(false);
 
   // Proactive & Insufficient Balance Smart Offer Modal State
   const [lowBalanceOfferOpen, setLowBalanceOfferOpen] = useState(false);
@@ -370,7 +398,7 @@ export default function App() {
   const [freeSpinsOpen, setFreeSpinsOpen] = useState(false);
   const [freeSpinsCount, setFreeSpinsCount] = useState(10);
   const [guardianAction, setGuardianAction] = useState(false);
-  const [guardianBlinking, setGuardianBlinking] = useState(false);
+  // Guardian eye blink runs on a pure CSS animation cycle (no React state / re-renders).
   // Dynamic 5-Tier Guardian Progressive Escalation System:
   // 0 = Dormant Stone Statue (Still, Cold Granite, No Movement, No Glow)
   // 1 = Alive Living Entity (Color Restored, Living Breathing Starts, but NO Eyes Lit, NO Orbs)
@@ -824,14 +852,8 @@ export default function App() {
     ambientMusicEngine.duck(isSpecialActive);
   }, [bigWinAmount, bonusSession, freeSpinsOpen, celestialBonusOpen]);
 
-  // Periodic Guardian eye blink (if configured on the left or right guardian)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setGuardianBlinking(true);
-      setTimeout(() => setGuardianBlinking(false), 180);
-    }, 3800);
-    return () => clearInterval(interval);
-  }, []);
+  // Periodic Guardian eye blink is handled 100% in CSS (guardianEyeBlink /
+  // guardianBlinkOverlay keyframes) so it costs zero React re-renders.
 
   // Cycle highlighted winning payline
   useEffect(() => {
@@ -974,32 +996,33 @@ export default function App() {
   );
 
   const handleColumnStop = useCallback(
-    (colIdx, didExpand, targetSymbols, rareTileHit = null) => {
+    (colIdx, didExpand, targetSymbols, rareTileHit = null, hasSpecialSlam = false) => {
       if (targetSymbols) {
         landedSymbolsByColRef.current[colIdx] = targetSymbols;
       }
       if (didExpand) {
         setGuardianAction(true);
         soundEngine.playAnubisExpand();
+        triggerCabinetImpact('win');
         setTimeout(() => setGuardianAction(false), 1200);
+      } else if (hasSpecialSlam) {
+        // Tactile physical cabinet recoil when a special tile slams into place!
+        triggerCabinetImpact('win');
       }
 
       // =========================================================================
       // 2026 REAL-TIME REEL-BY-REEL GUARDIAN LIGHTNING & FIRE TILE ILLUMINATION
-      // When a rare/scatter/awakener tile lands on a stopping column:
-      //  - 1st Tile Hit: Anubis shoots lightning at [col, row] -> Tile 1/3 Illuminated!
-      //  - 2nd Tile Hit: Bastet shoots solar fire at [col, row] -> Tile 2/3 Illuminated + Suspense Riser!
+      // When a rare/scatter/awakener tile slams into a stopping column:
+      //  - 1st Tile Hit: Anubis shoots lightning at [col, row] -> Tile 1/3 Illuminated (no stage powerup yet)
+      //  - 2nd Tile Hit: Bastet shoots solar fire at [col, row] -> Tile 2/3 Illuminated + Extended Suspense Riser!
       //  - 3rd Tile Hit: Both Guardians fire converging beams -> 3/3 Supernova Bonus Explosion!
       // =========================================================================
       if (rareTileHit) {
         const hitCell = [rareTileHit.col, rareTileHit.row];
         const hitCount = rareTileHit.count;
-        setGuardianAction(true);
-        setTimeout(() => setGuardianAction(false), 950);
 
         if (hitCount === 1) {
-          // 1st Illuminated Tile: Lord Anubis shoots High-Voltage Lightning Bolt!
-          triggerAnubisPowerUp(Math.max(2, anubisChargeRef.current));
+          // 1st Illuminated Tile: Lord Anubis shoots High-Voltage Lightning Bolt at the slammed tile!
           setGuardianStrikeEvent({
             id: `strike_1_${Date.now()}`,
             strikes: [
@@ -1013,12 +1036,14 @@ export default function App() {
             ],
           });
           soundEngine.playThunderStrike();
+          triggerCabinetImpact('win');
           setStatusMessage(
-            `⚡ LORD ANUBIS STRIKES TILE (1/3 ILLUMINATED)! WATCH FOR 2 MORE TO DETONATE SUPERNOVA BONUS!`
+            `⚡ SPECIAL TILE SLAMS IN (1/3 ILLUMINATED)! WATCH FOR 2 MORE TO DETONATE SUPERNOVA BONUS!`
           );
         } else if (hitCount === 2) {
-          // 2nd Illuminated Tile: Queen Bastet shoots Solar Fireball + High-Suspense Mode!
-          triggerBastetPowerUp(Math.max(3, bastetChargeRef.current));
+          // 2nd Illuminated Tile: Queen Bastet shoots Solar Fireball + Extended Final-Tile Suspense Mode!
+          setGuardianAction(true);
+          setTimeout(() => setGuardianAction(false), 1400);
           setGuardianStrikeEvent({
             id: `strike_2_${Date.now()}`,
             strikes: [
@@ -1033,16 +1058,16 @@ export default function App() {
           });
           soundEngine.playSolarFireball();
           if (colIdx < COLS - 1) {
-            soundEngine.playAnticipationRiser();
+            soundEngine.playAnticipationRiser(1.65);
           }
           triggerCabinetImpact('win');
           setStatusMessage(
-            `⚡🔥 2/3 TILES ILLUMINATED WITH LIGHTNING & FIRE! SUSPENSE BUILDING — WILL THE 3RD TILE HIT?!`
+            `⚡🔥 2/3 SPECIAL TILES SLAMMED & ILLUMINATED! FINAL REEL ACCELERATING IN HIGH SUSPENSE!`
           );
         } else if (hitCount >= 3) {
           // 3rd Illuminated Tile: Twin Guardian Supernova Convergence + 3-Tile Explosion!
-          triggerAnubisPowerUp(4);
-          triggerBastetPowerUp(4);
+          setGuardianAction(true);
+          setTimeout(() => setGuardianAction(false), 1800);
           const allTargets =
             Array.isArray(rareTileHit.allIlluminatedCells) &&
             rareTileHit.allIlluminatedCells.length > 0
@@ -1072,17 +1097,17 @@ export default function App() {
           setTimeout(() => soundEngine.playSolarFireball(), 90);
           setTimeout(() => soundEngine.playBonusTrigger(), 260);
           triggerCabinetImpact('mega');
-          setIlluminatedCells(allTargets);
+          setMajorIlluminationCells(allTargets);
           setMajorIlluminationActive(true);
           setTimeout(() => setMajorIlluminationActive(false), 1800);
           setStatusMessage(
-            `💥⚡🔥 3/3 TILES ILLUMINATED — TRIPLE SUPERNOVA BONUS EXPLOSION UNLEASHED!`
+            `💥⚡🔥 3/3 TILES SLAMMED & ILLUMINATED — TRIPLE SUPERNOVA BONUS EXPLOSION UNLEASHED!`
           );
         }
         return;
       }
 
-      // Fallback suspense check
+      // Fallback suspense check when 2 bonus scatters have landed before the final reel
       let scattersLanded = 0;
       const landedCols = landedSymbolsByColRef.current.slice(0, colIdx + 1).filter(Boolean);
       landedCols.forEach((colSyms) => {
@@ -1092,10 +1117,10 @@ export default function App() {
       });
 
       if (scattersLanded >= 2 && colIdx < COLS - 1) {
-        soundEngine.playAnticipationRiser();
+        soundEngine.playAnticipationRiser(1.65);
       }
     },
-    [triggerAnubisPowerUp, triggerBastetPowerUp, triggerCabinetImpact]
+    [triggerCabinetImpact]
   );
 
   const handleSpinComplete = useCallback(() => {
@@ -1173,8 +1198,6 @@ export default function App() {
       setWinningCells(winCoordSet);
 
       const isBig = finalWin >= spinBet * 8 || forcedMode === 'bigwin' || forcedMode === 'megawin' || forcedMode === 'ultrawin';
-      setGuardianAction(true);
-      setTimeout(() => setGuardianAction(false), 1800);
 
       // Trigger tactile cabinet recoil and floating win text
       triggerCabinetImpact(isBig ? 'mega' : 'win');
@@ -1190,23 +1213,15 @@ export default function App() {
       }
 
       // Guardian Selective Animation & Persistent Charge Build-Up Engine:
-      // Characters do NOT move on every win; only on rare select combinations (sacred awakening relics, 4/5-of-a-kind, expanding wilds, big wins, scatters).
+      // Characters only power up on truly rare select combinations (Sacred Awakener Relic paylines, 4/5-of-a-kind, Expanding Wilds, or Big Wins 8x+ bet).
       const allWinCells = Array.from(winCoordSet).map((k) => k.split(',').map(Number));
       const hasExpandingWild = pending?.nextExpanded && pending.nextExpanded.some((e) => e === true);
       const hasLotusMatch = wins.some((w) => w.symbol?.id === 'bastet_lotus');
       const hasScepterMatch = wins.some((w) => w.symbol?.id === 'anubis_scepter');
       const hasGuardianAwakener = hasLotusMatch || hasScepterMatch;
-      const hasHighMatch = wins.some(
-        (w) =>
-          w.matchCount >= 4 ||
-          (w.matchCount >= 3 &&
-            (w.symbol?.isTopHigh ||
-              w.symbol?.isGuardianAwakener ||
-              w.symbol?.id === 'bastet_lotus' ||
-              w.symbol?.id === 'anubis_scepter' ||
-              w.symbol?.id === 'eye'))
-      );
-      const isSelectCombination = isBig || bonusCount >= 2 || hasExpandingWild || hasHighMatch || hasGuardianAwakener;
+      const hasFourOfAKind = wins.some((w) => w.matchCount >= 4);
+      const isSelectCombination =
+        isBig || hasExpandingWild || hasFourOfAKind || hasGuardianAwakener;
       const currentCharge = guardianChargeLevelRef.current ?? guardianChargeLevel;
 
       if (bonusCount >= 3) {
@@ -2125,6 +2140,7 @@ export default function App() {
         if (winSplashAmount > 0) setWinSplashAmount(0);
         if (paytableOpen) setPaytableOpen(false);
         if (paymentModalOpen) setPaymentModalOpen(false);
+        if (adminCenterOpen) setAdminCenterOpen(false);
         if (authModalOpen) setAuthModalOpen(false);
         if (lowBalanceOfferOpen) setLowBalanceOfferOpen(false);
         return;
@@ -2139,6 +2155,15 @@ export default function App() {
         if (e.repeat) return;
         soundEngine.playButtonClick(680);
         setKeyboardShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      // Operator Admin Payout Center: Ctrl+Shift+A
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyA') {
+        e.preventDefault();
+        if (e.repeat) return;
+        soundEngine.playButtonClick(520);
+        setAdminCenterOpen((prev) => !prev);
         return;
       }
 
@@ -2261,6 +2286,7 @@ export default function App() {
     keyboardShortcutsOpen,
     paytableOpen,
     paymentModalOpen,
+    adminCenterOpen,
     authModalOpen,
     lowBalanceOfferOpen,
     bonusSession,
@@ -2276,6 +2302,16 @@ export default function App() {
     lineBetIndexGC,
     isAssetsLoaded,
   ]);
+
+  // Operator entry point: opening the app with the #admin URL hash opens the Payout Center
+  useEffect(() => {
+    try {
+      if (window.location.hash === '#admin') {
+        setAdminCenterOpen(true);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLinesChange = (delta) => {
     if (isSpinning) return;
@@ -2383,7 +2419,14 @@ export default function App() {
   return (
     <div className={`casino-app-root theme-${currentTheme.id} ${isTabletopPosture ? 'tabletop-posture-active' : ''}`}>
       {/* Welcome Screen */}
-      {showSplash && <SplashScreen onEnterCasino={() => setShowSplash(false)} />}
+      {showSplash && (
+        <SplashScreen
+          onEnterCasino={() => {
+            setShowSplash(false);
+            setIsAssetsLoaded(true);
+          }}
+        />
+      )}
 
       {/* Adaptive Keyboard Shortcuts & Foldable Tabletop Helper Modal */}
       {keyboardShortcutsOpen && (
@@ -3625,11 +3668,7 @@ export default function App() {
             <div className="guardian-living-aura anubis-living-aura" />
             {/* Divine Eyes: Only lit at Stage 2+ */}
             {anubisCharge >= 2 && (
-              <div
-                className={`guardian-divine-eyes anubis-divine-eyes ${
-                  guardianBlinking ? 'blinking' : ''
-                }`}
-              />
+              <div className="guardian-divine-eyes anubis-divine-eyes" />
             )}
             {/* Celestial Power Orb: Only manifests at Stage 3+ */}
             {anubisCharge >= 3 && (
@@ -3683,7 +3722,7 @@ export default function App() {
                 decoding="async"
               />
             )}
-            {guardianBlinking && anubisCharge >= 1 && GUARDIANS.left.eyesClosedImage && (
+            {anubisCharge >= 1 && GUARDIANS.left.eyesClosedImage && (
               <img
                 src={GUARDIANS.left.eyesClosedImage}
                 alt=""
@@ -4353,11 +4392,7 @@ export default function App() {
             <div className="guardian-living-aura bastet-living-aura" />
             {/* Divine Eyes: Only lit at Stage 2+ */}
             {bastetCharge >= 2 && (
-              <div
-                className={`guardian-divine-eyes bastet-divine-eyes ${
-                  guardianBlinking ? 'blinking' : ''
-                }`}
-              />
+              <div className="guardian-divine-eyes bastet-divine-eyes" />
             )}
             {/* Celestial Power Orb: Only manifests at Stage 3+ */}
             {bastetCharge >= 3 && (
@@ -4411,7 +4446,7 @@ export default function App() {
                 decoding="async"
               />
             )}
-            {guardianBlinking && bastetCharge >= 1 && GUARDIANS.right.eyesClosedImage && (
+            {bastetCharge >= 1 && GUARDIANS.right.eyesClosedImage && (
               <img
                 src={GUARDIANS.right.eyesClosedImage}
                 alt=""
@@ -4653,6 +4688,12 @@ export default function App() {
         sweepsCoins={sweepsCoins}
         onPurchaseSuccess={handlePurchaseSuccess}
         onRedeemSuccess={handleRedeemSuccess}
+      />
+
+      {/* Operator-Only Admin Payout Center (Ctrl+Shift+A or #admin hash) */}
+      <AdminPayoutCenter
+        isOpen={adminCenterOpen}
+        onClose={() => setAdminCenterOpen(false)}
         onRefundSC={(refundSC) => {
           if (refundSC > 0) {
             setSweepsCoins((prev) => {

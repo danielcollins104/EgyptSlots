@@ -332,12 +332,35 @@ const rdmPostRes = await apiRouter.handleRequest('POST', '/api/redemptions', {},
 }));
 assert.strictEqual(rdmPostRes.status, 200, 'POST /api/redemptions must return 200 without ledger crash');
 
-const rdmUpdateRes = await apiRouter.handleRequest('POST', '/api/redemptions/update', {}, JSON.stringify({
+const rdmUpdateNoAuth = await apiRouter.handleRequest('POST', '/api/redemptions/update', {}, JSON.stringify({
   redemptionId: 'rdm_router_test_1',
   action: 'approve',
   updated: { status: 'completed', txHashOrReceipt: 'RCPT_OK_1' },
 }));
-assert.strictEqual(rdmUpdateRes.status, 200, 'POST /api/redemptions/update must return 200 without ledger crash');
+assert.strictEqual(rdmUpdateNoAuth.status, 401, 'POST /api/redemptions/update must reject unauthenticated requests');
+
+const routerAdminLogin = await apiRouter.handleRequest('POST', '/api/admin/login', {}, JSON.stringify({
+  adminKey: ADMIN_SECRET,
+}));
+assert.strictEqual(routerAdminLogin.status, 200, 'POST /api/admin/login must return 200 with valid key');
+const routerAdminToken = routerAdminLogin.body.token;
+
+const rdmUpdateRes = await apiRouter.handleRequest('POST', '/api/redemptions/update', {
+  Authorization: `Bearer ${routerAdminToken}`,
+}, JSON.stringify({
+  redemptionId: 'rdm_router_test_1',
+  action: 'approve',
+  updated: { status: 'completed', txHashOrReceipt: 'RCPT_OK_1' },
+}));
+assert.strictEqual(rdmUpdateRes.status, 200, 'POST /api/redemptions/update must return 200 with admin token');
+
+const rdmGetNoAuth = await apiRouter.handleRequest('GET', '/api/redemptions');
+assert.strictEqual(rdmGetNoAuth.status, 401, 'GET /api/redemptions must reject unauthenticated requests');
+
+const adminVerifyRes = await apiRouter.handleRequest('GET', '/api/admin/verify', {
+  Authorization: `Bearer ${routerAdminToken}`,
+});
+assert.strictEqual(adminVerifyRes.status, 200, 'GET /api/admin/verify must return 200 with admin token');
 
 const userLedgerRes = await apiRouter.handleRequest('GET', '/api/ledger/user', {
   Authorization: `Bearer ${guestToken}`,

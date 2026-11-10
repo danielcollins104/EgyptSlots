@@ -258,7 +258,7 @@
           </aside>
 
           <div class="ad-hero-cta-bar">
-            <button type="button" class="ad-enter-casino-btn">
+            <button type="button" class="ad-enter-casino-btn" id="preboot-enter-btn" onclick="window.__dismissPrebootSplash && window.__dismissPrebootSplash()">
               <span class="cta-enter-text">ENTER CASINO</span>
               <div class="cta-play-badge">▶</div>
             </button>
@@ -274,6 +274,37 @@
         </div>
       </div>
     </div>
+    <script>
+      window.__dismissPrebootSplash = function () {
+        try {
+          sessionStorage.setItem('dc_session_splash_dismissed', 'true');
+        } catch (e) {}
+        var el = document.getElementById('preboot-splash');
+        if (el) {
+          el.style.display = 'none';
+          el.style.pointerEvents = 'none';
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('dc-enter-casino'));
+        } catch (e) {}
+      };
+      try {
+        if (sessionStorage.getItem('dc_session_splash_dismissed') === 'true') {
+          var pre = document.getElementById('preboot-splash');
+          if (pre) {
+            pre.style.display = 'none';
+            pre.style.pointerEvents = 'none';
+          }
+        } else {
+          var preRoot = document.getElementById('preboot-splash');
+          if (preRoot) {
+            preRoot.addEventListener('click', function () {
+              window.__dismissPrebootSplash();
+            });
+          }
+        }
+      } catch (e) {}
+    </script>
 
     <div id="root"></div>
 

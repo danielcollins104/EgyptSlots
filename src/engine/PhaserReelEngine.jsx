@@ -1029,12 +1029,11 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       totalPlannedRareCount = 0;
 
       // Identify Rare Illumination Trigger Cells across the 5 columns:
-      // Priority 1: Bonus Scatters (2+ scatters build suspense for the 3rd scatter!)
-      // Priority 2: Guardian Awakener Relics (bastet_lotus / anubis_scepter)
-      // Priority 3: High-Tier Relic / Wild combinations (2+ columns with top relics)
+      // Strictly restricted to genuine rare events so Guardians don't power up all too often:
+      // Priority 1: Bonus Scatters (2+ scatters build intense suspense for the 3rd scatter!)
+      // Priority 2: 3+ Sacred Guardian Awakener Relics (bastet_lotus / anubis_scepter)
       const scatterCols = [];
       const awakenerCols = [];
-      const highRelicCols = [];
 
       for (let c = 0; c < COLS; c++) {
         const colSyms = targetGrid[c] || [];
@@ -1048,21 +1047,13 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         if (awakenerRow !== -1) {
           awakenerCols.push({ col: c, row: awakenerRow, sym: colSyms[awakenerRow], kind: 'awakener' });
         }
-        const highRow = colSyms.findIndex(
-          (s) => s?.isTopHigh || s?.isWild || s?.id === 'eye' || s?.id === 'scarab'
-        );
-        if (highRow !== -1) {
-          highRelicCols.push({ col: c, row: highRow, sym: colSyms[highRow], kind: 'high' });
-        }
       }
 
       const chosenRareList =
         scatterCols.length >= 2
           ? scatterCols
-          : awakenerCols.length >= 2
+          : awakenerCols.length >= 3
           ? awakenerCols
-          : highRelicCols.length >= 3
-          ? highRelicCols.slice(0, 3)
           : [];
 
       chosenRareList.forEach((item) => {
@@ -1086,6 +1077,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         reel.offsetY = 0;
         reel.velocity = 0;
         reel.landingQueue = null;
+        reel.slamCell = null;
         reel.isTurbo = isTurbo;
         reel.anticipation = specialCountSoFar >= 2 && c >= 2 && !isTurbo;
 
@@ -1097,15 +1089,18 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           specialCountSoFar++;
         }
 
-        const suspenseExtraSec = reel.anticipation ? (c === 4 ? 0.52 : 0.34) : 0;
-        const spinDurationSec = isTurbo
-          ? 0.08 + c * 0.05
-          : 0.18 + c * 0.12 + suspenseExtraSec;
-        const peakVelocity = reel.anticipation ? 2600 : (isTurbo ? 2800 : 2200);
+        // When 2 special tiles have landed, the remaining reel(s)—especially the final reel (c === 4)—
+        // spin noticeably longer (+1.65s on final reel, +0.85s on reel 4) with accelerating tempo & volume!
+        const suspenseExtraSec = reel.anticipation ? (c === 4 ? 1.65 : 0.85) : 0;
+        // Snappier cadence: ~20% faster reel cycle keeps suspense phases intact
+        const baseSpinSec = isTurbo ? 0.07 + c * 0.04 : 0.14 + c * 0.1;
+        const spinDurationSec = baseSpinSec + suspenseExtraSec;
+        const cruiseVelocity = isTurbo ? 2800 : 2200;
+        const suspensePeakVelocity = c === 4 ? 3500 : 3050;
 
         reel.state = 'WINDUP';
 
-        const tl = gsap.timeline({ delay: isTurbo ? c * 0.015 : c * 0.03 });
+        const tl = gsap.timeline({ delay: isTurbo ? c * 0.012 : c * 0.024 });
         reel.tweens.push(tl);
 
         tl.to(reel, {
@@ -1117,31 +1112,42 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             reel.state = 'SPINNING';
             reel.offsetY = 0;
             reel.velocity = isTurbo ? 900 : 650;
-            if (reel.anticipation && !isTurbo && c === 4) {
-              soundEngine.playAnticipationRiser();
-            }
           })
           .to(reel, {
-            velocity: peakVelocity,
+            velocity: cruiseVelocity,
             duration: isTurbo ? 0.06 : 0.12,
             ease: 'power2.in',
           })
           .to(reel, {
-            velocity: peakVelocity,
-            duration: spinDurationSec,
+            velocity: cruiseVelocity,
+            duration: baseSpinSec,
             ease: 'none',
-            onComplete: () => {
-              const buf0 = randomSymbol();
-              const buf1 = randomSymbol();
-              reel.landingQueue = [
-                buf0,
-                buf1,
-                reel.targetSymbols[0],
-                reel.targetSymbols[1],
-                reel.targetSymbols[2],
-              ];
-            },
           });
+
+        if (reel.anticipation && suspenseExtraSec > 0) {
+          // Final-tile suspense phase: accelerate spin velocity/tempo while rising audio crescendo plays!
+          tl.call(() => {
+            if (!isTurbo && c === 4) {
+              soundEngine.playAnticipationRiser(suspenseExtraSec);
+            }
+          }).to(reel, {
+            velocity: suspensePeakVelocity,
+            duration: suspenseExtraSec,
+            ease: 'power2.in',
+          });
+        }
+
+        tl.call(() => {
+          const buf0 = randomSymbol();
+          const buf1 = randomSymbol();
+          reel.landingQueue = [
+            buf0,
+            buf1,
+            reel.targetSymbols[0],
+            reel.targetSymbols[1],
+            reel.targetSymbols[2],
+          ];
+        });
       });
     };
 
@@ -1201,38 +1207,54 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       reel.strip[5] = reel.targetSymbols[1];
       reel.strip[6] = reel.targetSymbols[2];
 
-      const hasSpecial =
+      const plannedRare = plannedRareCellsByCol[reel.colIndex];
+      const hasSpecialSlam =
+        Boolean(plannedRare) ||
         reel.willExpand ||
-        reel.targetSymbols.some((s) => s.isWild || s.isBonus || s.isExpanding);
+        reel.targetSymbols.some((s) => s.isBonus || s.isGuardianAwakener || s.isExpanding);
+      const hasSpecial =
+        hasSpecialSlam || reel.targetSymbols.some((s) => s.isWild);
 
       const bounceTl = gsap.timeline();
       reel.tweens.push(bounceTl);
 
       const isTurbo = Boolean(reel.isTurbo);
 
-      // Smooth organic downward overshoot, then crisp spring-back to resting 0 position
+      // When a special tile hits, it REALLY SLAMS into place (38px deep high-velocity impact + heavy recoil)!
+      const slamDepthPx = hasSpecialSlam ? (isTurbo ? 22 : 38) : (isTurbo ? 8 : 15);
+      const slamDownSec = hasSpecialSlam ? 0.052 : (isTurbo ? 0.055 : 0.088);
+      const slamReboundSec = hasSpecialSlam ? 0.27 : (isTurbo ? 0.12 : 0.21);
+      const slamReboundEase = hasSpecialSlam
+        ? 'back.out(3.6)'
+        : isTurbo
+        ? 'back.out(1.8)'
+        : 'back.out(2.3)';
+
       bounceTl
         .fromTo(
           reel,
           { offsetY: 0 },
           {
-            offsetY: isTurbo ? 8 : 16,
-            duration: isTurbo ? 0.055 : 0.09,
-            ease: 'power1.out',
+            offsetY: slamDepthPx,
+            duration: slamDownSec,
+            ease: hasSpecialSlam ? 'power4.in' : 'power1.out',
             onComplete: () => {
-              soundEngine.playReelStop(reel.colIndex, hasSpecial);
+              if (hasSpecialSlam) {
+                soundEngine.playSpecialTileSlam(reel.colIndex, illuminatedTiles.length + 1);
+              } else {
+                soundEngine.playReelStop(reel.colIndex, hasSpecial);
+              }
               if (hasSpecial) {
                 spawnParticles(
                   reel.centerX,
                   GAME_H / 2,
-                  16,
+                  hasSpecialSlam ? 26 : 14,
                   reel.colIndex >= 3 ? '#c084fc' : '#00e5ff'
                 );
               }
 
               // Check if this column landed a Rare Illumination Tile!
               let rareTileHit = null;
-              const plannedRare = plannedRareCellsByCol[reel.colIndex];
               if (plannedRare) {
                 const nowHit = performance.now();
                 const hitOrder = illuminatedTiles.length + 1;
@@ -1243,13 +1265,14 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                   kind: plannedRare.kind,
                   order: hitOrder,
                   bornAt: nowHit,
+                  slamBornAt: nowHit,
                   explodeAt: 0,
                 };
                 illuminatedTiles.push(tileEntry);
 
                 const cellCenterX = plannedRare.col * COL_W + COL_W / 2;
                 const cellCenterY = plannedRare.row * ROW_H + ROW_H / 2;
-                spawnParticles(cellCenterX, cellCenterY, 22, hitOrder % 2 === 1 ? '#00f0ff' : '#fbbf24');
+                spawnParticles(cellCenterX, cellCenterY, 28, hitOrder % 2 === 1 ? '#00f0ff' : '#fbbf24');
 
                 // If 3rd illuminated tile just hit -> trigger 3-Tile Supernova Detonation across all illuminated tiles!
                 const didExplode3 = illuminatedTiles.length >= 3;
@@ -1260,7 +1283,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                     }
                     const ix = it.col * COL_W + COL_W / 2;
                     const iy = it.row * ROW_H + ROW_H / 2;
-                    spawnParticles(ix, iy, 28, '#ffd700');
+                    spawnParticles(ix, iy, 32, '#ffd700');
                   });
                 }
 
@@ -1275,6 +1298,18 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                   allIlluminatedCells: illuminatedTiles.map((it) => [it.col, it.row]),
                 };
                 isDirty = true;
+              } else if (hasSpecialSlam) {
+                // Even if only 1 bonus scatter landed on the whole spin, record a local slam shockwave for that cell
+                const specialRow = reel.targetSymbols.findIndex(
+                  (s) => s?.isBonus || s?.isGuardianAwakener || s?.isExpanding
+                );
+                if (specialRow !== -1) {
+                  reel.slamCell = { row: specialRow, bornAt: performance.now() };
+                  const cellCenterX = reel.colIndex * COL_W + COL_W / 2;
+                  const cellCenterY = specialRow * ROW_H + ROW_H / 2;
+                  spawnParticles(cellCenterX, cellCenterY, 22, '#fbbf24');
+                  isDirty = true;
+                }
               }
 
               if (callbacksRef.current.onColumnStop) {
@@ -1282,7 +1317,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                   reel.colIndex,
                   reel.willExpand,
                   reel.targetSymbols,
-                  rareTileHit
+                  rareTileHit,
+                  hasSpecialSlam
                 );
               }
             },
@@ -1290,8 +1326,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         )
         .to(reel, {
           offsetY: 0,
-          duration: isTurbo ? 0.12 : 0.22,
-          ease: isTurbo ? 'back.out(1.8)' : 'back.out(2.4)',
+          duration: slamReboundSec,
+          ease: slamReboundEase,
           onComplete: () => {
             reel.state = 'IDLE';
 
@@ -1350,7 +1386,10 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         illuminatedTiles.length > 0 &&
         (anySpinning || now - illuminatedTiles[illuminatedTiles.length - 1].bornAt < 3400);
       const hasTransitions = reels.some(
-        (r) => r.offsetY !== 0 || (r.tallAlpha > 0.001 && r.tallAlpha < 0.999)
+        (r) =>
+          r.offsetY !== 0 ||
+          (r.tallAlpha > 0.001 && r.tallAlpha < 0.999) ||
+          (r.slamCell && now - r.slamCell.bornAt < 300)
       );
       const isActivelyAnimating =
         anySpinning || hasActiveWins || hasParticles || hasTransitions || hasIlluminated;
@@ -1474,7 +1513,39 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
               const sw = sprite.width;
               const sh = sprite.height;
 
-              if (isWinningCell) {
+              // Check if this specific visible cell just slammed into place (within 260ms)
+              let slamBornAt = 0;
+              if (visibleRow >= 0 && reel.state !== 'SPINNING') {
+                const illumEntry = illuminatedTiles.find(
+                  (it) => it.col === c && it.row === visibleRow
+                );
+                if (illumEntry && illumEntry.slamBornAt) {
+                  slamBornAt = illumEntry.slamBornAt;
+                } else if (reel.slamCell && reel.slamCell.row === visibleRow) {
+                  slamBornAt = reel.slamCell.bornAt;
+                }
+              }
+              const slamElapsed = slamBornAt > 0 ? now - slamBornAt : 9999;
+
+              if (slamElapsed >= 0 && slamElapsed < 280) {
+                // Heavy Physical Slam-Crush Scale (1.36x -> 1.0x impact crush + seismic shockwave ring!)
+                const slamProg = slamElapsed / 280;
+                const slamScale = 1 + 0.36 * Math.pow(1 - slamProg, 1.6);
+                const dw = Math.round(sw * slamScale);
+                const dh = Math.round(sh * slamScale);
+                const dx = Math.round(reel.centerX - dw / 2);
+                const dy = Math.round(centerY - dh / 2);
+                ctx.drawImage(sprite, dx, dy, dw, dh);
+
+                // Expanding gold-cyan seismic shockwave ring on slam impact
+                ctx.save();
+                ctx.strokeStyle = `rgba(251, 191, 36, ${(0.92 * (1 - slamProg)).toFixed(2)})`;
+                ctx.lineWidth = 4.5 * (1 - slamProg * 0.6);
+                ctx.beginPath();
+                ctx.arc(reel.centerX, centerY, 26 + slamProg * 72, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+              } else if (isWinningCell) {
                 const dw = Math.round(sw * popOutPulse);
                 const dh = Math.round(sh * popOutPulse);
                 const dx = Math.round(reel.centerX - dw / 2);

@@ -3,7 +3,8 @@ import { ApiRouter } from '../server/apiRouter.js';
 
 console.log('Testing ApiRouter endpoints...');
 
-const router = new ApiRouter();
+const TEST_ADMIN_SECRET = 'dc_admin_super_secret_pharaoh_999!';
+const router = new ApiRouter({ adminSecret: TEST_ADMIN_SECRET });
 
 // 1. Health check
 const health = await router.handleRequest('GET', '/api/health');
@@ -40,7 +41,7 @@ console.log('✔ [PASS] /api/admin/adjust-balance rejected without admin token')
 
 // 5. Admin login & adjustment
 const adminLogin = await router.handleRequest('POST', '/api/admin/login', {}, {
-  adminKey: 'dc_admin_super_secret_pharaoh_999!',
+  adminKey: TEST_ADMIN_SECRET,
 });
 assert.strictEqual(adminLogin.status, 200);
 assert(adminLogin.body.token, 'Admin token returned');

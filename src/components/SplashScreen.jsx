@@ -19,9 +19,6 @@ export default function SplashScreen({ onEnterCasino }) {
   const isReady = preloadState.isComplete;
 
   const handleEnter = useCallback(() => {
-    // Prevent entry until 100% of critical assets are loaded
-    if (!isReady) return;
-
     // 1. Request true browser fullscreen on the direct user gesture (hiding Chrome/Android address bar and tabs)
     try {
       const docEl = document.documentElement;
@@ -41,13 +38,30 @@ export default function SplashScreen({ onEnterCasino }) {
       setTimeout(() => window.scrollTo(0, 0), 50);
     } catch {}
 
-    soundEngine.init();
-    soundEngine.playWin(true);
+    try {
+      soundEngine.init?.();
+      soundEngine.playWin?.(true);
+    } catch {}
+
+    try {
+      sessionStorage.setItem('dc_session_splash_dismissed', 'true');
+    } catch {}
+
+    const pre = typeof document !== 'undefined' ? document.getElementById('preboot-splash') : null;
+    if (pre) {
+      pre.classList.add('splash-exit');
+      pre.style.pointerEvents = 'none';
+    }
+
     setExiting(true);
     setTimeout(() => {
-      onEnterCasino();
-    }, 650);
-  }, [isReady, onEnterCasino]);
+      if (pre) {
+        pre.classList.remove('splash-exit');
+        pre.style.display = 'none';
+      }
+      onEnterCasino?.();
+    }, 180);
+  }, [onEnterCasino]);
 
   // Synchronize with persistent Frame-0 #preboot-splash shell so the LCP <img> node
   // painted by the HTML parser is never destroyed or re-decoded during React hydration.
@@ -57,12 +71,14 @@ export default function SplashScreen({ onEnterCasino }) {
   useEffect(() => {
     if (!prebootSplash) return undefined;
     prebootSplash.style.display = '';
+    prebootSplash.style.pointerEvents = 'auto';
     prebootSplash.setAttribute('role', 'button');
     prebootSplash.setAttribute('tabindex', '0');
 
     return () => {
       prebootSplash.classList.remove('splash-exit');
       prebootSplash.style.display = 'none';
+      prebootSplash.style.pointerEvents = 'none';
     };
   }, [prebootSplash]);
 
@@ -75,17 +91,15 @@ export default function SplashScreen({ onEnterCasino }) {
     }
     prebootSplash.setAttribute(
       'aria-label',
-      isReady ? 'Click anywhere to enter casino' : 'Loading assets, please wait'
+      isReady ? 'Click anywhere to enter casino' : 'Click to enter casino'
     );
 
-    const onSplashClick = (e) => {
-      if (!isReady) return;
-      const stage = prebootSplash.querySelector('.ad-hero-artwork-stage');
-      if (stage && e.target === stage) return;
+    const onSplashClick = () => {
       handleEnter();
     };
     const onSplashKeyDown = (e) => {
-      if (isReady && (e.key === 'Enter' || e.key === ' ')) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
         handleEnter();
       }
     };
@@ -120,7 +134,7 @@ export default function SplashScreen({ onEnterCasino }) {
       <aside
         data-react-splash-deck="true"
         className="ad-side-callout left-callout"
-        onClick={isReady ? handleEnter : undefined}
+        onClick={handleEnter}
         role="button"
         tabIndex={0}
         aria-label="Welcome Bonus Perk"
@@ -171,37 +185,30 @@ export default function SplashScreen({ onEnterCasino }) {
 
         <button
           type="button"
-          className={`ad-enter-casino-btn ${isReady ? 'ready-pulse' : 'loading-locked'}`}
-          onClick={isReady ? handleEnter : undefined}
-          disabled={!isReady}
-          autoFocus={isReady}
-          aria-label={isReady ? 'Enter Casino' : `Loading Game Assets (${preloadState.percent}%)`}
+          className="ad-enter-casino-btn ready-pulse"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEnter();
+          }}
+          autoFocus
+          aria-label="Enter Casino"
         >
           <span className="cta-shimmer-layer" />
-          {isReady ? (
-            <>
-              <Sparkles size={20} className="cta-sparkle-icon" />
-              <span className="cta-enter-text">ENTER CASINO</span>
-              <div className="cta-play-badge">
-                <Play size={18} fill="#090114" color="#090114" />
-              </div>
-            </>
-          ) : (
-            <>
-              <Loader2 size={20} className="cta-loading-spinner" />
-              <span className="cta-enter-text">LOADING... {preloadState.percent}%</span>
-            </>
-          )}
+          <Sparkles size={20} className="cta-sparkle-icon" />
+          <span className="cta-enter-text">ENTER CASINO</span>
+          <div className="cta-play-badge">
+            <Play size={18} fill="#090114" color="#090114" />
+          </div>
         </button>
         <span className="cta-tap-hint">
-          {isReady ? 'TAP ANYWHERE TO PLAY' : 'PRE-CACHING 3D RELIC REELS FOR INSTANT SPINS'}
+          {isReady ? 'TAP ANYWHERE TO PLAY' : `TAP TO ENTER CASINO (${preloadState.percent}% PRE-CACHED)`}
         </span>
       </div>
 
       <aside
         data-react-splash-deck="true"
         className="ad-side-callout right-callout"
-        onClick={isReady ? handleEnter : undefined}
+        onClick={handleEnter}
         role="button"
         tabIndex={0}
         aria-label="Certified RTP Perk"
@@ -223,12 +230,15 @@ export default function SplashScreen({ onEnterCasino }) {
   return (
     <div
       className={`ad-creative-splash-root ${exiting ? 'splash-exit' : ''}`}
-      onClick={isReady ? handleEnter : undefined}
+      onClick={handleEnter}
       role="button"
       tabIndex={0}
-      aria-label={isReady ? 'Click anywhere to enter casino' : 'Loading assets, please wait'}
+      aria-label="Click anywhere to enter casino"
       onKeyDown={(e) => {
-        if (isReady && (e.key === 'Enter' || e.key === ' ')) handleEnter();
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleEnter();
+        }
       }}
     >
       {/* Ambient Blurred Backdrop */}
@@ -251,7 +261,7 @@ export default function SplashScreen({ onEnterCasino }) {
       />
 
       {/* Hero Artwork Stage — Clean & Unobstructed */}
-      <div className="ad-hero-artwork-stage" onClick={(e) => e.stopPropagation()}>
+      <div className="ad-hero-artwork-stage">
         <div className="ad-hero-image-wrapper">
           <picture className="ad-hero-picture">
             <source srcSet={heroImageUrl} type="image/webp" />

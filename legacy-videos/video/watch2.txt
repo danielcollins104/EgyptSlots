@@ -1,0 +1,2 @@
+[2026-11-10T04:00:38-06:00] pending: C:\Users\Mee\AppData\Local\Temp\video_generation-job-nyn8h0tt\worker.log (checking again in 30 seconds)
+done: C:\Users\Mee\Downloads\drive-download-20261024T081911Z-1-001\legacy-videos\video\EP01-shot2.mp4
