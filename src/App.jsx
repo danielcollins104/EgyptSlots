@@ -323,6 +323,7 @@ export default function App() {
       return 15;
     }
   });
+  const [linesPreviewTrigger, setLinesPreviewTrigger] = useState(0);
   const [lineBetIndexSC, setLineBetIndexSC] = useState(() => {
     try {
       const saved = parseInt(sessionStorage.getItem('dc_session_line_bet_sc') || '0', 10);
@@ -2318,6 +2319,7 @@ export default function App() {
       setSpinId((s) => s + 1);
       setWinningLines([]);
       setWinningCells(new Set());
+      setLinesPreviewTrigger(0);
       setBigWinAmount(0);
       // Preserve persistent guardian charge level across spins as they build up to the Grand Celestial Strike!
       setGuardianStrikeEvent(null);
@@ -2777,6 +2779,9 @@ export default function App() {
     const nextIdx = Math.min(LINE_OPTIONS.length - 1, Math.max(0, (currIdx === -1 ? 4 : currIdx) + delta));
     const nextLines = LINE_OPTIONS[nextIdx];
     setSelectedLines(nextLines);
+    setWinningLines([]);
+    setWinningCells(new Set());
+    setLinesPreviewTrigger(Date.now());
     if (currencyMode === 'SC') {
       const nextTotal = Number((lineBetSC * nextLines).toFixed(2));
       setStatusMessage(`LINES SET TO ${nextLines} ACTIVE PAYLINE${nextLines > 1 ? 'S' : ''}! TOTAL BET: $${formatCoinValue(nextTotal)} SC ($${formatCoinValue(lineBetSC)} × ${nextLines}L)`);
@@ -2790,6 +2795,9 @@ export default function App() {
     if (isSpinning || !LINE_OPTIONS.includes(lines)) return;
     soundEngine.playButtonClick(540);
     setSelectedLines(lines);
+    setWinningLines([]);
+    setWinningCells(new Set());
+    setLinesPreviewTrigger(Date.now());
     if (currencyMode === 'SC') {
       const nextTotal = Number((lineBetSC * lines).toFixed(2));
       setStatusMessage(`LINES SET TO ${lines} ACTIVE PAYLINE${lines > 1 ? 'S' : ''}! TOTAL BET: $${formatCoinValue(nextTotal)} SC`);
@@ -4488,6 +4496,8 @@ export default function App() {
                 winningLines={winningLines}
                 winningCells={winningCells}
                 activeWinLineIdx={activeWinLineIdx}
+                selectedLines={selectedLines}
+                linesPreviewTrigger={linesPreviewTrigger}
               />
 
               {/* 2026 Curved OLED Glass Overlay, Perimeter LEDs & 24K Micro-Filigree Corners */}
@@ -4550,7 +4560,14 @@ export default function App() {
                         draggable={false}
                       />
                     </button>
-                    <span className="psd-stat-value lines-display">{selectedLines}</span>
+                    <span
+                      className="psd-stat-value lines-display"
+                      onClick={() => !isSpinning && setLinesPreviewTrigger(Date.now())}
+                      title="Click to preview active paylines on the reels"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {selectedLines}
+                    </span>
                     <button
                       type="button"
                       className="psd-arrow-btn"
@@ -5449,7 +5466,12 @@ export default function App() {
             >
               -
             </button>
-            <div className="mobile-dock-lines-info">
+            <div
+              className="mobile-dock-lines-info"
+              onClick={() => !isSpinning && setLinesPreviewTrigger(Date.now())}
+              title="Tap to preview active paylines on the reels"
+              style={{ cursor: 'pointer' }}
+            >
               <span className="mobile-dock-label">LINES</span>
               <span className="mobile-dock-val lines-val">{selectedLines}</span>
             </div>

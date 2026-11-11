@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import gsap from 'gsap';
-import { SYMBOLS, THEME_ASSETS, GUARDIANS } from '../config/slotConfig';
+import { SYMBOLS, THEME_ASSETS, GUARDIANS, PAYLINES } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
 
 // Native internal resolution (exact 5:3 aspect ratio matching 1315x789 PSD reel_net)
@@ -593,6 +593,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
   winningLines,
   winningCells,
   activeWinLineIdx,
+  selectedLines = 15,
+  linesPreviewTrigger = 0,
 }, ref) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
@@ -601,6 +603,10 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     winningLines: [],
     winningCells: new Set(),
     activeWinLineIdx: 0,
+  });
+  const linesPreviewRef = useRef({
+    selectedLines: 15,
+    bornAt: 0,
   });
 
   useImperativeHandle(ref, () => ({
@@ -635,6 +641,16 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     };
     engineRef.current?.markDirty?.();
   }, [winningLines, winningCells, activeWinLineIdx]);
+
+  useEffect(() => {
+    linesPreviewRef.current.selectedLines = selectedLines || 15;
+    if (linesPreviewTrigger > 0) {
+      linesPreviewRef.current.bornAt = performance.now();
+    } else {
+      linesPreviewRef.current.bornAt = 0;
+    }
+    engineRef.current?.markDirty?.();
+  }, [selectedLines, linesPreviewTrigger]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1036,6 +1052,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     const startSpin = (targetGrid, targetExpanded, isTurbo = false) => {
       isDirty = true;
       lastTime = performance.now();
+      linesPreviewRef.current.bornAt = 0;
       illuminatedTiles.length = 0;
       if (activeCascade) {
         activeCascade.tweens?.forEach((t) => t.kill());
@@ -1575,6 +1592,9 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       } = winStateRef.current;
       const anySpinning = reels.some((r) => r.state !== 'IDLE');
       const hasActiveWins = !anySpinning && wins && wins.length > 0;
+      const previewElapsed =
+        linesPreviewRef.current.bornAt > 0 ? now - linesPreviewRef.current.bornAt : 99999;
+      const hasLinesPreview = !anySpinning && previewElapsed >= 0 && previewElapsed < 3600;
       const hasParticles = particles.length > 0;
       const hasIlluminated =
         illuminatedTiles.length > 0 &&
@@ -1590,6 +1610,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       const isActivelyAnimating =
         anySpinning ||
         hasActiveWins ||
+        hasLinesPreview ||
         hasParticles ||
         hasTransitions ||
         hasIlluminated ||
@@ -1983,6 +2004,154 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           ctx.textBaseline = 'middle';
           ctx.fillText(badgeText, cx, cy);
         });
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // 2026 INTERACTIVE ACTIVE PAYLINES PREVIEW OVERLAY (1, 2, 5, 10, OR 15 LINES)
+      // Whenever the player adjusts or taps the LINES selector, render all active
+      // payline laser paths (1..selectedLines) directly across the 5x3 reel board
+      // with numbered edge badges so they immediately see what the adjustment does!
+      // =========================================================================
+      if (hasLinesPreview) {
+        const activeCount = Math.min(
+          PAYLINES.length,
+          Math.max(1, linesPreviewRef.current.selectedLines || 15)
+        );
+        const activePaylines = PAYLINES.slice(0, activeCount);
+        const fadeAlpha =
+          previewElapsed < 140
+            ? previewElapsed / 140
+            : previewElapsed > 2900
+            ? Math.max(0, 1 - (previewElapsed - 2900) / 700)
+            : 1;
+        const pulse = 0.88 + 0.12 * Math.sin(now * 0.009);
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Slightly dim the underlying symbol tiles so the payline paths pop with razor clarity
+        ctx.fillStyle = `rgba(3, 7, 18, ${(0.34 * fadeAlpha).toFixed(3)})`;
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+        // Precompute vertical lane offsets per (col, row) cell so overlapping paylines fan out cleanly
+        const cellLineMap = new Map();
+        activePaylines.forEach((pl, idx) => {
+          pl.rows.forEach((r, c) => {
+            const key = `${c},${r}`;
+            if (!cellLineMap.has(key)) cellLineMap.set(key, []);
+            cellLineMap.get(key).push(idx);
+          });
+        });
+
+        const getPointForLineCell = (lineIdx, c, r) => {
+          const list = cellLineMap.get(`${c},${r}`) || [lineIdx];
+          const posInCell = list.indexOf(lineIdx);
+          const totalInCell = list.length;
+          // Spread up to ±26px vertically inside the 170px row height when multiple lines share a tile
+          const stepPx = totalInCell <= 1 ? 0 : Math.min(8.5, 52 / (totalInCell - 1));
+          const offsetY = (posInCell - (totalInCell - 1) / 2) * stepPx;
+          return {
+            x: c * COL_W + COL_W / 2,
+            y: r * ROW_H + ROW_H / 2 + offsetY,
+          };
+        };
+
+        // 1. Draw each active payline path (from #1 up to #selectedLines)
+        activePaylines.forEach((pl, idx) => {
+          const isNewestLine = idx === activeCount - 1;
+          const pts = pl.rows.map((r, c) => getPointForLineCell(idx, c, r));
+          const startEdge = { x: 24, y: pts[0].y };
+          const endEdge = { x: GAME_W - 24, y: pts[pts.length - 1].y };
+          const fullPts = [startEdge, ...pts, endEdge];
+
+          // Outer neon laser aura
+          ctx.beginPath();
+          fullPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+          ctx.strokeStyle = pl.color;
+          ctx.lineWidth = isNewestLine ? 12 : activeCount <= 5 ? 10 : 7.5;
+          ctx.globalAlpha = (isNewestLine ? 0.42 : 0.26) * fadeAlpha * pulse;
+          ctx.stroke();
+
+          // Crisp colored core beam
+          ctx.beginPath();
+          fullPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+          ctx.strokeStyle = pl.color;
+          ctx.lineWidth = isNewestLine ? 5.2 : activeCount <= 5 ? 4.2 : 3.1;
+          ctx.globalAlpha = (isNewestLine ? 0.98 : 0.88) * fadeAlpha;
+          ctx.stroke();
+
+          // Hot white inner filament
+          ctx.beginPath();
+          fullPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = isNewestLine ? 1.8 : 1.1;
+          ctx.globalAlpha = (isNewestLine ? 0.92 : 0.65) * fadeAlpha;
+          ctx.stroke();
+
+          // Anchor nodes at each reel column center
+          pts.forEach((p) => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, isNewestLine ? 6.2 : 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.95 * fadeAlpha;
+            ctx.fill();
+            ctx.lineWidth = 2.2;
+            ctx.strokeStyle = pl.color;
+            ctx.stroke();
+          });
+        });
+
+        // 2. Draw numbered payline badges (#1 .. #N) on Left (odd lines) and Right (even lines) edges
+        activePaylines.forEach((pl, idx) => {
+          const isLeftBadge = idx % 2 === 0;
+          const anchorPt = isLeftBadge
+            ? getPointForLineCell(idx, 0, pl.rows[0])
+            : getPointForLineCell(idx, COLS - 1, pl.rows[COLS - 1]);
+          const bx = isLeftBadge ? 22 : GAME_W - 22;
+          const by = Math.max(18, Math.min(GAME_H - 18, anchorPt.y));
+          const bw = 32;
+          const bh = 20;
+
+          ctx.globalAlpha = 0.96 * fadeAlpha;
+          ctx.fillStyle = '#090d16';
+          ctx.strokeStyle = pl.color;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, 6);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = "900 11px 'Cinzel', sans-serif";
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`#${pl.id}`, bx, by + 0.5);
+        });
+
+        // 3. Top-center HUD pill banner on the reel canvas confirming active payline count
+        const bannerText = `${activeCount} ACTIVE PAYLINE${activeCount > 1 ? 'S' : ''} SELECTED`;
+        const pillW = 290;
+        const pillH = 30;
+        const pillX = GAME_W / 2 - pillW / 2;
+        const pillY = 10;
+
+        ctx.globalAlpha = 0.95 * fadeAlpha;
+        ctx.fillStyle = 'rgba(8, 15, 32, 0.92)';
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(pillX, pillY, pillW, pillH, 15);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#fde047';
+        ctx.font = "900 13px 'Cinzel', sans-serif";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(bannerText, GAME_W / 2, pillY + pillH / 2 + 0.5);
+
         ctx.restore();
       }
 
