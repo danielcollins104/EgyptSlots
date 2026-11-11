@@ -217,10 +217,10 @@ export class SlotMathEngine {
     } else if (totalWin < 2 * totalBet) {
       winCategory = WIN_CATEGORIES.WIN_SMALL;
       celebrationTier = 'standard';
-    } else if (totalWin < 10 * totalBet) {
+    } else if (totalWin < 15 * totalBet) {
       winCategory = WIN_CATEGORIES.WIN_MEDIUM;
       celebrationTier = 'super';
-    } else if (totalWin < 25 * totalBet) {
+    } else if (totalWin < 30 * totalBet) {
       winCategory = WIN_CATEGORIES.WIN_BIG;
       celebrationTier = 'big';
     } else {
@@ -237,8 +237,8 @@ export class SlotMathEngine {
       grid: rawGrid,
     });
 
-    // 5. 3D Bonus Collector Meter charges earned on this spin (calibrated 1 charge per special spin)
-    const meterChargesEarned = (wildCountOnGrid > 0 ? 1 : 0) + (scatterCount > 0 ? 1 : 0);
+    // 5. 3D Bonus Collector Meter charges earned on this spin (calibrated 1 charge when 2+ Wilds or 2+ Scatters land, ~190 spins to fill 36 pips)
+    const meterChargesEarned = (wildCountOnGrid >= 2 ? 1 : 0) + (scatterCount >= 2 ? 1 : 0);
 
     const outcome = {
       grid,

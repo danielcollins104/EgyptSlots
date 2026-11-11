@@ -21,7 +21,11 @@ import { BONUS_CONFIG, BONUS_JACKPOT_TIERS } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
 import PsdGoldNumber from './PsdGoldNumber';
 
-function buildVaultBoard(currentBet) {
+function roundCurrencyVal(val, isSC) {
+  return isSC ? Number(Number(val).toFixed(2)) : Math.round(val);
+}
+
+function buildVaultBoard(currentBet, isSC = false) {
   const styles = BONUS_CONFIG.vaultTileStyles;
   const templates = BONUS_CONFIG.vaultPrizeTemplates;
   const regularTemplates = templates.filter((t) => t.kind !== 'jackpot');
@@ -45,7 +49,7 @@ function buildVaultBoard(currentBet) {
 
   const pool = selectedTemplates.map((tpl) => ({
     ...tpl,
-    baseCoins: Number((currentBet * tpl.betMult).toFixed(2)),
+    baseCoins: roundCurrencyVal(currentBet * tpl.betMult, isSC),
   }));
 
   // Shuffle Fisher-Yates
@@ -66,16 +70,16 @@ function buildVaultBoard(currentBet) {
   });
 }
 
-function buildHoldSpinBoard(currentBet) {
+function buildHoldSpinBoard(currentBet, isSC = false) {
   const table = BONUS_CONFIG.holdSpin?.coinTable || [];
   const pickRandomCoin = () => {
     let r = Math.random();
     for (const c of table) {
       r -= c.chance;
-      if (r <= 0) return { ...c, coins: Math.round(c.mult * currentBet) };
+      if (r <= 0) return { ...c, coins: roundCurrencyVal(c.mult * currentBet, isSC) };
     }
     const last = table[table.length - 1] || { mult: 1, label: '1× BET', icon: '/assets/symbols/high/high_scarab_no_frame.png', color: '#10b981' };
-    return { ...last, coins: Math.round(last.mult * currentBet) };
+    return { ...last, coins: roundCurrencyVal(last.mult * currentBet, isSC) };
   };
 
   const cells = Array.from({ length: 15 }, (_, id) => ({
@@ -97,7 +101,7 @@ function buildHoldSpinBoard(currentBet) {
   initialIdxs.forEach((idx) => {
     const coin = pickRandomCoin();
     cells[idx] = { id: idx, locked: true, coin, isNew: true };
-    initialWin += coin.coins;
+    initialWin = roundCurrencyVal(initialWin + coin.coins, isSC);
   });
 
   return { cells, initialWin };
@@ -135,12 +139,19 @@ export default function BonusGameModal({
   const [activeWedgeIdx, setActiveWedgeIdx] = useState(null);
   const [wheelWinPop, setWheelWinPop] = useState(null);
 
+  const isSC = currencyMode === 'SC';
+  const roundWin = useCallback(
+    (val) => roundCurrencyVal(val, isSC),
+    [isSC]
+  );
+
   // Game 3: Pharaoh's Hold & Win Respins State (5x3 = 15 cells)
   const [hwCells, setHwCells] = useState([]);
   const [hwSpinsLeft, setHwSpinsLeft] = useState(3);
   const [hwTotalWin, setHwTotalWin] = useState(0);
   const [hwIsSpinning, setHwIsSpinning] = useState(false);
   const [hwCompleted, setHwCompleted] = useState(false);
+  const [hwEntered, setHwEntered] = useState(false);
   const [hwBanner, setHwBanner] = useState(
     '⚡ AUTOMATIC HOLD & WIN ACTIVE — ORBS LOCK & RESET RESPINS TO 3!'
   );
@@ -235,7 +246,9 @@ export default function BonusGameModal({
       hwCompletedRef.current = true;
       return;
     }
-    setActiveTab(bonusSession.defaultGame || 'doors');
+    const initialTab = bonusSession.defaultGame || 'doors';
+    setActiveTab(initialTab);
+    setHwEntered(initialTab === 'holdspin');
     setAutoPlayBonus(true);
     autoPlayBonusRef.current = true;
     setDoorsCountdown(3);
@@ -243,7 +256,7 @@ export default function BonusGameModal({
     vaultRefillingRef.current = false;
     setPicksLeft(bonusSession.initialPicks || 5);
     setVaultMultiplier(bonusSession.startingMultiplier || 1);
-    setVaultTiles(buildVaultBoard(currentBet));
+    setVaultTiles(buildVaultBoard(currentBet, isSC));
     setVaultWinCoins(0);
     setWonJackpots([]);
     setVaultBanner(
@@ -261,7 +274,7 @@ export default function BonusGameModal({
 
     // Initialize Hold & Win
     if (hwAutoTimerRef.current) clearTimeout(hwAutoTimerRef.current);
-    const hwInit = buildHoldSpinBoard(currentBet);
+    const hwInit = buildHoldSpinBoard(currentBet, isSC);
     hwCellsRef.current = hwInit.cells;
     hwSpinsLeftRef.current = 3;
     hwTotalWinRef.current = hwInit.initialWin;
@@ -288,7 +301,13 @@ export default function BonusGameModal({
     setRaShieldActive(true);
     raShieldActiveRef.current = true;
     setRaBanner("THE SUN CHARIOT OF RA IS READY TO ASCEND (2 FLIGHTS + SOLAR AEGIS SHIELD ACTIVE)!");
-  }, [bonusSession, currentBet]);
+  }, [bonusSession, currentBet, isSC]);
+
+  useEffect(() => {
+    if (activeTab === 'holdspin') {
+      setHwEntered(true);
+    }
+  }, [activeTab]);
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -466,7 +485,7 @@ export default function BonusGameModal({
     return () => clearTimeout(tm);
   }, [jackpotCelebration, autoPlayBonus]);
 
-  // Helper: Next unplayed chamber in the 4-Chamber Free Money Tour
+  // Helper: Next unplayed chamber in the Royal Chakra Portals
   const nextChamberId = useMemo(() => {
     const order = [
       !hwCompleted ? 'holdspin' : null,
@@ -477,7 +496,7 @@ export default function BonusGameModal({
     return order.find((id) => id !== activeTab) || order[0] || null;
   }, [hwCompleted, picksLeft, wheelSpinsLeft, raFlightsLeft, activeTab]);
 
-  // 1. ROYAL CHAKRA PORTALS: 3-second Auto-Start Countdown into the Free Money Tour
+  // 1. ROYAL CHAKRA PORTALS: 3-second Auto-Start Countdown into the selected Bonus Chamber
   useEffect(() => {
     if (!bonusSession || activeTab !== 'doors' || !autoPlayBonus || !nextChamberId) {
       setDoorsCountdown(3);
@@ -498,20 +517,7 @@ export default function BonusGameModal({
     return () => clearInterval(interval);
   }, [bonusSession, activeTab, autoPlayBonus, nextChamberId]);
 
-  // 2. HOLD & WIN: Auto-advance to next chamber 2.5s after Hold & Win completes
-  useEffect(() => {
-    if (!bonusSession || activeTab !== 'holdspin' || !hwCompleted || !autoPlayBonus || jackpotCelebration) {
-      return;
-    }
-    if (!nextChamberId) return;
-    const tm = setTimeout(() => {
-      soundEngine.playButtonClick?.(580);
-      setActiveTab(nextChamberId);
-    }, 2500);
-    return () => clearTimeout(tm);
-  }, [bonusSession, activeTab, hwCompleted, autoPlayBonus, jackpotCelebration, nextChamberId]);
-
-  // 3. SACRED RELIC VAULT: Auto-pick unsealed relics every 1.2s & auto-advance when done
+  // 2. SACRED RELIC VAULT: Auto-pick unsealed relics every 1.2s while picks remain
   useEffect(() => {
     if (!bonusSession || activeTab !== 'vault' || !autoPlayBonus || jackpotCelebration) {
       return;
@@ -526,16 +532,10 @@ export default function BonusGameModal({
         }
       }, 1200);
       return () => clearTimeout(tm);
-    } else if (nextChamberId) {
-      const tm = setTimeout(() => {
-        soundEngine.playButtonClick?.(600);
-        setActiveTab(nextChamberId);
-      }, 2400);
-      return () => clearTimeout(tm);
     }
-  }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, picksLeft, vaultTiles, nextChamberId]);
+  }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, picksLeft, vaultTiles]);
 
-  // 4. 3D FORTUNE WHEEL: Auto-spin wheel & auto-advance when all spins complete
+  // 3. 3D FORTUNE WHEEL: Auto-spin wheel while wheel spins remain
   useEffect(() => {
     if (!bonusSession || activeTab !== 'wheel' || !autoPlayBonus || jackpotCelebration || wheelSpinning) {
       return;
@@ -548,16 +548,10 @@ export default function BonusGameModal({
         }
       }, delay);
       return () => clearTimeout(tm);
-    } else if (nextChamberId) {
-      const tm = setTimeout(() => {
-        soundEngine.playButtonClick?.(640);
-        setActiveTab(nextChamberId);
-      }, 2400);
-      return () => clearTimeout(tm);
     }
-  }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, wheelSpinning, wheelSpinsLeft, wheelWinPop, nextChamberId]);
+  }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, wheelSpinning, wheelSpinsLeft, wheelWinPop]);
 
-  // 5. ASCENSION OF RA: Auto-launch Sun Chariot flights & auto-advance when done
+  // 4. ASCENSION OF RA: Auto-launch Sun Chariot flights while flights remain
   useEffect(() => {
     if (!bonusSession || activeTab !== 'ascension' || !autoPlayBonus || jackpotCelebration || raFlying) {
       return;
@@ -570,25 +564,17 @@ export default function BonusGameModal({
         }
       }, delay);
       return () => clearTimeout(tm);
-    } else if (nextChamberId) {
-      const tm = setTimeout(() => {
-        soundEngine.playButtonClick?.(560);
-        setActiveTab(nextChamberId);
-      }, 2400);
-      return () => clearTimeout(tm);
     }
-  }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, raFlying, raFlightsLeft, raCashedOut, raCrashed, nextChamberId]);
+  }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, raFlying, raFlightsLeft, raCashedOut, raCrashed]);
 
-  // 6. GRAND FINALE AUTO-COLLECT: When all 4 chambers are finished, run a 4s celebratory countdown and auto-bank winnings
+  // 5. BONUS CHAMBER COMPLETION & AUTO-COLLECT: When the active chosen chamber finishes, run a 4s celebratory countdown and bank winnings
   const allChambersFinished =
     Boolean(bonusSession) &&
-    hwCompleted &&
-    picksLeft <= 0 &&
-    !wheelSpinning &&
-    wheelSpinsLeft <= 0 &&
-    !raFlying &&
-    raFlightsLeft <= 0 &&
-    !jackpotCelebration;
+    !jackpotCelebration &&
+    ((activeTab === 'holdspin' && hwCompleted) ||
+      (activeTab === 'vault' && picksLeft <= 0) ||
+      (activeTab === 'wheel' && !wheelSpinning && wheelSpinsLeft <= 0) ||
+      (activeTab === 'ascension' && !raFlying && raFlightsLeft <= 0));
 
   useEffect(() => {
     if (!allChambersFinished || !autoPlayBonus) {
@@ -614,12 +600,13 @@ export default function BonusGameModal({
 
   if (!bonusSession) return null;
 
-  const totalCombinedBonusWin =
+  const totalCombinedBonusWin = roundWin(
     (bonusSession.scatterWinCoins || 0) +
-    vaultWinCoins +
-    wheelWinCoins +
-    hwTotalWin +
-    raWinCoins;
+      vaultWinCoins +
+      wheelWinCoins +
+      (hwEntered ? hwTotalWin : 0) +
+      raWinCoins
+  );
 
   // --- 1. PICK VAULT HANDLER ---
   const handlePickTile = (tileId, e) => {
@@ -668,7 +655,7 @@ export default function BonusGameModal({
     const wonCoins =
       prize.kind === 'jackpot'
         ? prize.baseCoins
-        : Math.round(prize.baseCoins * nextMult);
+        : roundWin(prize.baseCoins * nextMult);
 
     const pickSubtitle =
       prize.kind === 'jackpot'
@@ -689,7 +676,7 @@ export default function BonusGameModal({
 
     setVaultMultiplier(nextMult);
     setPicksLeft(nextPicks);
-    setVaultWinCoins((prev) => prev + wonCoins);
+    setVaultWinCoins((prev) => roundWin(prev + wonCoins));
 
     const updatedTiles = vaultTiles.map((t) =>
       t.id === tileId
@@ -709,7 +696,7 @@ export default function BonusGameModal({
       setTimeout(() => {
         vaultRefillingRef.current = false;
         soundEngine.playBonusTrigger();
-        setVaultTiles(buildVaultBoard(currentBet));
+        setVaultTiles(buildVaultBoard(currentBet, isSC));
         spawnFloatingWinBurst('CHAMBER REFILLED!', `FRESH RELICS AT ${nextMult}× MULT!`, {
           variant: 'emerald',
         });
@@ -826,8 +813,8 @@ export default function BonusGameModal({
             `${BONUS_CONFIG.wheelUpgradeBannerPrefix} ${nextWMult}× + 1 FREE RESPIN!`
           );
         } else if (wedge.type === 'jackpot') {
-          const jpCoins = wedge.mult * currentBet;
-          setWheelWinCoins((prev) => prev + jpCoins);
+          const jpCoins = roundWin(wedge.mult * currentBet);
+          setWheelWinCoins((prev) => roundWin(prev + jpCoins));
           setWonJackpots((prev) => [...prev, wedge.jackpotId]);
           // Solar Momentum: Mini & Minor Jackpots also award +1 Free Bonus Respin!
           const awardsBonusSpin = wedge.jackpotId === 'mini' || wedge.jackpotId === 'minor';
@@ -867,12 +854,12 @@ export default function BonusGameModal({
             }`
           );
         } else {
-          const winAmt = wedge.mult * wheelMultiplier * currentBet;
+          const winAmt = roundWin(wedge.mult * wheelMultiplier * currentBet);
           const awardsMomentumSpin = wedge.mult >= 8;
           if (awardsMomentumSpin) {
             setWheelSpinsLeft((prev) => prev + 1);
           }
-          setWheelWinCoins((prev) => prev + winAmt);
+          setWheelWinCoins((prev) => roundWin(prev + winAmt));
           soundEngine.playWin(winAmt >= currentBet * 40);
           setWheelWinPop({
             id: Date.now(),
@@ -931,10 +918,10 @@ export default function BonusGameModal({
       let r = Math.random();
       for (const c of table) {
         r -= c.chance;
-        if (r <= 0) return { ...c, coins: Math.round(c.mult * currentBet) };
+        if (r <= 0) return { ...c, coins: roundWin(c.mult * currentBet) };
       }
       const last = table[table.length - 1];
-      return { ...last, coins: Math.round(last.mult * currentBet) };
+      return { ...last, coins: roundWin(last.mult * currentBet) };
     };
 
     if (hwAutoTimerRef.current) clearTimeout(hwAutoTimerRef.current);
@@ -950,7 +937,7 @@ export default function BonusGameModal({
         if (Math.random() < (BONUS_CONFIG.holdSpin?.landChance || 0.24)) {
           const coin = pickRandomCoin();
           newLandedCount++;
-          newWonCoins += coin.coins;
+          newWonCoins = roundWin(newWonCoins + coin.coins);
           return {
             ...cell,
             locked: true,
@@ -981,7 +968,7 @@ export default function BonusGameModal({
           const chosenEmptyIdx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
           const rescueCoin = pickRandomCoin();
           newLandedCount = 1;
-          newWonCoins += rescueCoin.coins;
+          newWonCoins = roundWin(newWonCoins + rescueCoin.coins);
           updatedCells = updatedCells.map((cell, idx) =>
             idx === chosenEmptyIdx
               ? { ...cell, locked: true, coin: rescueCoin, isNew: true }
@@ -991,7 +978,7 @@ export default function BonusGameModal({
       }
 
       const totalLocked = updatedCells.filter((c) => c.locked).length;
-      const nextTotalWin = hwTotalWinRef.current + newWonCoins;
+      const nextTotalWin = roundWin(hwTotalWinRef.current + newWonCoins);
 
       hwCellsRef.current = updatedCells;
       hwTotalWinRef.current = nextTotalWin;
@@ -1003,8 +990,8 @@ export default function BonusGameModal({
 
       // Check full board Grand Jackpot (15/15 cells filled)
       if (totalLocked >= 15) {
-        const grandBonus = currentBet * (BONUS_CONFIG.holdSpin?.fullBoardBonusMult || 500);
-        const finalGrandTotal = nextTotalWin + grandBonus;
+        const grandBonus = roundWin(currentBet * (BONUS_CONFIG.holdSpin?.fullBoardBonusMult || 500));
+        const finalGrandTotal = roundWin(nextTotalWin + grandBonus);
         hwTotalWinRef.current = finalGrandTotal;
         hwCompletedRef.current = true;
         setHwTotalWin(finalGrandTotal);
@@ -1110,11 +1097,11 @@ export default function BonusGameModal({
       if (step >= ascensionNodes.length) {
         // Perfect Zenith Flight
         const topMult = ascensionNodes[ascensionNodes.length - 1];
-        const topWin = topMult * currentBet;
+        const topWin = roundWin(topMult * currentBet);
         setRaStep(ascensionNodes.length - 1);
         setRaFlying(false);
         setRaCashedOut(true);
-        setRaWinCoins((prev) => prev + topWin);
+        setRaWinCoins((prev) => roundWin(prev + topWin));
         setRaCashoutShower(true);
         soundEngine.playAscensionCashOut();
         spawnFloatingWinBurst(`+${topWin.toLocaleString()}`, `ZENITH ×${topMult} GLORY!`, {
@@ -1153,8 +1140,8 @@ export default function BonusGameModal({
         setRaCrashed(true);
         soundEngine.playAscensionCrash();
         const safeMult = step > 0 ? ascensionNodes[step - 1] : Math.max(2, BONUS_CONFIG.ascension?.consolationMult || 2);
-        const consolationCoins = safeMult * currentBet;
-        setRaWinCoins((prev) => prev + consolationCoins);
+        const consolationCoins = roundWin(safeMult * currentBet);
+        setRaWinCoins((prev) => roundWin(prev + consolationCoins));
         setRaCashoutShower(true);
         spawnFloatingWinBurst(
           `+${consolationCoins.toLocaleString()}`,
@@ -1177,10 +1164,10 @@ export default function BonusGameModal({
           ((!raShieldActiveRef.current && step >= 3) || (step >= 4 && Math.random() < 0.68));
 
         if (shouldSmartAutoBank) {
-          const autoBankCoins = reachedMult * currentBet;
+          const autoBankCoins = roundWin(reachedMult * currentBet);
           setRaFlying(false);
           setRaCashedOut(true);
-          setRaWinCoins((prev) => prev + autoBankCoins);
+          setRaWinCoins((prev) => roundWin(prev + autoBankCoins));
           setRaCashoutShower(true);
           soundEngine.playAscensionCashOut();
           spawnFloatingWinBurst(
@@ -1211,10 +1198,10 @@ export default function BonusGameModal({
     if (!raFlying || raCrashed || raCashedOut || raStep < 0) return;
     if (raTimerRef.current) clearTimeout(raTimerRef.current);
     const lockedMult = ascensionNodes[raStep];
-    const wonAmt = lockedMult * currentBet;
+    const wonAmt = roundWin(lockedMult * currentBet);
     setRaFlying(false);
     setRaCashedOut(true);
-    setRaWinCoins((prev) => prev + wonAmt);
+    setRaWinCoins((prev) => roundWin(prev + wonAmt));
     setRaCashoutShower(true);
     soundEngine.playAscensionCashOut();
     spawnFloatingWinBurst(`+${wonAmt.toLocaleString()}`, `CASHED OUT AT ×${lockedMult}!`, {

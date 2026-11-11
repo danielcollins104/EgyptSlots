@@ -385,10 +385,10 @@ export default function App() {
   const [paytableOpen, setPaytableOpen] = useState(false);
   const [bonusMeter, setBonusMeter] = useState(() => {
     try {
-      const saved = parseInt(sessionStorage.getItem('dc_session_bonus_meter') || '4', 10);
-      return Number.isNaN(saved) ? 4 : saved;
+      const saved = parseInt(sessionStorage.getItem('dc_session_bonus_meter') || '0', 10);
+      return Number.isNaN(saved) ? 0 : saved;
     } catch {
-      return 4;
+      return 0;
     }
   });
   const [collectorCelebrationOpen, setCollectorCelebrationOpen] = useState(false);
@@ -893,6 +893,14 @@ export default function App() {
     ) => {
       const numLines = activeLinesCount || selectedLines || 15;
       const isSC = currencyMode === 'SC';
+      const effSC =
+        isSC && typeof effectiveLineBet === 'number' && effectiveLineBet > 0
+          ? effectiveLineBet
+          : lineBetSC;
+      const effGC =
+        !isSC && typeof effectiveLineBet === 'number' && effectiveLineBet > 0
+          ? effectiveLineBet
+          : lineBetGC;
       const outcome = slotMathEngine.evaluateGrid(finalGrid, 1, stripMetadata, numLines);
 
       // Map outcome to UI-compatible format with explicit cell coordinates and dual-currency figures
@@ -913,8 +921,8 @@ export default function App() {
           Array.from({ length: wl.matchCount }, (_, c) => [c, wl.line.rows[c]]);
 
         // Each line win pays base payout * wild multiplier * per-line bet
-        const lineWinSC = Number((wl.lineWin * lineBetSC).toFixed(2));
-        const lineWinGC = Math.round(wl.lineWin * lineBetGC);
+        const lineWinSC = Number((wl.lineWin * effSC).toFixed(2));
+        const lineWinGC = Math.round(wl.lineWin * effGC);
 
         return {
           line: wl.line,
@@ -951,8 +959,8 @@ export default function App() {
             }
           }
         }
-        const scatterWinSC = Number((outcome.scatterWin * lineBetSC).toFixed(2));
-        const scatterWinGC = Math.round(outcome.scatterWin * lineBetGC);
+        const scatterWinSC = Number((outcome.scatterWin * effSC).toFixed(2));
+        const scatterWinGC = Math.round(outcome.scatterWin * effGC);
         wins.unshift({
           line: {
             id: 'BONUS',
@@ -963,21 +971,22 @@ export default function App() {
           symbol: bonusSym || { id: 'bonus_crest', name: '3D Solar Scarab Relic' },
           matchCount: outcome.scatterCount,
           lineWin: isSC ? scatterWinSC : scatterWinGC,
-          lineWinSC,
-          lineWinGC,
+          lineWinSC: scatterWinSC,
+          lineWinGC: scatterWinGC,
           wildMultiplier: 1,
           isScatter: true,
           cells: scatterCells,
         });
       }
 
+      // Exact sum of rounded line wins + scatter win guarantees displayed paylines always sum to totalWinCoins
       const totalWinCoins = isSC
-        ? Number((outcome.totalWin * lineBetSC).toFixed(2))
-        : Math.round(outcome.totalWin * lineBetGC);
+        ? Number(wins.reduce((acc, w) => acc + (w.lineWinSC || 0), 0).toFixed(2))
+        : wins.reduce((acc, w) => acc + (w.lineWinGC || 0), 0);
 
       const scatterWinCoins = isSC
-        ? Number((outcome.scatterWin * lineBetSC).toFixed(2))
-        : Math.round(outcome.scatterWin * lineBetGC);
+        ? Number((outcome.scatterWin * effSC).toFixed(2))
+        : Math.round(outcome.scatterWin * effGC);
 
       return {
         wins,
@@ -1189,15 +1198,30 @@ export default function App() {
     if (totalCoinsWon > 0) {
       if (isSC) {
         paymentService.recordScWon(finalWin);
-        setSweepsCoins((prev) => Number((prev + finalWin).toFixed(2)));
+        setSweepsCoins((prev) => {
+          const next = Number((prev + finalWin).toFixed(2));
+          sweepsCoinsRef.current = next;
+          return next;
+        });
       } else {
-        setGoldCoins((prev) => prev + finalWin);
+        setGoldCoins((prev) => {
+          const next = prev + finalWin;
+          goldCoinsRef.current = next;
+          return next;
+        });
       }
       setLastWinCoins(finalWin);
       setWinningLines(wins);
       setWinningCells(winCoordSet);
 
-      const isBig = finalWin >= spinBet * 8 || forcedMode === 'bigwin' || forcedMode === 'megawin' || forcedMode === 'ultrawin';
+      // Normalize Big Win / Mega Win threshold to a full 15-line equivalent bet so 1-5 line spins
+      // do not falsely classify normal 3-of-a-kind line wins as 15x Big Wins or 30x Mega Wins.
+      const effectiveWinBaselineBet = Math.max(spinBet, (lineBet || currentLineBet) * 15);
+      const isBig =
+        finalWin >= effectiveWinBaselineBet * 15 ||
+        forcedMode === 'bigwin' ||
+        forcedMode === 'megawin' ||
+        forcedMode === 'ultrawin';
 
       // Trigger tactile cabinet recoil and floating win text
       triggerCabinetImpact(isBig ? 'mega' : 'win');
@@ -1206,22 +1230,22 @@ export default function App() {
 
       if (isBig) {
         setBigWinAmount(finalWin);
-        setWinSplashAmount(0); // Mega Win modal handles display and sound
+        setWinSplashAmount(0); // Big/Mega Win modal handles display and sound
       } else {
         setBigWinAmount(0);
         setWinSplashAmount(finalWin); // WinCelebrationSplash handles display and sound once
       }
 
       // Guardian Selective Animation & Persistent Charge Build-Up Engine:
-      // Characters only power up on truly rare select combinations (Sacred Awakener Relic paylines, 4/5-of-a-kind, Expanding Wilds, or Big Wins 8x+ bet).
+      // Characters only power up on truly rare select combinations (Sacred Awakener Relic paylines, 5-of-a-kind, Expanding Wilds, or Big Wins 15x+ bet).
       const allWinCells = Array.from(winCoordSet).map((k) => k.split(',').map(Number));
       const hasExpandingWild = pending?.nextExpanded && pending.nextExpanded.some((e) => e === true);
       const hasLotusMatch = wins.some((w) => w.symbol?.id === 'bastet_lotus');
       const hasScepterMatch = wins.some((w) => w.symbol?.id === 'anubis_scepter');
       const hasGuardianAwakener = hasLotusMatch || hasScepterMatch;
-      const hasFourOfAKind = wins.some((w) => w.matchCount >= 4);
+      const hasFiveOfAKind = wins.some((w) => w.matchCount >= 5);
       const isSelectCombination =
-        isBig || hasExpandingWild || hasFourOfAKind || hasGuardianAwakener;
+        isBig || hasExpandingWild || hasFiveOfAKind || hasGuardianAwakener;
       const currentCharge = guardianChargeLevelRef.current ?? guardianChargeLevel;
 
       if (bonusCount >= 3) {
@@ -1333,8 +1357,7 @@ export default function App() {
       // Losses: Bet subtracted at spin start
       setWinSplashAmount(0);
       if (nearMiss?.isNearMiss) {
-        // Near miss: 2 scatters landed! Perch up to Level 2 to build suspense, preserving charge!
-        updateGuardianCharge((prev) => Math.max(prev, 2));
+        // Near miss: 2 scatters landed! Play anticipation audio without granting free Guardian stages.
         soundEngine.playAnticipationRiser();
         setStatusMessage(`⚡ NEAR-MISS! ${nearMiss.description} • GUARDIANS PERCHED IN SUSPENSE!`);
       } else {
@@ -1494,32 +1517,55 @@ export default function App() {
     const isSC = currencyMode === 'SC';
     const extraCoinsBeyondScatter =
       totalBonusCoins - (bonusSession?.scatterWinCoins || 0);
+    const bigWinThreshold = Math.max(currentBet, currentLineBet * 15) * 15;
 
     if (isSC) {
       const extraSC = Number(extraCoinsBeyondScatter.toFixed(2));
       const totalSC = Number(totalBonusCoins.toFixed(2));
       if (extraSC > 0) {
         paymentService.recordScWon(extraSC);
-        setSweepsCoins((prev) => Number((prev + extraSC).toFixed(2)));
+        setSweepsCoins((prev) => {
+          const next = Number((prev + extraSC).toFixed(2));
+          sweepsCoinsRef.current = next;
+          return next;
+        });
       }
       setLastWinCoins(totalSC);
       setBonusSession(null);
       if (totalSC > 0) {
-        setBigWinAmount(totalSC);
+        if (totalSC >= bigWinThreshold) {
+          setBigWinAmount(totalSC);
+          setWinSplashAmount(0);
+        } else {
+          setBigWinAmount(0);
+          setWinSplashAmount(totalSC);
+        }
         setStatusMessage(
           `3D BONUS COMPLETED! ${String(CASINO_BRAND?.creatorName || 'DC Enterprises').toUpperCase()} WON ${totalSC.toFixed(2)} SC ($${totalSC.toFixed(2)} USD PRIZE)!`
         );
       }
     } else {
-      if (extraCoinsBeyondScatter > 0) {
-        setGoldCoins((prev) => prev + extraCoinsBeyondScatter);
+      const extraGC = Math.round(extraCoinsBeyondScatter);
+      const totalGC = Math.round(totalBonusCoins);
+      if (extraGC > 0) {
+        setGoldCoins((prev) => {
+          const next = prev + extraGC;
+          goldCoinsRef.current = next;
+          return next;
+        });
       }
-      setLastWinCoins(totalBonusCoins);
+      setLastWinCoins(totalGC);
       setBonusSession(null);
-      if (totalBonusCoins > 0) {
-        setBigWinAmount(totalBonusCoins);
+      if (totalGC > 0) {
+        if (totalGC >= bigWinThreshold) {
+          setBigWinAmount(totalGC);
+          setWinSplashAmount(0);
+        } else {
+          setBigWinAmount(0);
+          setWinSplashAmount(totalGC);
+        }
         setStatusMessage(
-          `3D BONUS COMPLETED! ${String(CASINO_BRAND?.creatorName || 'DC Enterprises').toUpperCase()} WON ${totalBonusCoins.toLocaleString()} TOTAL BONUS GOLD COINS!`
+          `3D BONUS COMPLETED! ${String(CASINO_BRAND?.creatorName || 'DC Enterprises').toUpperCase()} WON ${totalGC.toLocaleString()} TOTAL BONUS GOLD COINS!`
         );
       }
     }
@@ -1535,20 +1581,39 @@ export default function App() {
 
   const handleCompleteFreeSpins = (totalBonusWon) => {
     setFreeSpinsOpen(false);
+    const bigWinThreshold = Math.max(currentBet, currentLineBet * 15) * 15;
     if (totalBonusWon > 0) {
+      const cleanWon =
+        currencyMode === 'SC'
+          ? Number(Number(totalBonusWon).toFixed(2))
+          : Math.round(totalBonusWon);
       if (currencyMode === 'SC') {
-        paymentService.recordScWon(totalBonusWon);
-        setSweepsCoins((prev) => Number((prev + totalBonusWon).toFixed(2)));
+        paymentService.recordScWon(cleanWon);
+        setSweepsCoins((prev) => {
+          const next = Number((prev + cleanWon).toFixed(2));
+          sweepsCoinsRef.current = next;
+          return next;
+        });
       } else {
-        setGoldCoins((prev) => prev + totalBonusWon);
+        setGoldCoins((prev) => {
+          const next = prev + cleanWon;
+          goldCoinsRef.current = next;
+          return next;
+        });
       }
-      setLastWinCoins(totalBonusWon);
-      setBigWinAmount(totalBonusWon);
+      setLastWinCoins(cleanWon);
+      if (cleanWon >= bigWinThreshold) {
+        setBigWinAmount(cleanWon);
+        setWinSplashAmount(0);
+      } else {
+        setBigWinAmount(0);
+        setWinSplashAmount(cleanWon);
+      }
       setStatusMessage(
         `CELESTIAL FREE SPINS COMPLETED! WON +${
           currencyMode === 'SC'
-            ? `$${totalBonusWon.toFixed(2)} USD`
-            : `${totalBonusWon.toLocaleString()} GC`
+            ? `$${cleanWon.toFixed(2)} USD`
+            : `${cleanWon.toLocaleString()} GC`
         } TOTAL BONUS!`
       );
     }
@@ -4002,7 +4067,7 @@ export default function App() {
               <WinCelebrationSplash
                 winAmount={winSplashAmount}
                 currencyMode={currencyMode}
-                betAmount={currentBet}
+                betAmount={Math.max(currentBet, currentLineBet * 15)}
                 spinId={spinId}
                 onClose={handleCloseWinSplash}
               />
@@ -4542,9 +4607,11 @@ export default function App() {
         onComplete={(totalWinCoins) => {
           setCelestialBonusOpen(false);
           const isSC = currencyMode === 'SC';
+          const bigWinThreshold = Math.max(currentBet, currentLineBet * 15) * 15;
           if (isSC) {
-            const scWin = Number((totalWinCoins / 100).toFixed(2));
+            const scWin = Number(Number(totalWinCoins).toFixed(2));
             if (scWin > 0) {
+              paymentService.recordScWon(scWin);
               setSweepsCoins((prev) => {
                 const next = Number((prev + scWin).toFixed(2));
                 sweepsCoinsRef.current = next;
@@ -4553,26 +4620,39 @@ export default function App() {
                 } catch {}
                 return next;
               });
-              setBigWinAmount(scWin);
+              if (scWin >= bigWinThreshold) {
+                setBigWinAmount(scWin);
+                setWinSplashAmount(0);
+              } else {
+                setBigWinAmount(0);
+                setWinSplashAmount(scWin);
+              }
               setLastWinCoins(scWin);
               setStatusMessage(
                 `⚡ CELESTIAL OVERLOAD COMPLETED! WON $${scWin.toFixed(2)} SC ($${scWin.toFixed(2)} USD REAL PRIZE)!`
               );
             }
           } else {
-            if (totalWinCoins > 0) {
+            const gcWin = Math.round(totalWinCoins);
+            if (gcWin > 0) {
               setGoldCoins((prev) => {
-                const next = prev + totalWinCoins;
+                const next = prev + gcWin;
                 goldCoinsRef.current = next;
                 try {
                   localStorage.setItem('dc_casino_gold_coins', String(next));
                 } catch {}
                 return next;
               });
-              setBigWinAmount(totalWinCoins);
-              setLastWinCoins(totalWinCoins);
+              if (gcWin >= bigWinThreshold) {
+                setBigWinAmount(gcWin);
+                setWinSplashAmount(0);
+              } else {
+                setBigWinAmount(0);
+                setWinSplashAmount(gcWin);
+              }
+              setLastWinCoins(gcWin);
               setStatusMessage(
-                `⚡ CELESTIAL OVERLOAD COMPLETED! WON ${totalWinCoins.toLocaleString()} TOTAL GOLD COINS!`
+                `⚡ CELESTIAL OVERLOAD COMPLETED! WON ${gcWin.toLocaleString()} TOTAL GOLD COINS!`
               );
             }
           }
@@ -4588,7 +4668,7 @@ export default function App() {
         winCoins={bigWinAmount}
         coinValue={coinValue}
         currencyMode={currencyMode}
-        betAmount={currentBet}
+        betAmount={Math.max(currentBet, currentLineBet * 15)}
         onClose={() => setBigWinAmount(0)}
         onClaimVipOffer={(wonAmt) => {
           setBigWinAmount(0);

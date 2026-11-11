@@ -20,38 +20,28 @@ export default function WinCelebrationSplash({
   const ratio = betAmount > 0 ? winAmount / betAmount : 1;
 
   let tier = 'micro';
-  let tierTitle = 'MICRO WIN!';
+  let tierTitle = 'WIN!';
   let tierSub = 'QUICK HIT!';
   let tierColor = '#f59e0b';
 
-  if (ratio >= 35) {
-    tier = 'ultra';
-    tierTitle = 'ULTRA WIN!';
-    tierSub = 'GODLY TREASURE AWAKENED!';
-    tierColor = '#c084fc';
-  } else if (ratio >= 18) {
-    tier = 'mega';
-    tierTitle = 'MEGA WIN!';
-    tierSub = 'COLOSSAL EGYPTIAN TREASURE!';
-    tierColor = '#ffd700';
-  } else if (ratio >= 8) {
+  if (ratio >= 10) {
     tier = 'big';
-    tierTitle = 'BIG WIN!';
+    tierTitle = 'SUPER WIN!';
     tierSub = 'TEMPLE VAULT UNLOCKED!';
     tierColor = '#fbbf24';
-  } else if (ratio >= 4) {
+  } else if (ratio >= 5) {
     tier = 'super';
-    tierTitle = 'SUPER WIN!';
+    tierTitle = 'GREAT WIN!';
     tierSub = 'SACRED GOLD HARVEST!';
     tierColor = '#00e5ff';
   } else if (ratio >= 1.5) {
     tier = 'mini';
-    tierTitle = 'MINI WIN!';
+    tierTitle = 'NICE WIN!';
     tierSub = 'EGYPTIAN BOUNTY!';
     tierColor = '#10b981';
   } else {
     tier = 'micro';
-    tierTitle = 'MICRO WIN!';
+    tierTitle = 'WIN!';
     tierSub = 'QUICK HIT!';
     tierColor = '#d97706';
   }

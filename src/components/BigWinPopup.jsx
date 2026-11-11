@@ -400,7 +400,7 @@ export default function BigWinPopup({
   const finalRatio = winCoins / safeBet;
   const finalMultiplier = Math.max(1, Math.round(finalRatio));
 
-  const targetTier = finalRatio >= 35 ? 'ultra' : finalRatio >= 18 ? 'mega' : 'big';
+  const targetTier = finalRatio >= 60 ? 'ultra' : finalRatio >= 30 ? 'mega' : 'big';
 
   const triggerStageFlash = useCallback(() => {
     setScreenFlash(true);
@@ -455,15 +455,15 @@ export default function BigWinPopup({
 
       const liveRatio = current / safeBet;
 
-      // Real-time Tier Escalation (BIG -> MEGA -> COLOSSAL ULTRA)
-      if (liveRatio >= 35 && currentStageTracker !== 'ultra') {
+      // Real-time Tier Escalation (BIG 15x -> MEGA 30x -> COLOSSAL ULTRA 60x)
+      if (liveRatio >= 60 && currentStageTracker !== 'ultra') {
         currentStageTracker = 'ultra';
         setActiveStage('ultra');
         triggerStageFlash();
         try {
           soundEngine.playThunderStrike?.();
         } catch (_) {}
-      } else if (liveRatio >= 18 && currentStageTracker === 'big') {
+      } else if (liveRatio >= 30 && currentStageTracker === 'big') {
         currentStageTracker = 'mega';
         setActiveStage('mega');
         triggerStageFlash();
@@ -501,7 +501,10 @@ export default function BigWinPopup({
   const isSC = currencyMode === 'SC';
   const cashValue = isSC ? Number(displayCoins).toFixed(2) : (displayCoins * coinValue).toFixed(2);
   const liveMultiplier = Math.max(1, Math.round((displayCoins || winCoins) / safeBet));
-  const crestImage = CASINO_BRAND.megaWinNeonImage || '/assets/neon/mega_win_royal_gold.webp';
+  const crestImage =
+    activeStage === 'mega' || activeStage === 'ultra'
+      ? CASINO_BRAND.megaWinNeonImage || '/assets/neon/mega_win_royal_gold.webp'
+      : '/assets/symbols/high/high_scarab_no_frame.png';
 
   const stageMeta = {
     big: {

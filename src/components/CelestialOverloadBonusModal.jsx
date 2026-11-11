@@ -37,11 +37,21 @@ export default function CelestialOverloadBonusModal({
   const [collectCountdown, setCollectCountdown] = useState(4);
   const collectFnRef = useRef(null);
 
+  const isSC = currencyMode === 'SC';
+  const roundPrize = useCallback(
+    (val) => (isSC ? Number(Number(val).toFixed(2)) : Math.round(val)),
+    [isSC]
+  );
+  const formatPrize = useCallback(
+    (val) => (isSC ? `$${Number(val).toFixed(2)}` : Math.round(val).toLocaleString()),
+    [isSC]
+  );
+
   // Initialize or reset bonus round
   useEffect(() => {
     if (!isOpen) return;
 
-    const baseBet = Math.max(1, currentBet);
+    const baseBet = Math.max(isSC ? 0.15 : 1, currentBet);
     const altarTemplates = [
       { id: 0, name: 'Eye of Ra', element: 'solar', mult: 3, bonusMult: 1, icon: '🔥', title: 'Solar Flare Altar' },
       { id: 1, name: 'Anubis Scepter', element: 'lightning', mult: 4, bonusMult: 1, icon: '⚡', title: 'Thunderbolt Altar' },
@@ -56,7 +66,7 @@ export default function CelestialOverloadBonusModal({
       ...item,
       id: idx,
       isRevealed: false,
-      winAmount: item.mult * baseBet,
+      winAmount: roundPrize(item.mult * baseBet),
       isStriking: false,
     }));
 
@@ -278,7 +288,7 @@ export default function CelestialOverloadBonusModal({
       setPicksRemaining(nextPicks);
 
       // Update altar state (cap multiplier at 5x to prevent runaway inflation)
-      const winWithMultiplier = Math.round(target.winAmount * activeMultiplier);
+      const winWithMultiplier = roundPrize(target.winAmount * activeMultiplier);
       const nextMultiplier = Math.min(5, activeMultiplier + (target.bonusMult || 1) + comboAddMult);
 
       // Calculate spawn coordinates for floating toast
@@ -291,7 +301,7 @@ export default function CelestialOverloadBonusModal({
         ...prev.slice(-6),
         {
           id: toastId,
-          text: `+${winWithMultiplier.toLocaleString()}`,
+          text: `+${formatPrize(winWithMultiplier)}`,
           subtitle: isResonance
             ? '⚡ ELEMENTAL HARMONY SURGE!'
             : `${String(target.name || 'ALTAR').toUpperCase()} WIN!`,
@@ -320,16 +330,16 @@ export default function CelestialOverloadBonusModal({
         )
       );
 
-      setTotalWinCoins((prev) => prev + winWithMultiplier);
+      setTotalWinCoins((prev) => roundPrize(prev + winWithMultiplier));
       setActiveMultiplier(nextMultiplier);
 
       if (isResonance) {
         setBannerMessage(
-          `🌟 ELEMENTAL HARMONY! ${String(target?.title || 'ALTAR').toUpperCase()} STRUCK: +${winWithMultiplier.toLocaleString()} COINS, +1 PICK & MULT BOOSTED TO ${nextMultiplier}×!`
+          `🌟 ELEMENTAL HARMONY! ${String(target?.title || 'ALTAR').toUpperCase()} STRUCK: +${formatPrize(winWithMultiplier)} ${isSC ? 'SC' : 'COINS'}, +1 PICK & MULT BOOSTED TO ${nextMultiplier}×!`
         );
       } else {
         setBannerMessage(
-          `⚡ ${String(target?.title || 'DIVINE ALTAR').toUpperCase()} STRUCK! +${winWithMultiplier.toLocaleString()} COINS AWARDED • MULTIPLIER BOOSTED TO ${nextMultiplier}×!`
+          `⚡ ${String(target?.title || 'DIVINE ALTAR').toUpperCase()} STRUCK! +${formatPrize(winWithMultiplier)} ${isSC ? 'SC' : 'COINS'} AWARDED • MULTIPLIER BOOSTED TO ${nextMultiplier}×!`
         );
       }
 
@@ -348,7 +358,7 @@ export default function CelestialOverloadBonusModal({
       } else if (revealedCountAfter >= altars.length) {
         // Wave 2 Temple Awakening: unseal 6 fresh Celestial Altars when picks remain!
         setTimeout(() => {
-          const baseBet = Math.max(1, currentBet);
+          const baseBet = Math.max(isSC ? 0.15 : 1, currentBet);
           setAltars((prev) =>
             [...prev]
               .sort(() => Math.random() - 0.5)
@@ -356,7 +366,7 @@ export default function CelestialOverloadBonusModal({
                 ...item,
                 id: idx,
                 isRevealed: false,
-                winAmount: item.mult * baseBet,
+                winAmount: roundPrize(item.mult * baseBet),
                 isStriking: false,
               }))
           );
@@ -367,7 +377,7 @@ export default function CelestialOverloadBonusModal({
         }, 900);
       }
     },
-    [altars, isCompleted, picksRemaining, totalPicksGranted, activeMultiplier, lastElement, currentBet]
+    [altars, isCompleted, picksRemaining, totalPicksGranted, activeMultiplier, lastElement, currentBet, isSC, roundPrize, formatPrize]
   );
 
   const handleCollectPrize = () => {
@@ -467,13 +477,13 @@ export default function CelestialOverloadBonusModal({
               <span className="hud-label">TOTAL CELESTIAL WIN</span>
               <div className="celestial-hud-digits">
                 <PsdGoldNumber
-                  value={currencyMode === 'SC' ? (totalWinCoins / 100).toFixed(2) : totalWinCoins}
+                  value={isSC ? Number(totalWinCoins).toFixed(2) : totalWinCoins}
                   height={24}
                   gap={-2}
                 />
                 {hudWinPulse && (
                   <span key={hudWinPulse.id} className="celestial-hud-delta-tag gold-delta">
-                    +{hudWinPulse.delta.toLocaleString()}!
+                    +{formatPrize(hudWinPulse.delta)}!
                   </span>
                 )}
               </div>
@@ -547,7 +557,7 @@ export default function CelestialOverloadBonusModal({
                     <div className="revealed-title">{altar.name}</div>
                     <div className="revealed-win-amount">
                       <PsdGoldNumber
-                        value={currencyMode === 'SC' ? (altar.winAmount / 100).toFixed(2) : altar.winAmount}
+                        value={isSC ? Number(altar.winAmount).toFixed(2) : altar.winAmount}
                         height={20}
                         gap={-2}
                       />
@@ -599,14 +609,14 @@ export default function CelestialOverloadBonusModal({
               <span className="gold-label">TOTAL ACCUMULATED REWARD</span>
               <div className="completion-gold-digits">
                 <PsdGoldNumber
-                  value={currencyMode === 'SC' ? (totalWinCoins / 100).toFixed(2) : totalWinCoins}
+                  value={isSC ? Number(totalWinCoins).toFixed(2) : totalWinCoins}
                   height={48}
                   gap={-2}
                 />
               </div>
               <span className="completion-usd-sub">
-                {currencyMode === 'SC'
-                  ? `+$${(totalWinCoins / 100).toFixed(2)} USD REAL PRIZE VALUE`
+                {isSC
+                  ? `+$${Number(totalWinCoins).toFixed(2)} USD REAL PRIZE VALUE`
                   : `+${totalWinCoins.toLocaleString()} GOLD COINS`}
               </span>
             </div>
