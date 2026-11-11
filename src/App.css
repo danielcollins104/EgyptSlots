@@ -11274,11 +11274,11 @@ body {
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    width: clamp(60px, 9.5vw, 120px) !important;
-    max-width: 125px !important;
-    min-width: 55px !important;
+    width: clamp(50px, 8.2vw, 100px) !important;
+    max-width: 105px !important;
+    min-width: 48px !important;
     height: 100% !important;
-    max-height: calc(100dvh - 56px) !important;
+    max-height: calc(100dvh - 40px) !important;
     flex-shrink: 0 !important;
     z-index: 12 !important;
     cursor: pointer !important;
@@ -11297,23 +11297,23 @@ body {
   }
 
   .anubis-guardian-column .guardian-body-img {
-    max-height: clamp(140px, 60vh, 250px) !important;
+    max-height: clamp(135px, 64vh, 250px) !important;
     width: auto !important;
     max-width: 100% !important;
     object-fit: contain !important;
   }
 
   .anubis-guardian-column .guardian-pedestal-plaque {
-    width: clamp(52px, 8.5vw, 95px) !important;
+    width: clamp(46px, 7.6vw, 88px) !important;
     margin-top: -12px !important;
   }
 
   .anubis-guardian-column .guardian-plaque-txt span {
-    font-size: 0.38rem !important;
+    font-size: 0.36rem !important;
   }
 
   .anubis-guardian-column .guardian-plaque-txt strong {
-    font-size: 0.54rem !important;
+    font-size: 0.50rem !important;
   }
 
   .anubis-guardian-column .guardian-floor-runes {
@@ -11321,19 +11321,19 @@ body {
   }
 
   .anubis-guardian-column .guardian-pedestal-shock-ring.ring-1 {
-    width: clamp(70px, 10vw, 110px) !important;
-    height: 28px !important;
-  }
-
-  .anubis-guardian-column .guardian-pedestal-shock-ring.ring-2 {
-    width: clamp(60px, 9vw, 95px) !important;
+    width: clamp(60px, 8.5vw, 96px) !important;
     height: 24px !important;
   }
 
+  .anubis-guardian-column .guardian-pedestal-shock-ring.ring-2 {
+    width: clamp(50px, 7.5vw, 82px) !important;
+    height: 20px !important;
+  }
+
   .anubis-guardian-column .guardian-pedestal-badge {
-    font-size: 8px !important;
-    padding: 3px 8px !important;
-    top: -20px !important;
+    font-size: 7.5px !important;
+    padding: 2px 6px !important;
+    top: -18px !important;
   }
 
   .cabinet-bonus-and-win-bar {
@@ -11351,11 +11351,11 @@ body {
     align-items: center !important;
     width: 100% !important;
     max-width: 100% !important;
-    height: 22px !important;
-    min-height: 20px !important;
-    max-height: 24px !important;
-    padding: 0 4px !important;
-    margin: 1px auto 4px auto !important;
+    height: 19px !important;
+    min-height: 18px !important;
+    max-height: 20px !important;
+    padding: 0 2px !important;
+    margin: 0 auto 1px auto !important;
     z-index: 25 !important;
     flex-shrink: 0 !important;
   }
@@ -11367,8 +11367,8 @@ body {
     transform: none !important;
     width: 100% !important;
     height: 100% !important;
-    min-height: 20px !important;
-    max-height: 24px !important;
+    min-height: 18px !important;
+    max-height: 20px !important;
   }
 
   .casino-jackpots-strip .jackpot-marquee-items {
@@ -11403,46 +11403,85 @@ body {
   }
 
   .slot-stage-container {
-    height: calc(100dvh - 32px) !important;
-    max-height: calc(100dvh - 32px) !important;
-    padding: 1px max(4px, env(safe-area-inset-left, 4px)) 1px max(4px, env(safe-area-inset-right, 4px)) !important;
+    height: calc(100dvh - 30px) !important;
+    max-height: calc(100dvh - 30px) !important;
+    padding: 0 max(3px, env(safe-area-inset-left, 3px)) 0 max(3px, env(safe-area-inset-right, 3px)) !important;
     margin: 0 auto !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: clamp(2px, 1vw, 8px) !important;
+    gap: clamp(2px, 0.7vw, 6px) !important;
     box-sizing: border-box !important;
   }
 
   .slot-cabinet-wrapper {
     height: 100% !important;
-    max-height: calc(100dvh - 34px) !important;
-    width: min(calc((100dvh - 58px) * (2000 / 1350)), calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px)) !important;
-    max-width: min(calc((100dvh - 58px) * (2000 / 1350)), calc(100vw - 2 * clamp(60px, 9.5vw, 120px) - 16px)) !important;
+    max-height: calc(100dvh - 31px) !important;
+    width: min(calc((100dvh - 48px) * (1520 / 980)), calc(100vw - 2 * clamp(50px, 8.2vw, 100px) - 10px)) !important;
+    max-width: min(calc((100dvh - 48px) * (1520 / 980)), calc(100vw - 2 * clamp(50px, 8.2vw, 100px) - 10px)) !important;
     flex: 0 0 auto !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
     margin: 0 auto !important;
-    gap: 2px !important;
+    gap: 1px !important;
   }
 
+  /* LARGER CABINET, REELS & TILES IN MOBILE HORIZONTAL / LANDSCAPE VIEW */
   .reel-cabinet-box {
-    aspect-ratio: 2000 / 1350 !important;
+    aspect-ratio: 1520 / 980 !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
-    max-height: calc(100dvh - 66px) !important;
+    max-height: calc(100dvh - 51px) !important;
     position: relative !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    border-radius: 14px !important;
+    border: 2px solid #ffd700 !important;
+    box-shadow:
+      0 0 22px rgba(0, 229, 255, 0.45),
+      0 6px 24px rgba(0, 0, 0, 0.92),
+      inset 0 0 14px rgba(255, 215, 0, 0.25) !important;
+    background: linear-gradient(180deg, #120422 0%, #06010e 100%) !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide wide outer stone frame pillars on mobile landscape so the 5x3 reel window & tiles expand to 95% width! */
+  .psd-reel-frame-img,
+  .cabinet-pillar-overlay {
+    display: none !important;
+  }
+
+  .cabinet-dc-neon-logo {
+    top: 0.6% !important;
+    height: 11.2% !important;
+    width: 58% !important;
+    max-width: 420px !important;
+    z-index: 17 !important;
+  }
+
+  .cabinet-arch-engraving {
+    top: 11.8% !important;
+    padding: 1px 10px !important;
+    font-size: 0.42rem !important;
+    letter-spacing: 0.1em !important;
+    gap: 5px !important;
+    z-index: 16 !important;
   }
 
   .reel-cabinet-box .reel-window-viewport {
+    left: 2.5% !important;
+    width: 95% !important;
+    top: 15.8% !important;
+    height: 67.4% !important;
+    border-radius: 11px !important;
+    border: 1.5px solid rgba(255, 215, 0, 0.5) !important;
+    box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.3) !important;
     cursor: pointer !important;
     touch-action: manipulation !important;
     user-select: none !important;
@@ -11451,10 +11490,10 @@ body {
   }
 
   .psd-bottom-control-bar {
-    left: 4% !important;
-    right: 4% !important;
-    bottom: 2% !important;
-    height: 16% !important;
+    left: 2% !important;
+    right: 2% !important;
+    bottom: 1% !important;
+    height: 15.8% !important;
     display: grid !important;
     z-index: 25 !important;
   }
@@ -11597,31 +11636,31 @@ body {
   }
 
   .dc-casino-topbar {
-    height: 48px !important;
-    min-height: 48px !important;
-    max-height: 48px !important;
-    padding: 4px 16px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 3px 14px !important;
   }
 
   .slot-stage-container {
     flex: 1 1 0 !important;
     min-height: 0 !important;
-    max-height: calc(100dvh - 48px) !important;
+    max-height: calc(100dvh - 44px) !important;
     overflow: hidden !important;
-    padding: 4px 12px !important;
-    gap: 8px !important;
+    padding: 2px 8px !important;
+    gap: 6px !important;
   }
 
   .anubis-guardian-column {
     display: flex !important;
-    width: clamp(100px, 12vw, 150px) !important;
+    width: clamp(82px, 10.5vw, 130px) !important;
   }
 
   .slot-cabinet-wrapper {
     flex: 1 1 0 !important;
     min-height: 0 !important;
     max-height: 100% !important;
-    max-width: calc((100dvh - 120px) * (2000 / 1350)) !important;
+    max-width: calc((100dvh - 88px) * (2000 / 1350)) !important;
   }
 
   .reel-cabinet-box {
@@ -11633,16 +11672,16 @@ body {
   }
 
   .cabinet-bonus-and-win-bar {
-    margin: 3px auto !important;
-    height: 30px !important;
-    min-height: 30px !important;
+    margin: 2px auto !important;
+    height: 26px !important;
+    min-height: 26px !important;
   }
 
   .cabinet-status-pediment {
-    margin-top: 3px !important;
-    padding: 3px 10px !important;
-    height: 38px !important;
-    min-height: 38px !important;
+    margin-top: 2px !important;
+    padding: 2px 8px !important;
+    height: 32px !important;
+    min-height: 32px !important;
   }
 }
 
@@ -11751,29 +11790,34 @@ body {
   }
 }
 
-/* 3. Automotive / Android Auto Center Consoles (Ultrawide Landscape: 16:9, 8:3, 24:9) */
+/* 3. Automotive / Android Auto Center Consoles & Ultrawide Mobile Landscape (16:9, 8:3, 21:9, 24:9) */
 @media (orientation: landscape) and (min-aspect-ratio: 18/9), (orientation: landscape) and (max-height: 520px) and (min-width: 860px) {
   .casino-app-root {
-    padding: env(safe-area-inset-top, 4px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 4px) env(safe-area-inset-left, 16px) !important;
+    padding: 0 !important;
   }
   .dc-casino-topbar {
-    height: 44px !important;
-    min-height: 44px !important;
-    padding: 2px 14px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+    padding: max(1px, env(safe-area-inset-top, 1px)) 10px 1px !important;
   }
   .slot-stage-container {
-    padding: 2px 8px !important;
-    gap: 8px !important;
+    height: calc(100dvh - 30px) !important;
+    max-height: calc(100dvh - 30px) !important;
+    padding: 0 max(6px, env(safe-area-inset-right, 6px)) 0 max(6px, env(safe-area-inset-left, 6px)) !important;
+    gap: 6px !important;
   }
   .anubis-guardian-column {
     display: flex !important;
-    width: clamp(75px, 9vw, 110px) !important;
+    width: clamp(54px, 8vw, 96px) !important;
   }
   .slot-cabinet-wrapper {
-    max-width: min(72vw, calc((100dvh - 96px) * (2000 / 1350))) !important;
+    width: min(calc((100dvh - 48px) * (1520 / 980)), calc(100vw - 2 * clamp(54px, 8vw, 96px) - 16px)) !important;
+    max-width: min(calc((100dvh - 48px) * (1520 / 980)), calc(100vw - 2 * clamp(54px, 8vw, 96px) - 16px)) !important;
   }
   .reel-cabinet-box {
-    aspect-ratio: 2000 / 1350 !important;
+    aspect-ratio: 1520 / 980 !important;
+    max-height: calc(100dvh - 50px) !important;
     height: auto !important;
   }
   /* Automotive Touch Ergonomics: minimum 48dp touch targets */
@@ -11783,8 +11827,8 @@ body {
     min-width: 52px !important;
   }
   .dc-action-btn {
-    min-height: 38px !important;
-    padding: 4px 12px !important;
+    min-height: 28px !important;
+    padding: 3px 10px !important;
   }
 }
 
