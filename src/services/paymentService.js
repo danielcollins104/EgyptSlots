@@ -632,6 +632,7 @@ export const paymentService = {
             url: data.url,
             sessionId: data.sessionId,
             mode: data.mode || 'stripe_checkout_session',
+            stripeWarning: data.stripeWarning,
           };
         }
       }

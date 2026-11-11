@@ -305,6 +305,13 @@ export default function PaymentModal({
         methodType,
         user
       );
+      if (session && session.stripeWarning && methodType === 'card') {
+        setRedirectingMethod(null);
+        setCheckoutError(
+          `Stripe Live Card Charges Pending Activation: "${session.stripeWarning}" — Complete live activation in dashboard.stripe.com, or pay immediately right now using Cash App Pay ($Daniel-Collins-168) or Crypto below.`
+        );
+        return;
+      }
       if (session && session.url) {
         window.location.href = session.url;
         return;

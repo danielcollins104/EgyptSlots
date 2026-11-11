@@ -70,19 +70,18 @@ export function getCashAppPayCheckoutLink(pkg) {
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[envKey]) {
     return import.meta.env[envKey];
   }
-  // Dedicated Cash App Pay Stripe Payment Link (payment_method_types: ['cashapp'])
-  if (pkg.cashAppStripePaymentLink) {
-    const sep = pkg.cashAppStripePaymentLink.includes('?') ? '&' : '?';
-    return `${pkg.cashAppStripePaymentLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
-  }
-  // Direct live Cash App $Cashtag link with pre-filled exact dollar amount
+  // Direct live Cash App $Cashtag link with pre-filled exact dollar amount ($Daniel-Collins-168)
   if (pkg.cashAppPaymentLink) {
     return pkg.cashAppPaymentLink;
   }
   if (Number(pkg.priceUsd) > 0) {
     return getCashAppPaymentLink(pkg.priceUsd);
   }
-  return getPaymentReturnUrl(pkg.id);
+  if (pkg.cashAppStripePaymentLink) {
+    const sep = pkg.cashAppStripePaymentLink.includes('?') ? '&' : '?';
+    return `${pkg.cashAppStripePaymentLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
+  }
+  return getCashAppPaymentLink(19.99);
 }
 
 export const SWEEPSTAKES_CONFIG = {

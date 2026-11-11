@@ -103,7 +103,22 @@ export class ApiRouter {
     const successUrl = `${cleanOrigin}/?payment_success=true&pkg=${encodeURIComponent(pkg.id)}&amount=${encodeURIComponent(pkg.priceUsd)}&gc=${encodeURIComponent(pkg.goldCoins)}&sc=${encodeURIComponent(pkg.freeSweepsCoins)}&session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${cleanOrigin}/?payment_cancelled=true&pkg=${encodeURIComponent(pkg.id)}`;
 
+    // For Cash App Pay, route directly to the live $Cashtag payment link ($Daniel-Collins-168/<amount>)
+    if (paymentMethod === 'cashapp') {
+      const cashAppDirectUrl =
+        pkg.cashAppPaymentLink ||
+        `https://cash.app/$Daniel-Collins-168/${Number(pkg.priceUsd) % 1 === 0 ? Number(pkg.priceUsd) : Number(pkg.priceUsd).toFixed(2)}`;
+      return {
+        success: true,
+        url: cashAppDirectUrl,
+        sessionId: `cs_live_cashapp_${Date.now()}`,
+        mode: 'cashapp_live',
+        package: pkg,
+      };
+    }
+
     // If Stripe Secret Key is available, create a real Stripe Checkout Session via api.stripe.com
+    let stripeErrorMessage = '';
     if (secretKey && (secretKey.startsWith('sk_') || secretKey.startsWith('rk_'))) {
       try {
         const params = new URLSearchParams();
@@ -111,20 +126,6 @@ export class ApiRouter {
         params.append('success_url', successUrl);
         params.append('cancel_url', cancelUrl);
         params.append('client_reference_id', pkg.id);
-
-        // Configure payment method routing for live Stripe account (acct_1UV6OEArFku8z2yk)
-        // For 'cashapp', if a dedicated live Cash App Stripe Payment Link exists on the package,
-        // use it directly; otherwise create a live dynamic Checkout Session (managed via Dashboard payment_method_configuration).
-        if (paymentMethod === 'cashapp' && pkg.cashAppStripePaymentLink) {
-          const sep = pkg.cashAppStripePaymentLink.includes('?') ? '&' : '?';
-          return {
-            success: true,
-            url: `${pkg.cashAppStripePaymentLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`,
-            sessionId: `cs_live_cashapp_${Date.now()}`,
-            mode: 'payment_link',
-            package: pkg,
-          };
-        }
 
         const unitAmountCents = Math.round(Number(pkg.priceUsd) * 100);
         params.append('line_items[0][price_data][currency]', 'usd');
@@ -166,29 +167,25 @@ export class ApiRouter {
             package: pkg,
           };
         }
+        if (sessionData && sessionData.error && sessionData.error.message) {
+          stripeErrorMessage = sessionData.error.message;
+        }
       } catch (err) {
         console.warn('[Stripe Checkout Session Error]:', err.message);
       }
     }
 
-    // Fallback to dedicated Cash App Pay or Card Stripe Payment Link (always live)
-    const fallbackLink =
-      paymentMethod === 'cashapp'
-        ? pkg.cashAppStripePaymentLink ||
-          pkg.cashAppPaymentLink ||
-          pkg.stripePaymentLink ||
-          'https://buy.stripe.com/14A3cufrz2ZZfSAgxY8ww09'
-        : pkg.stripePaymentLink || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
+    // Fallback to dedicated Card Stripe Payment Link (always live)
+    const fallbackLink = pkg.stripePaymentLink || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
     const sep = fallbackLink.includes('?') ? '&' : '?';
-    const url = fallbackLink.startsWith('https://cash.app/')
-      ? fallbackLink
-      : `${fallbackLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
+    const url = `${fallbackLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
 
     return {
       success: true,
       url,
       sessionId: `cs_link_${Date.now()}`,
       mode: 'payment_link',
+      stripeWarning: stripeErrorMessage || undefined,
       package: pkg,
     };
   }
