@@ -52,6 +52,7 @@ export class ApiRouter {
   }) {
     const allPackages = [
       ...(SWEEPSTAKES_CONFIG.storePackages || []),
+      ...(SWEEPSTAKES_CONFIG.featuredRoyalPackage ? [SWEEPSTAKES_CONFIG.featuredRoyalPackage] : []),
       ...(SWEEPSTAKES_CONFIG.highRollerPackages || []),
       ...(SWEEPSTAKES_CONFIG.rescuePackages || []),
     ];
@@ -111,14 +112,18 @@ export class ApiRouter {
         params.append('cancel_url', cancelUrl);
         params.append('client_reference_id', pkg.id);
 
-        // Use dedicated Payment Method Configuration so:
-        // - 'cashapp' opens the Cash App Pay ONLY checkout (pmc_1UXhpsPDpwmSIl1L5VgVrY0C)
-        // - 'card' opens the Card ONLY checkout (pmc_1UXhqOPDpwmSIl1LZIkmCt4R)
-        // and Stripe Link passkey prompts are completely disabled on both!
-        if (paymentMethod === 'cashapp') {
-          params.append('payment_method_configuration', 'pmc_1UXhpsPDpwmSIl1L5VgVrY0C');
-        } else {
-          params.append('payment_method_configuration', 'pmc_1UXhqOPDpwmSIl1LZIkmCt4R');
+        // Configure payment method routing for live Stripe account (acct_1UV6OEArFku8z2yk)
+        // For 'cashapp', if a dedicated live Cash App Stripe Payment Link exists on the package,
+        // use it directly; otherwise create a live dynamic Checkout Session (managed via Dashboard payment_method_configuration).
+        if (paymentMethod === 'cashapp' && pkg.cashAppStripePaymentLink) {
+          const sep = pkg.cashAppStripePaymentLink.includes('?') ? '&' : '?';
+          return {
+            success: true,
+            url: `${pkg.cashAppStripePaymentLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`,
+            sessionId: `cs_live_cashapp_${Date.now()}`,
+            mode: 'payment_link',
+            package: pkg,
+          };
         }
 
         const unitAmountCents = Math.round(Number(pkg.priceUsd) * 100);
@@ -166,15 +171,18 @@ export class ApiRouter {
       }
     }
 
-    // Fallback to dedicated Cash App Pay or Card Stripe Payment Link with return_url
+    // Fallback to dedicated Cash App Pay or Card Stripe Payment Link (always live)
     const fallbackLink =
       paymentMethod === 'cashapp'
-        ? pkg.cashAppStripePaymentLink || pkg.stripePaymentLink || ''
-        : pkg.stripePaymentLink || '';
+        ? pkg.cashAppStripePaymentLink ||
+          pkg.cashAppPaymentLink ||
+          pkg.stripePaymentLink ||
+          'https://buy.stripe.com/14A3cufrz2ZZfSAgxY8ww09'
+        : pkg.stripePaymentLink || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
     const sep = fallbackLink.includes('?') ? '&' : '?';
-    const url = fallbackLink
-      ? `${fallbackLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`
-      : `${cleanOrigin}/?payment_success=true&pkg=${encodeURIComponent(pkg.id)}`;
+    const url = fallbackLink.startsWith('https://cash.app/')
+      ? fallbackLink
+      : `${fallbackLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
 
     return {
       success: true,

@@ -71,13 +71,18 @@ export function getCashAppPayCheckoutLink(pkg) {
     return import.meta.env[envKey];
   }
   // Dedicated Cash App Pay Stripe Payment Link (payment_method_types: ['cashapp'])
-  const baseLink = pkg.cashAppStripePaymentLink || pkg.stripePaymentLink || '';
-  const returnUrl = getPaymentReturnUrl(pkg.id);
-  if (baseLink) {
-    const sep = baseLink.includes('?') ? '&' : '?';
-    return `${baseLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
+  if (pkg.cashAppStripePaymentLink) {
+    const sep = pkg.cashAppStripePaymentLink.includes('?') ? '&' : '?';
+    return `${pkg.cashAppStripePaymentLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
   }
-  return returnUrl;
+  // Direct live Cash App $Cashtag link with pre-filled exact dollar amount
+  if (pkg.cashAppPaymentLink) {
+    return pkg.cashAppPaymentLink;
+  }
+  if (Number(pkg.priceUsd) > 0) {
+    return getCashAppPaymentLink(pkg.priceUsd);
+  }
+  return getPaymentReturnUrl(pkg.id);
 }
 
 export const SWEEPSTAKES_CONFIG = {
@@ -165,9 +170,9 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 9.99,
       goldCoins: 10000,
       freeSweepsCoins: 5.0,
-      stripePriceId: 'price_1UVHyAPDpwmSIl1LVVPSqGJB',
-      stripePaymentLink: 'https://buy.stripe.com/test_bJe7sN8TveURdFH0nB8AE04',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/test_4gMfZj5Hj141dFH2vJ8AE06',
+      stripePriceId: 'price_1UXihFArFku8z2ykEKWrud15',
+      stripePaymentLink: 'https://buy.stripe.com/eVq4gy93bfMLbCkgxY8ww09',
+      cashAppStripePaymentLink: 'https://buy.stripe.com/4gMdR8envbwv9uc4Pg8ww08',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/4.99',
       popular: false,
       badge: 'STARTER DEAL • 50% OFF',
@@ -184,9 +189,9 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 16.99,
       goldCoins: 25000,
       freeSweepsCoins: 10.5,
-      stripePriceId: 'price_1UVI3SPDpwmSIl1L7gbjF9cR',
-      stripePaymentLink: 'https://buy.stripe.com/test_aFadRbfhTcMJ9preer8AE03',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/test_dRm5kF1r3eUR457b2f8AE07',
+      stripePriceId: 'price_1UXihFArFku8z2ykRROIkw7n',
+      stripePaymentLink: 'https://buy.stripe.com/9B67sKgvDeIH9ucftU8ww03',
+      cashAppStripePaymentLink: 'https://buy.stripe.com/4gM28qgvDcAz7m481s8ww07',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/9.99',
       popular: false,
       badge: '+5% BONUS SC',
@@ -203,9 +208,9 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 34.99,
       goldCoins: 60000,
       freeSweepsCoins: 22.0,
-      stripePriceId: 'price_1UVHt3PDpwmSIl1LMpDikc7a',
-      stripePaymentLink: 'https://buy.stripe.com/test_14A9AV0mZeURatvdan8AE05',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/test_dRmfZj4DfcMJ313c6j8AE08',
+      stripePriceId: 'price_1UXihFArFku8z2ykx0Gt5mmA',
+      stripePaymentLink: 'https://buy.stripe.com/3cI4gybbjeIH7m4ftU8ww02',
+      cashAppStripePaymentLink: 'https://buy.stripe.com/4gM6oGdjr1VV21K3Lc8ww05',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/19.99',
       popular: true,
       badge: '🔥 #1 MOST POPULAR • +10% SC',
@@ -222,9 +227,9 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 79.99,
       goldCoins: 175000,
       freeSweepsCoins: 55.0,
-      stripePriceId: 'price_1UVI44PDpwmSIl1LRMjorAI9',
-      stripePaymentLink: 'https://buy.stripe.com/test_14A6oJd9LbIFgRT5HV8AE01',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/test_fZu6oJ5Hj3c9eJL2vJ8AE09',
+      stripePriceId: 'price_1UXihFArFku8z2ykbWHWw0Ch',
+      stripePaymentLink: 'https://buy.stripe.com/8x2eVc93b8kj21K0z08ww00',
+      cashAppStripePaymentLink: 'https://buy.stripe.com/eVq00i93bfML21K3Lc8ww0a',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/49.99',
       popular: false,
       badge: 'HIGH ROLLER • +10% SC',
@@ -241,9 +246,9 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 149.99,
       goldCoins: 400000,
       freeSweepsCoins: 115.0,
-      stripePriceId: 'price_1UVI4lPDpwmSIl1L8F0xnw10',
-      stripePaymentLink: 'https://buy.stripe.com/test_4gM8wR4DfcMJ0SVgmz8AE02',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/test_bJedRb2v7bIFeJLdan8AE0a',
+      stripePriceId: 'price_1UXihFArFku8z2ykd8aB3mCk',
+      stripePaymentLink: 'https://buy.stripe.com/9B68wOcfncAz6i0chI8ww01',
+      cashAppStripePaymentLink: 'https://buy.stripe.com/bJecN4frz8kjbCk3Lc8ww04',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/99.99',
       popular: false,
       badge: '💎 VIP WHALE • +15% SC',
@@ -263,6 +268,9 @@ export const SWEEPSTAKES_CONFIG = {
     originalPriceUsd: 375.0,
     goldCoins: 1100000,
     freeSweepsCoins: 295.0,
+    stripePriceId: 'price_1UacnKArFku8z2ykESXROPrA',
+    stripePaymentLink: 'https://buy.stripe.com/28EbJ06V3bwvbCkgxY8ww0b',
+    cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/249.99',
     popular: false,
     featuredSpotlight: true,
     badge: '👑 IMPERIAL SPOTLIGHT • +18% SC',
@@ -282,8 +290,9 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 6500.0,
       goldCoins: 65000000,
       freeSweepsCoins: 5600.0,
-      stripePriceId: 'price_dc_hr_5000',
-      stripePaymentLink: 'https://buy.stripe.com/test_dc_hr_5000',
+      stripePriceId: 'price_1UacnLArFku8z2ykrSfG5oQX',
+      stripePaymentLink: 'https://buy.stripe.com/cNiaEW93bcAzbCk95w8ww0c',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/5000',
       popular: false,
       badge: 'VIP SOVEREIGN • +12% SC',
       tagline: 'VIP Concierge & Fast-Track Cashout',
@@ -300,8 +309,9 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 13500.0,
       goldCoins: 140000000,
       freeSweepsCoins: 11800.0,
-      stripePriceId: 'price_dc_hr_10000',
-      stripePaymentLink: 'https://buy.stripe.com/test_dc_hr_10000',
+      stripePriceId: 'price_1UacnMArFku8z2ykH5j1FFmj',
+      stripePaymentLink: 'https://buy.stripe.com/6oUbJ0cfnasrcGo1D48ww0d',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/10000',
       popular: true,
       badge: '👑 ROYAL PHARAOH • +18% SC',
       tagline: 'Personal Host & Priority 24/7 Redemptions',
@@ -318,8 +328,9 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 70000.0,
       goldCoins: 800000000,
       freeSweepsCoins: 62500.0,
-      stripePriceId: 'price_dc_hr_50000',
-      stripePaymentLink: 'https://buy.stripe.com/test_dc_hr_50000',
+      stripePriceId: 'price_1UacnNArFku8z2ykBF8rz570',
+      stripePaymentLink: 'https://buy.stripe.com/4gM9AS2EN0RR7m4chI8ww0e',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/50000',
       popular: false,
       badge: '💎 EMPEROR VAULT • +25% SC',
       tagline: 'Private Vault, Max Limits & Direct Wire Settlement',
@@ -338,6 +349,10 @@ export const SWEEPSTAKES_CONFIG = {
       priceUsd: 9.99,
       goldCoins: 30000,
       freeSweepsCoins: 12.0,
+      stripePriceId: 'price_1UXihFArFku8z2ykRROIkw7n',
+      stripePaymentLink: 'https://buy.stripe.com/9B67sKgvDeIH9ucftU8ww03',
+      cashAppStripePaymentLink: 'https://buy.stripe.com/4gM28qgvDcAz7m481s8ww07',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/9.99',
       badge: 'RESCUE DEAL • +20% BONUS',
       tagline: 'Quick reload to stay in the action',
       savings: '20% Extra Free SC',
@@ -347,6 +362,10 @@ export const SWEEPSTAKES_CONFIG = {
       priceUsd: 19.99,
       goldCoins: 75000,
       freeSweepsCoins: 25.0,
+      stripePriceId: 'price_1UXihFArFku8z2ykx0Gt5mmA',
+      stripePaymentLink: 'https://buy.stripe.com/3cI4gybbjeIH7m4ftU8ww02',
+      cashAppStripePaymentLink: 'https://buy.stripe.com/4gM6oGdjr1VV21K3Lc8ww05',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/19.99',
       badge: 'MOST POPULAR RESCUE • +25% BONUS',
       tagline: 'Best value bankroll booster',
       savings: '25% Extra Free SC',
@@ -357,6 +376,10 @@ export const SWEEPSTAKES_CONFIG = {
       priceUsd: 49.99,
       goldCoins: 210000,
       freeSweepsCoins: 65.0,
+      stripePriceId: 'price_1UXihFArFku8z2ykbWHWw0Ch',
+      stripePaymentLink: 'https://buy.stripe.com/8x2eVc93b8kj21K0z08ww00',
+      cashAppStripePaymentLink: 'https://buy.stripe.com/eVq00i93bfML21K3Lc8ww0a',
+      cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/49.99',
       badge: 'WHALE RESCUE • +30% BONUS',
       tagline: 'Massive bankroll refill with VIP host perk',
       savings: '30% Extra Free SC',
@@ -441,6 +464,22 @@ export function calculateCustomPackage(amountUsd) {
   const goldCoins = Math.round(num * gcPerDollar);
   const bonusPct = Math.round(bonusRate * 100);
 
+  // Match closest live Stripe Payment Link as static fallback when dynamic Checkout Session is offline
+  const allKnownPackages = [
+    ...(SWEEPSTAKES_CONFIG.storePackages || []),
+    ...(SWEEPSTAKES_CONFIG.featuredRoyalPackage ? [SWEEPSTAKES_CONFIG.featuredRoyalPackage] : []),
+    ...(SWEEPSTAKES_CONFIG.highRollerPackages || []),
+  ];
+  let closestPkg = allKnownPackages[0];
+  let minDiff = Infinity;
+  for (const p of allKnownPackages) {
+    const diff = Math.abs((p.priceUsd || 0) - num);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestPkg = p;
+    }
+  }
+
   return {
     id: `pkg_custom_${num}`,
     priceUsd: num,
@@ -454,5 +493,13 @@ export function calculateCustomPackage(amountUsd) {
         : 'Custom Gold Coin & Free SC Bundle',
     savings: bonusPct > 0 ? `${bonusPct}% Extra Free SC` : null,
     isCustom: true,
+    stripePriceId: closestPkg?.stripePriceId || 'price_1UXiguArFku8z2ykmC3iSckl',
+    stripePaymentLink:
+      closestPkg?.stripePaymentLink || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04',
+    cashAppStripePaymentLink:
+      closestPkg?.cashAppStripePaymentLink ||
+      closestPkg?.stripePaymentLink ||
+      'https://buy.stripe.com/14A3cufrz2ZZfSAgxY8ww09',
+    cashAppPaymentLink: getCashAppPaymentLink(num),
   };
 }

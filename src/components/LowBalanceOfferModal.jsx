@@ -28,6 +28,10 @@ export const REFILL_PACKAGES = [
     tagline: 'Instant refill + $5.00 Free SC Value',
     relicArt: '/assets/symbols/high/high_ankh_no_frame.png',
     savings: 'Save $5.00',
+    stripePriceId: 'price_1UXigsArFku8z2ykbjO6sZnb',
+    stripePaymentLink: 'https://buy.stripe.com/aFa14mfrz6cbbCk3Lc8ww05',
+    cashAppStripePaymentLink: 'https://buy.stripe.com/eVq3cudjrawveOwbhE8ww07',
+    cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/4.99',
   },
   {
     id: 'pkg_rescue_bronze',
@@ -40,6 +44,10 @@ export const REFILL_PACKAGES = [
     tagline: '30,000 GC + $12.00 Free Redeemable SC',
     relicArt: '/assets/symbols/high/high_scarab_no_frame.png',
     savings: '20% Extra Free SC',
+    stripePriceId: 'price_1UXigtArFku8z2ykhp3A7n1H',
+    stripePaymentLink: 'https://buy.stripe.com/5kQ14m3IRasrdKsfuU8ww02',
+    cashAppStripePaymentLink: 'https://buy.stripe.com/3cI6oGcfn5878q8chI8ww08',
+    cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/9.99',
   },
   {
     id: 'pkg_rescue_silver',
@@ -53,6 +61,10 @@ export const REFILL_PACKAGES = [
     relicArt: '/assets/symbols/high/high_necklace_no_frame.png',
     savings: '25% Extra Free SC',
     recommended: true,
+    stripePriceId: 'price_1UXiguArFku8z2ykmC3iSckl',
+    stripePaymentLink: 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04',
+    cashAppStripePaymentLink: 'https://buy.stripe.com/14A3cufrz2ZZfSAgxY8ww09',
+    cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/19.99',
   },
   {
     id: 'pkg_rescue_gold',
@@ -65,6 +77,10 @@ export const REFILL_PACKAGES = [
     tagline: 'Exceeds $50 Minimum Cashout Threshold!',
     relicArt: '/assets/symbols/high/high_eye_no_frame.png',
     savings: '30% Extra Free SC',
+    stripePriceId: 'price_1UXigvArFku8z2yknkA6V7wE',
+    stripePaymentLink: 'https://buy.stripe.com/bJe28q5QZ7gf35O3Lc8ww03',
+    cashAppStripePaymentLink: 'https://buy.stripe.com/3cI00ia7f9onbCk95w8ww0a',
+    cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/49.99',
   },
 ];
 

@@ -320,11 +320,45 @@ SWEEPSTAKES_CONFIG.storePackages.forEach((pkg) => {
   assert(pkg.priceUsd > 0, `Package [${pkg.id}] has positive USD price ($${pkg.priceUsd})`);
   assert(pkg.goldCoins > 0, `Package [${pkg.id}] provides Gold Coins (${pkg.goldCoins.toLocaleString()} GC)`);
   assert(pkg.freeSweepsCoins > 0, `Package [${pkg.id}] provides Free SC (${pkg.freeSweepsCoins} SC)`);
+  assert(
+    pkg.stripePaymentLink &&
+      pkg.stripePaymentLink.startsWith('https://buy.stripe.com/') &&
+      !pkg.stripePaymentLink.includes('/test_'),
+    `Package [${pkg.id}] has LIVE Stripe Payment Link (${pkg.stripePaymentLink})`
+  );
+  assert(
+    pkg.cashAppStripePaymentLink &&
+      pkg.cashAppStripePaymentLink.startsWith('https://buy.stripe.com/') &&
+      !pkg.cashAppStripePaymentLink.includes('/test_'),
+    `Package [${pkg.id}] has LIVE Cash App Stripe Payment Link (${pkg.cashAppStripePaymentLink})`
+  );
+});
+
+assert(
+  SWEEPSTAKES_CONFIG.featuredRoyalPackage &&
+    SWEEPSTAKES_CONFIG.featuredRoyalPackage.stripePaymentLink.startsWith('https://buy.stripe.com/') &&
+    !SWEEPSTAKES_CONFIG.featuredRoyalPackage.stripePaymentLink.includes('/test_'),
+  'Featured Royal Package ($249.99) has LIVE Stripe Payment Link'
+);
+
+SWEEPSTAKES_CONFIG.highRollerPackages.forEach((pkg) => {
+  assert(
+    pkg.stripePaymentLink &&
+      pkg.stripePaymentLink.startsWith('https://buy.stripe.com/') &&
+      !pkg.stripePaymentLink.includes('/test_'),
+    `High-Roller Package [${pkg.id}] has LIVE Stripe Payment Link (${pkg.stripePaymentLink})`
+  );
 });
 
 assert(SWEEPSTAKES_CONFIG.rescuePackages.length >= 3, 'Rescue low-balance refill bundles configured');
 SWEEPSTAKES_CONFIG.rescuePackages.forEach((pkg) => {
   assert(pkg.priceUsd > 0 && pkg.goldCoins > 0 && pkg.freeSweepsCoins > 0, `Rescue package [${pkg.id}] is valid`);
+  assert(
+    pkg.stripePaymentLink &&
+      pkg.stripePaymentLink.startsWith('https://buy.stripe.com/') &&
+      !pkg.stripePaymentLink.includes('/test_'),
+    `Rescue package [${pkg.id}] has LIVE Stripe Payment Link`
+  );
 });
 
 // ----------------------------------------------------------------------------

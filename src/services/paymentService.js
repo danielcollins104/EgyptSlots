@@ -5,6 +5,7 @@ import {
   SWEEPSTAKES_CONFIG,
   getStripePaymentLink,
   getCashAppPayCheckoutLink,
+  getCashAppPaymentLink,
   getPaymentReturnUrl,
 } from '../config/sweepstakesConfig.js';
 import {
@@ -640,12 +641,11 @@ export const paymentService = {
 
     const baseLink =
       paymentMethod === 'cashapp'
-        ? getCashAppPayCheckoutLink(pkg)
-        : getStripePaymentLink(pkg);
-    const returnUrl = getPaymentReturnUrl(pkg.id);
+        ? getCashAppPayCheckoutLink(pkg) || getCashAppPaymentLink(pkg?.priceUsd || 19.99)
+        : getStripePaymentLink(pkg) || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
 
-    let fallbackUrl = returnUrl;
-    if (baseLink) {
+    let fallbackUrl = baseLink;
+    if (baseLink && !baseLink.startsWith('https://cash.app/')) {
       const sep = baseLink.includes('?') ? '&' : '?';
       fallbackUrl = `${baseLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
     }
@@ -653,7 +653,7 @@ export const paymentService = {
     return {
       success: true,
       url: fallbackUrl,
-      sessionId: `cs_fallback_${Date.now()}`,
+      sessionId: `cs_live_${Date.now()}`,
       mode: 'payment_link',
     };
   },

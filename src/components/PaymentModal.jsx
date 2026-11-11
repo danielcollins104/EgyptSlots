@@ -25,6 +25,7 @@ import {
   CRYPTO_WALLET_ADDRESSES,
   calculateCustomPackage,
   getCashAppPayCheckoutLink,
+  getCashAppPaymentLink,
   getStripePaymentLink,
   getPaymentReturnUrl,
 } from '../config/sweepstakesConfig';
@@ -314,10 +315,10 @@ export default function PaymentModal({
 
     const baseStripe =
       methodType === 'cashapp'
-        ? getCashAppPayCheckoutLink(selectedPkg)
-        : getStripePaymentLink(selectedPkg);
-    const returnUrl = getPaymentReturnUrl(selectedPkg.id);
-    window.location.href = baseStripe || returnUrl;
+        ? getCashAppPayCheckoutLink(selectedPkg) ||
+          getCashAppPaymentLink(selectedPkg?.priceUsd || 19.99)
+        : getStripePaymentLink(selectedPkg) || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
+    window.location.href = baseStripe;
   };
 
   const handleCopyCryptoAddress = (addr) => {

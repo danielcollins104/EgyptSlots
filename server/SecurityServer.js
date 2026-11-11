@@ -159,6 +159,7 @@ export class SecurityServer {
       const metadata = dataObject.metadata || {};
       const allPackages = [
         ...(SWEEPSTAKES_CONFIG.storePackages || []),
+        ...(SWEEPSTAKES_CONFIG.featuredRoyalPackage ? [SWEEPSTAKES_CONFIG.featuredRoyalPackage] : []),
         ...(SWEEPSTAKES_CONFIG.highRollerPackages || []),
         ...(SWEEPSTAKES_CONFIG.rescuePackages || []),
       ];
