@@ -7,13 +7,9 @@ import {
   Crown,
   Flame,
   ArrowRight,
-  ShieldCheck,
-  Zap,
   Gift,
   Gamepad2,
-  CheckCircle2,
 } from 'lucide-react';
-import { SWEEPSTAKES_CONFIG } from '../config/sweepstakesConfig';
 import { soundEngine } from '../audio/soundEngine';
 
 export const REFILL_PACKAGES = [
@@ -24,7 +20,7 @@ export const REFILL_PACKAGES = [
     originalPriceUsd: 9.99,
     goldCoins: 10000,
     freeSweepsCoins: 5.0,
-    badge: 'STARTER FLASH • 50% OFF',
+    badge: '50% OFF',
     tagline: 'Instant refill + $5.00 Free SC Value',
     relicArt: '/assets/symbols/high/high_ankh_no_frame.png',
     savings: 'Save $5.00',
@@ -40,7 +36,7 @@ export const REFILL_PACKAGES = [
     originalPriceUsd: 16.99,
     goldCoins: 30000,
     freeSweepsCoins: 12.0,
-    badge: 'RESCUE DEAL • +20% BONUS',
+    badge: '+20% BONUS',
     tagline: '30,000 GC + $12.00 Free Redeemable SC',
     relicArt: '/assets/symbols/high/high_scarab_no_frame.png',
     savings: '20% Extra Free SC',
@@ -56,7 +52,7 @@ export const REFILL_PACKAGES = [
     originalPriceUsd: 34.99,
     goldCoins: 75000,
     freeSweepsCoins: 25.0,
-    badge: '🔥 #1 BEST VALUE • +25% BONUS',
+    badge: '🔥 BEST VALUE',
     tagline: '75,000 GC + $25.00 Real Cash Prize Value!',
     relicArt: '/assets/symbols/high/high_necklace_no_frame.png',
     savings: '25% Extra Free SC',
@@ -73,7 +69,7 @@ export const REFILL_PACKAGES = [
     originalPriceUsd: 79.99,
     goldCoins: 210000,
     freeSweepsCoins: 65.0,
-    badge: '👑 WHALE RESCUE • +30% BONUS',
+    badge: '👑 +30% VIP',
     tagline: 'Exceeds $50 Minimum Cashout Threshold!',
     relicArt: '/assets/symbols/high/high_eye_no_frame.png',
     savings: '30% Extra Free SC',
@@ -102,14 +98,13 @@ export default function LowBalanceOfferModal({
     if (!isOpen) return undefined;
     const tick = setInterval(() => {
       setLiveRescueJackpot((prev) => Number((prev + 0.42 + Math.random() * 1.35).toFixed(2)));
-    }, 120);
+    }, 150);
     return () => clearInterval(tick);
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const isSC = currencyMode === 'SC';
-  const isZeroSC = isSC && Number(balance) < 0.15;
   const packages = REFILL_PACKAGES;
 
   const handleClaim = (pkg) => {
@@ -144,71 +139,35 @@ export default function LowBalanceOfferModal({
   return (
     <div className="low-balance-modal-backdrop" onClick={handleDismiss}>
       <div
-        className="low-balance-modal-dialog"
+        className="low-balance-modal-dialog rescue-compact-dialog"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="low-balance-title"
       >
-        {/* Glow ambient background aura */}
-        <div className="low-balance-modal-aura" />
-
-        {/* Top Close Button */}
         <button
           className="low-balance-close-btn"
           onClick={handleDismiss}
           aria-label="Close offer"
         >
-          <X size={20} />
+          <X size={18} />
         </button>
 
-        {/* Header Badge & Title */}
+        {/* Compact Header */}
         <div className="low-balance-modal-header">
           <div className="rescue-urgent-pill">
-            <Flame size={14} className="flame-icon" />
-            <span>
-              {isZeroSC
-                ? 'OUT OF SWEEPS COINS'
-                : isSC
-                ? 'LOW SWEEPS COINS REMINDER'
-                : 'LOW GOLD COINS REFILL'}
-            </span>
-            <Sparkles size={14} className="sparkle-icon" />
+            <Flame size={12} className="flame-icon" />
+            <span>QUICK COIN REFILL</span>
           </div>
 
           <h2 id="low-balance-title" className="rescue-modal-title">
-            {isZeroSC
-              ? 'NEED MORE SWEEPS COINS TO SPIN?'
-              : 'KEEP YOUR WINNING RHYTHM ALIVE!'}
+            GET COINS &amp; FREE SC
           </h2>
 
-          <p className="rescue-modal-subtitle">
-            {isSC ? (
-              <>
-                Your current balance is{' '}
-                <strong style={{ color: '#00e5ff' }}>
-                  ${Number(balance).toFixed(2)} SC
-                </strong>
-                . To receive <strong>FREE promotional Sweeps Coins</strong> redeemable for real cash prizes, choose any Gold Coin bundle below!
-              </>
-            ) : (
-              <>
-                Your Gold Coin bankroll is running low (
-                <strong style={{ color: '#ffd700' }}>
-                  {Number(balance).toLocaleString()} GC
-                </strong>
-                ). Lock in up to <strong>+30% EXTRA BONUS COINS</strong> on this limited refill!
-              </>
-            )}
-          </p>
-
-          {/* Live Ticking Progressive Jackpot & VIP Trust Strip */}
           <div className="rescue-live-jackpot-strip">
-            <span className="rescue-jp-label">⚡ LIVE GRAND JACKPOT POOL:</span>
-            <strong className="rescue-jp-counter">
-              ${liveRescueJackpot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </strong>
-            <span className="rescue-jp-badge">INSTANT CREDIT</span>
+            <span>Balance: {isSC ? `$${Number(balance).toFixed(2)} SC` : `${Number(balance).toLocaleString()} GC`}</span>
+            <span>•</span>
+            <span>Jackpot: ${liveRescueJackpot.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
           </div>
         </div>
 
@@ -216,25 +175,22 @@ export default function LowBalanceOfferModal({
         {canClaimDaily && (
           <div className="rescue-daily-claim-bar">
             <div className="daily-claim-left">
-              <Gift size={18} className="gift-bounce-icon" />
-              <div>
-                <span className="daily-claim-title">FREE DAILY BONUS READY!</span>
-                <span className="daily-claim-sub">Claim 5,000 GC + 0.50 FREE SC immediately</span>
-              </div>
+              <Gift size={16} className="gift-bounce-icon" />
+              <span className="daily-claim-title">FREE DAILY BONUS: 5,000 GC + $0.50 SC</span>
             </div>
             <button
               type="button"
               className="daily-claim-btn"
               onClick={handleDailyClaim}
             >
-              <span>CLAIM NOW</span>
-              <Sparkles size={14} />
+              <span>CLAIM</span>
+              <Sparkles size={12} />
             </button>
           </div>
         )}
 
-        {/* 4 High-Converting Package Cards */}
-        <div className="rescue-packages-grid">
+        {/* 2x2 Compact Package Grid */}
+        <div className="rescue-packages-grid rescue-compact-grid">
           {packages.map((pkg) => {
             const isRec = pkg.recommended;
             return (
@@ -249,28 +205,23 @@ export default function LowBalanceOfferModal({
                   </div>
                 )}
 
-                <div className="rescue-card-top">
-                  {pkg.relicArt && (
-                    <img
-                      src={pkg.relicArt}
-                      alt={pkg.tierTitle || 'Relic'}
-                      className="rescue-relic-emblem"
-                      draggable={false}
-                    />
-                  )}
-                  <div className="rescue-gc-row">
-                    <Coins size={16} className="gc-icon-gold" />
-                    <span className="rescue-gc-val">{pkg.goldCoins.toLocaleString()}</span>
-                    <span className="rescue-gc-unit">GC</span>
-                  </div>
+                <img
+                  src={pkg.relicArt}
+                  alt=""
+                  className="rescue-relic-emblem"
+                  draggable={false}
+                />
 
-                  <div className="rescue-sc-pill">
-                    <Gem size={13} className="sc-icon-gem" />
-                    <span>+FREE ${pkg.freeSweepsCoins.toFixed(2)} SC</span>
-                  </div>
+                <div className="rescue-gc-row">
+                  <Coins size={14} className="gc-icon-gold" />
+                  <span className="rescue-gc-val">{pkg.goldCoins.toLocaleString()}</span>
+                  <span className="rescue-gc-unit">GC</span>
                 </div>
 
-                <div className="rescue-tagline">{pkg.tagline}</div>
+                <div className="rescue-sc-pill">
+                  <Gem size={11} className="sc-icon-gem" />
+                  <span>+${pkg.freeSweepsCoins.toFixed(0)} SC FREE</span>
+                </div>
 
                 <button
                   type="button"
@@ -281,61 +232,49 @@ export default function LowBalanceOfferModal({
                   }}
                 >
                   {pkg.originalPriceUsd && (
-                    <span className="rescue-old-price">${pkg.originalPriceUsd.toFixed(2)}</span>
+                    <span className="rescue-old-price">${pkg.originalPriceUsd.toFixed(0)}</span>
                   )}
-                  <span>CLAIM ${pkg.priceUsd.toFixed(2)}</span>
-                  <ArrowRight size={15} />
+                  <span>${pkg.priceUsd.toFixed(2)}</span>
+                  <ArrowRight size={13} />
                 </button>
               </div>
             );
           })}
         </div>
 
-        {/* Dual Actions Deck */}
+        {/* Minimal Footer Actions */}
         <div className="rescue-modal-footer">
-          {/* Option A: Switch to Free Gold Coins */}
           {isSC && goldCoins >= 15 && (
             <button
               type="button"
               className="rescue-switch-gc-btn"
               onClick={handleSwitchToGC}
             >
-              <Gamepad2 size={16} />
-              <span>
-                Play For Free &bull; Switch to Gold Coins ({goldCoins.toLocaleString()} GC Available)
-              </span>
+              <Gamepad2 size={14} />
+              <span>Play Free with Gold Coins ({goldCoins.toLocaleString()} GC)</span>
             </button>
           )}
 
-          {/* Option B: Open Full Store */}
-          <button
-            type="button"
-            className="rescue-all-packages-link"
-            onClick={() => {
-              soundEngine.playButtonClick(520);
-              onOpenStore?.();
-            }}
-          >
-            <Crown size={14} className="crown-icon-sm" />
-            <span>Open Full Coin Store &amp; High Roller Packages ($5,000+)</span>
-          </button>
-
-          {/* Option C: Maybe Later */}
-          <button
-            type="button"
-            className="rescue-dismiss-text-btn"
-            onClick={handleDismiss}
-          >
-            Maybe Later &bull; Return to Game
-          </button>
-        </div>
-
-        {/* Legal Trust Guarantee */}
-        <div className="rescue-guarantee-strip">
-          <ShieldCheck size={13} />
-          <span>
-            100% Legal US Sweepstakes &bull; Free SC with GC Bundles &bull; 1 SC = $1 USD Real Prize Redemption
-          </span>
+          <div className="rescue-footer-links-row">
+            <button
+              type="button"
+              className="rescue-all-packages-link"
+              onClick={() => {
+                soundEngine.playButtonClick(520);
+                onOpenStore?.();
+              }}
+            >
+              <Crown size={13} />
+              <span>All Packages</span>
+            </button>
+            <button
+              type="button"
+              className="rescue-dismiss-text-btn"
+              onClick={handleDismiss}
+            >
+              No Thanks
+            </button>
+          </div>
         </div>
       </div>
     </div>
