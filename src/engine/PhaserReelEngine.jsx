@@ -610,6 +610,17 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     startSpin: (targetGrid, targetExpanded, isTurbo = false) => {
       engineRef.current?.startSpin?.(targetGrid, targetExpanded, isTurbo);
     },
+    triggerTileCascade: (cellsToExplode, newGrid, rowDropFromByCol, onCascadeComplete) => {
+      engineRef.current?.triggerTileCascade?.(
+        cellsToExplode,
+        newGrid,
+        rowDropFromByCol,
+        onCascadeComplete
+      );
+    },
+    fastForwardCascade: () => {
+      return engineRef.current?.fastForwardCascade?.();
+    },
   }), []);
 
   useEffect(() => {
@@ -670,6 +681,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     const illuminatedTiles = [];
     let plannedRareCellsByCol = [null, null, null, null, null];
     let totalPlannedRareCount = 0;
+    let activeCascade = null;
     const sprites = {};
     let isDisposed = false;
 
@@ -1025,13 +1037,17 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       isDirty = true;
       lastTime = performance.now();
       illuminatedTiles.length = 0;
+      if (activeCascade) {
+        activeCascade.tweens?.forEach((t) => t.kill());
+        activeCascade.timers?.forEach((id) => clearTimeout(id));
+        activeCascade = null;
+      }
       plannedRareCellsByCol = [null, null, null, null, null];
       totalPlannedRareCount = 0;
 
       // Identify Rare Illumination Trigger Cells across the 5 columns:
-      // Strictly restricted to genuine rare events so Guardians don't power up all too often:
       // Priority 1: Bonus Scatters (2+ scatters build intense suspense for the 3rd scatter!)
-      // Priority 2: 3+ Sacred Guardian Awakener Relics (bastet_lotus / anubis_scepter)
+      // Priority 2: 2+ Sacred Guardian Awakener Relics (bastet_lotus / anubis_scepter)
       const scatterCols = [];
       const awakenerCols = [];
 
@@ -1052,7 +1068,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       const chosenRareList =
         scatterCols.length >= 2
           ? scatterCols
-          : awakenerCols.length >= 3
+          : awakenerCols.length >= 2
           ? awakenerCols
           : [];
 
@@ -1366,6 +1382,184 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         });
     };
 
+    // =========================================================================
+    // 2026 GUARDIAN ZAP PAUSE -> LIT-UP TILE EXPLOSION -> CANDY-CRUSH CASCADE
+    // =========================================================================
+    const triggerTileCascade = (
+      cellsToExplode = [],
+      newGrid = null,
+      rowDropFromByCol = null,
+      onCascadeComplete = null
+    ) => {
+      if (!Array.isArray(cellsToExplode) || cellsToExplode.length === 0 || !newGrid) {
+        onCascadeComplete?.();
+        return;
+      }
+
+      if (activeCascade) {
+        activeCascade.tweens?.forEach((t) => t.kill());
+        activeCascade.timers?.forEach((id) => clearTimeout(id));
+        activeCascade = null;
+      }
+
+      const nowStart = performance.now();
+      const explodedSet = new Set(cellsToExplode.map(([c, r]) => `${c},${r}`));
+      const dropOffsets = Array.from({ length: COLS }, () => [0, 0, 0]);
+
+      // Ensure all zapped cells also appear in illuminatedTiles so the electric/solar aura renders during ZAP_PAUSE
+      cellsToExplode.forEach(([c, r], idx) => {
+        const exists = illuminatedTiles.some((it) => it.col === c && it.row === r);
+        if (!exists) {
+          illuminatedTiles.push({
+            col: c,
+            row: r,
+            sym: reels[c]?.strip?.[4 + r],
+            kind: 'zap',
+            order: idx + 1,
+            bornAt: nowStart,
+            slamBornAt: nowStart,
+            explodeAt: 0,
+          });
+        }
+      });
+
+      activeCascade = {
+        phase: 'ZAP_PAUSE',
+        phaseStart: nowStart,
+        cellsToExplode,
+        explodedSet,
+        newGrid,
+        rowDropFromByCol,
+        dropOffsets,
+        onCascadeComplete,
+        tweens: [],
+        timers: [],
+      };
+      isDirty = true;
+
+      // Phase 1 -> Phase 2: After 640ms of the board getting zapped by Guardian power, EXPLODE the lit-up tiles!
+      const tExplode = setTimeout(() => {
+        if (!activeCascade || isDisposed) return;
+        const nowExp = performance.now();
+        activeCascade.phase = 'EXPLODING';
+        activeCascade.phaseStart = nowExp;
+        soundEngine.playSpecialTileSlam?.(2, 3);
+        soundEngine.playThunderStrike?.();
+
+        cellsToExplode.forEach(([c, r], idx) => {
+          const cx = c * COL_W + COL_W / 2;
+          const cy = r * ROW_H + ROW_H / 2;
+          spawnParticles(cx, cy, 34, idx % 2 === 0 ? '#00f0ff' : '#fbbf24');
+          const illum = illuminatedTiles.find((it) => it.col === c && it.row === r);
+          if (illum) {
+            illum.explodeAt = nowExp;
+          }
+        });
+        isDirty = true;
+      }, 640);
+
+      // Phase 2 -> Phase 3: After 420ms of tile explosion leaving empty spaces, drop tiles down (Candy-Crush cascade!)
+      const tCascade = setTimeout(() => {
+        if (!activeCascade || isDisposed) return;
+        const nowCas = performance.now();
+        activeCascade.phase = 'CASCADING';
+        activeCascade.phaseStart = nowCas;
+        illuminatedTiles.length = 0;
+
+        for (let c = 0; c < COLS; c++) {
+          const reel = reels[c];
+          if (newGrid[c] && newGrid[c].length >= 3) {
+            reel.targetSymbols = newGrid[c];
+            reel.strip[4] = newGrid[c][0];
+            reel.strip[5] = newGrid[c][1];
+            reel.strip[6] = newGrid[c][2];
+          }
+
+          for (let r = 0; r < ROWS; r++) {
+            const fromRow =
+              rowDropFromByCol && rowDropFromByCol[c] && typeof rowDropFromByCol[c][r] === 'number'
+                ? rowDropFromByCol[c][r]
+                : r;
+            const rowDelta = r - fromRow;
+            if (rowDelta > 0) {
+              const startOff = -rowDelta * ROW_H;
+              activeCascade.dropOffsets[c][r] = startOff;
+              const proxy = { y: startOff };
+              const tw = gsap.to(proxy, {
+                y: 0,
+                duration: 0.38 + Math.min(0.14, rowDelta * 0.05),
+                delay: (ROWS - 1 - r) * 0.045 + c * 0.025,
+                ease: 'back.out(1.65)',
+                onUpdate: () => {
+                  if (activeCascade && activeCascade.dropOffsets[c]) {
+                    activeCascade.dropOffsets[c][r] = proxy.y;
+                    isDirty = true;
+                  }
+                },
+                onComplete: () => {
+                  if (activeCascade && activeCascade.dropOffsets[c]) {
+                    activeCascade.dropOffsets[c][r] = 0;
+                    const cx = c * COL_W + COL_W / 2;
+                    const cy = r * ROW_H + ROW_H / 2;
+                    spawnParticles(cx, cy, 12, '#fde047');
+                    soundEngine.playReelStop?.(c, true);
+                    isDirty = true;
+                  }
+                },
+              });
+              activeCascade.tweens.push(tw);
+            } else {
+              activeCascade.dropOffsets[c][r] = 0;
+            }
+          }
+        }
+        isDirty = true;
+      }, 640 + 420);
+
+      // Phase 3 -> Phase 4: Cascade complete! Evaluate new board for second-chance win!
+      const tFinish = setTimeout(() => {
+        if (!activeCascade || isDisposed) return;
+        const doneCb = activeCascade.onCascadeComplete;
+        activeCascade.tweens?.forEach((t) => t.kill());
+        activeCascade = null;
+        illuminatedTiles.length = 0;
+        isDirty = true;
+        doneCb?.();
+      }, 640 + 420 + 540);
+
+      activeCascade.timers.push(tExplode, tCascade, tFinish);
+    };
+
+    const fastForwardCascade = () => {
+      if (!activeCascade) return false;
+      const { cellsToExplode, newGrid, onCascadeComplete, tweens, timers } = activeCascade;
+      tweens?.forEach((t) => t.kill());
+      timers?.forEach((id) => clearTimeout(id));
+
+      for (let c = 0; c < COLS; c++) {
+        const reel = reels[c];
+        if (newGrid?.[c] && newGrid[c].length >= 3) {
+          reel.targetSymbols = newGrid[c];
+          reel.strip[4] = newGrid[c][0];
+          reel.strip[5] = newGrid[c][1];
+          reel.strip[6] = newGrid[c][2];
+        }
+      }
+
+      cellsToExplode?.forEach(([c, r]) => {
+        const cx = c * COL_W + COL_W / 2;
+        const cy = r * ROW_H + ROW_H / 2;
+        spawnParticles(cx, cy, 18, '#ffd700');
+      });
+
+      soundEngine.playSlamStop?.();
+      illuminatedTiles.length = 0;
+      activeCascade = null;
+      isDirty = true;
+      onCascadeComplete?.();
+      return true;
+    };
+
     const tick = () => {
       if (isDisposed) return;
       const now = performance.now();
@@ -1384,7 +1578,9 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       const hasParticles = particles.length > 0;
       const hasIlluminated =
         illuminatedTiles.length > 0 &&
-        (anySpinning || now - illuminatedTiles[illuminatedTiles.length - 1].bornAt < 3400);
+        (anySpinning ||
+          Boolean(activeCascade) ||
+          now - illuminatedTiles[illuminatedTiles.length - 1].bornAt < 3400);
       const hasTransitions = reels.some(
         (r) =>
           r.offsetY !== 0 ||
@@ -1392,7 +1588,12 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           (r.slamCell && now - r.slamCell.bornAt < 300)
       );
       const isActivelyAnimating =
-        anySpinning || hasActiveWins || hasParticles || hasTransitions || hasIlluminated;
+        anySpinning ||
+        hasActiveWins ||
+        hasParticles ||
+        hasTransitions ||
+        hasIlluminated ||
+        Boolean(activeCascade);
 
       // Intelligent Idle Throttling: If no reels are spinning and no animations/wins/particles are active,
       // draw the resting grid once and suspend drawing to yield 0% GPU load and eliminate thermal heat
@@ -1478,13 +1679,74 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           for (let idx = 0; idx < STRIP_SIZE; idx++) {
             const sym = reel.strip[idx];
             const visibleRow = idx - (STRIP_SIZE - ROWS);
+            const cascadeDropY =
+              visibleRow >= 0 &&
+              visibleRow < ROWS &&
+              activeCascade?.phase === 'CASCADING' &&
+              activeCascade.dropOffsets?.[c]
+                ? activeCascade.dropOffsets[c][visibleRow] || 0
+                : 0;
             const centerY =
-              visibleRow * ROW_H + ROW_H / 2 + reel.scrollPx + reel.offsetY;
+              visibleRow * ROW_H + ROW_H / 2 + reel.scrollPx + reel.offsetY + cascadeDropY;
 
             if (centerY < -ROW_H || centerY > GAME_H + ROW_H) continue;
 
+            const isCascadeTargetCell =
+              visibleRow >= 0 &&
+              visibleRow < ROWS &&
+              Boolean(activeCascade?.explodedSet?.has(`${c},${visibleRow}`));
+
+            // During EXPLODING phase, zapped tiles burst outward and vanish into empty space!
+            if (isCascadeTargetCell && activeCascade?.phase === 'EXPLODING') {
+              const expElapsed = Math.max(0, now - activeCascade.phaseStart);
+              const expProg = Math.min(1, expElapsed / 400);
+              const sprite = sprites[`win_${sym.id}`] || sprites[`sym_${sym.id}`];
+              if (sprite && expProg < 0.65) {
+                const scaleOut = 1 + 0.42 * Math.sin((expProg / 0.65) * Math.PI * 0.5);
+                const alphaOut = Math.max(0, 1 - expProg / 0.62);
+                const dw = Math.round(sprite.width * scaleOut);
+                const dh = Math.round(sprite.height * scaleOut);
+                ctx.save();
+                ctx.globalAlpha = alphaOut;
+                ctx.drawImage(
+                  sprite,
+                  Math.round(reel.centerX - dw / 2),
+                  Math.round(centerY - dh / 2),
+                  dw,
+                  dh
+                );
+                ctx.restore();
+              }
+              // Draw supernova shockwave ring & burst over the exploding cell
+              ctx.save();
+              ctx.globalCompositeOperation = 'screen';
+              if (sprites.bonusSupernovaBurst) {
+                const bScale = 0.45 + Math.sin(expProg * Math.PI) * 1.45;
+                const bSz = Math.round(ROW_H * 1.38 * bScale);
+                ctx.globalAlpha = Math.max(0, 1 - expProg * 0.85);
+                ctx.translate(reel.centerX, centerY);
+                ctx.rotate(expProg * 2.1);
+                ctx.drawImage(sprites.bonusSupernovaBurst, -bSz / 2, -bSz / 2, bSz, bSz);
+              }
+              ctx.restore();
+              continue;
+            }
+
+            // During ZAP_PAUSE phase, zapped tiles vibrate with electric/solar overcharge before exploding!
+            const zapJitterX =
+              isCascadeTargetCell && activeCascade?.phase === 'ZAP_PAUSE'
+                ? (Math.random() - 0.5) * 9
+                : 0;
+            const zapJitterY =
+              isCascadeTargetCell && activeCascade?.phase === 'ZAP_PAUSE'
+                ? (Math.random() - 0.5) * 9
+                : 0;
+
             const isWinningCell =
-              !anySpinning && visibleRow >= 0 && winSet.has(`${c}-${visibleRow}`);
+              !anySpinning &&
+              !activeCascade &&
+              visibleRow >= 0 &&
+              winSet.has(`${c}-${visibleRow}`);
 
             const frameSprite = sprites[`frame_${sym.id}`];
             const popSprite = sprites[`pop_${sym.id}`];
@@ -1504,9 +1766,10 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
               const py = Math.round(centerY - ph / 2 + popLiftY);
               ctx.drawImage(popSprite, px, py, pw, ph);
             } else {
-              const sprite = isWinningCell
-                ? sprites[`win_${sym.id}`] || sprites[`sym_${sym.id}`]
-                : sprites[`sym_${sym.id}`];
+              const sprite =
+                isWinningCell || isCascadeTargetCell
+                  ? sprites[`win_${sym.id}`] || sprites[`sym_${sym.id}`]
+                  : sprites[`sym_${sym.id}`];
 
               if (!sprite) continue;
 
@@ -1533,8 +1796,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 const slamScale = 1 + 0.36 * Math.pow(1 - slamProg, 1.6);
                 const dw = Math.round(sw * slamScale);
                 const dh = Math.round(sh * slamScale);
-                const dx = Math.round(reel.centerX - dw / 2);
-                const dy = Math.round(centerY - dh / 2);
+                const dx = Math.round(reel.centerX - dw / 2 + zapJitterX);
+                const dy = Math.round(centerY - dh / 2 + zapJitterY);
                 ctx.drawImage(sprite, dx, dy, dw, dh);
 
                 // Expanding gold-cyan seismic shockwave ring on slam impact
@@ -1545,16 +1808,20 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 ctx.arc(reel.centerX, centerY, 26 + slamProg * 72, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.restore();
-              } else if (isWinningCell) {
-                const dw = Math.round(sw * popOutPulse);
-                const dh = Math.round(sh * popOutPulse);
-                const dx = Math.round(reel.centerX - dw / 2);
-                const dy = Math.round(centerY - dh / 2);
+              } else if (isWinningCell || (isCascadeTargetCell && activeCascade?.phase === 'ZAP_PAUSE')) {
+                const zapScale =
+                  isCascadeTargetCell && activeCascade?.phase === 'ZAP_PAUSE'
+                    ? 1.08 + 0.08 * Math.sin(now * 0.045)
+                    : popOutPulse;
+                const dw = Math.round(sw * zapScale);
+                const dh = Math.round(sh * zapScale);
+                const dx = Math.round(reel.centerX - dw / 2 + zapJitterX);
+                const dy = Math.round(centerY - dh / 2 + zapJitterY);
                 ctx.drawImage(sprite, dx, dy, dw, dh);
               } else {
                 // Direct hardware 1:1 bitblt for ultra-smooth 60/120 FPS spin without software resampling
-                const dx = Math.round(reel.centerX - sw / 2);
-                const dy = Math.round(centerY - sh / 2);
+                const dx = Math.round(reel.centerX - sw / 2 + zapJitterX);
+                const dy = Math.round(centerY - sh / 2 + zapJitterY);
                 ctx.drawImage(sprite, dx, dy);
               }
             }
@@ -1686,15 +1953,24 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         illuminatedTiles.forEach((it) => {
           const cx = it.col * COL_W + COL_W / 2;
           const cy = it.row * ROW_H + ROW_H - 20;
+          const isZapPause = activeCascade?.phase === 'ZAP_PAUSE';
+          const isExploding = activeCascade?.phase === 'EXPLODING';
           const isTriple = illuminatedTiles.length >= 3;
-          const badgeText = isTriple
+          const badgeText = isExploding
+            ? '💥 EXPLODING!'
+            : isZapPause
+            ? '⚡ ZAPPED!'
+            : isTriple
             ? `💥 ${it.order}/3 BONUS!`
             : `⚡ ${it.order}/3 CHARGED`;
-          const bw = isTriple ? 114 : 104;
+          const bw = isTriple || isExploding ? 114 : 104;
           const bh = 22;
 
-          ctx.fillStyle = isTriple ? 'rgba(180, 83, 9, 0.94)' : 'rgba(8, 25, 56, 0.92)';
-          ctx.strokeStyle = isTriple ? '#fde047' : '#00f0ff';
+          ctx.fillStyle =
+            isTriple || isExploding || isZapPause
+              ? 'rgba(180, 83, 9, 0.94)'
+              : 'rgba(8, 25, 56, 0.92)';
+          ctx.strokeStyle = isTriple || isExploding || isZapPause ? '#fde047' : '#00f0ff';
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.roundRect(cx - bw / 2, cy - bh / 2, bw, bh, 6);
@@ -1839,7 +2115,13 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     };
 
     gsap.ticker.add(tick);
-    engineRef.current = { startSpin, instantStop, markDirty };
+    engineRef.current = {
+      startSpin,
+      instantStop,
+      markDirty,
+      triggerTileCascade,
+      fastForwardCascade,
+    };
 
     const handleVisibility = () => {
       if (document.hidden) {

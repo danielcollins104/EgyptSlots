@@ -451,8 +451,18 @@ export default function App() {
   ]);
   const [anubisPowerUp, setAnubisPowerUp] = useState(null);
   const [bastetPowerUp, setBastetPowerUp] = useState(null);
+  const [anubisMartialMove, setAnubisMartialMove] = useState(null);
+  const [bastetMartialMove, setBastetMartialMove] = useState(null);
   const anubisTimerRef = useRef(null);
   const bastetTimerRef = useRef(null);
+  const anubisMartialTimerRef = useRef(null);
+  const bastetMartialTimerRef = useRef(null);
+
+  // Spin Lock & Fast-Forward State for Guardian Power-Up / Zap / Cascade Sequences
+  const [isGuardianSequenceActive, setIsGuardianSequenceActive] = useState(false);
+  const isGuardianSequenceActiveRef = useRef(false);
+  const spinIlluminatedCellsRef = useRef([]);
+  const fastForwardGuardianSequenceRef = useRef(null);
 
   const guardianChargeLevel = Math.max(anubisCharge, bastetCharge);
   const guardianChargeLevelRef = useRef(0);
@@ -482,10 +492,17 @@ export default function App() {
     ];
     const badges = [
       '🗿 DORMANT STONE',
-      '⚡ ANUBIS AWAKENED • LIFE RESTORED',
-      '⚡ ANUBIS LEVEL 2 • DIVINE EYES',
-      '🌀 ANUBIS LEVEL 3 • PLASMA ORB',
-      '🔥 ANUBIS LEVEL 4 • APEX OVERCHARGE',
+      '⚡ ANUBIS STAGE 1/4 • LIFE RESTORED',
+      '⚡ ANUBIS STAGE 2/4 • DIVINE ARMOR & EYES',
+      '🌀 ANUBIS STAGE 3/4 • PLASMA ORB',
+      '🔥 ANUBIS STAGE 4/4 • APEX OVERCHARGE',
+    ];
+    const martialMoves = [
+      null,
+      'iron-awaken',
+      'dragon-palm',
+      'shaolin-flourish',
+      'apex-kai',
     ];
 
     if (next === 1) soundEngine.playQiGather?.();
@@ -501,6 +518,16 @@ export default function App() {
     anubisTimerRef.current = setTimeout(() => {
       setAnubisPowerUp(null);
     }, 1500);
+
+    if (martialMoves[next]) {
+      setAnubisMartialMove(martialMoves[next]);
+      if (anubisMartialTimerRef.current) clearTimeout(anubisMartialTimerRef.current);
+      anubisMartialTimerRef.current = setTimeout(() => {
+        setAnubisMartialMove(null);
+      }, 1450);
+    } else {
+      setAnubisMartialMove(null);
+    }
 
     return next;
   }, []);
@@ -519,10 +546,17 @@ export default function App() {
     ];
     const badges = [
       '🗿 DORMANT STONE',
-      '🌸 BASTET AWAKENED • LIFE RESTORED',
-      '🌸 BASTET LEVEL 2 • SOLAR EYES',
-      '🌟 BASTET LEVEL 3 • SUNFIRE ORB',
-      '🔥 BASTET LEVEL 4 • APEX OVERCHARGE',
+      '🌸 BASTET STAGE 1/4 • LIFE RESTORED',
+      '🌸 BASTET STAGE 2/4 • SOLAR ARMOR & EYES',
+      '🌟 BASTET STAGE 3/4 • SUNFIRE ORB',
+      '🔥 BASTET STAGE 4/4 • APEX OVERCHARGE',
+    ];
+    const martialMoves = [
+      null,
+      'iron-awaken',
+      'dragon-palm',
+      'shaolin-flourish',
+      'apex-kai',
     ];
 
     if (next === 1) soundEngine.playQiGather?.();
@@ -538,6 +572,16 @@ export default function App() {
     bastetTimerRef.current = setTimeout(() => {
       setBastetPowerUp(null);
     }, 1500);
+
+    if (martialMoves[next]) {
+      setBastetMartialMove(martialMoves[next]);
+      if (bastetMartialTimerRef.current) clearTimeout(bastetMartialTimerRef.current);
+      bastetMartialTimerRef.current = setTimeout(() => {
+        setBastetMartialMove(null);
+      }, 1450);
+    } else {
+      setBastetMartialMove(null);
+    }
 
     return next;
   }, []);
@@ -1004,6 +1048,60 @@ export default function App() {
     [currencyMode, lineBetSC, lineBetGC, selectedLines]
   );
 
+  const computeCandyCrushCascade = useCallback(
+    (currentGrid, cellsToExplode, expandedCols = [], activeCurrencyMode = currencyMode) => {
+      const explodeSet = new Set((cellsToExplode || []).map(([c, r]) => `${c},${r}`));
+      const regs = getRegularSymbols(activeCurrencyMode);
+      const wildSym = getWildSymbol(activeCurrencyMode);
+      const topHigh = getTopHighSymbol(activeCurrencyMode);
+      const dropPool = [...regs, wildSym].filter((s) => s && !s.isExpanding && !s.isBonus);
+
+      const cascadedGrid = [];
+      const rowDropFromByCol = [];
+
+      for (let c = 0; c < COLS; c++) {
+        const colSyms = currentGrid?.[c] || [topHigh, topHigh, topHigh];
+        if (expandedCols && expandedCols[c]) {
+          cascadedGrid[c] = [...colSyms];
+          rowDropFromByCol[c] = [0, 1, 2];
+          continue;
+        }
+
+        const survivors = [];
+        let explodedCount = 0;
+        for (let r = 0; r < ROWS; r++) {
+          if (explodeSet.has(`${c},${r}`)) {
+            explodedCount++;
+          } else {
+            survivors.push({ sym: colSyms[r], origRow: r });
+          }
+        }
+
+        if (explodedCount === 0) {
+          cascadedGrid[c] = [...colSyms];
+          rowDropFromByCol[c] = [0, 1, 2];
+          continue;
+        }
+
+        const newTopCells = [];
+        for (let i = 0; i < explodedCount; i++) {
+          const picked = pickWeightedSymbol(dropPool, true) || regs[0] || topHigh;
+          newTopCells.push({
+            sym: picked,
+            origRow: -explodedCount + i,
+          });
+        }
+
+        const combined = [...newTopCells, ...survivors];
+        cascadedGrid[c] = combined.map((item) => item.sym);
+        rowDropFromByCol[c] = combined.map((item) => item.origRow);
+      }
+
+      return { cascadedGrid, rowDropFromByCol };
+    },
+    [currencyMode]
+  );
+
   const handleColumnStop = useCallback(
     (colIdx, didExpand, targetSymbols, rareTileHit = null, hasSpecialSlam = false) => {
       if (targetSymbols) {
@@ -1022,13 +1120,29 @@ export default function App() {
       // =========================================================================
       // 2026 REAL-TIME REEL-BY-REEL GUARDIAN LIGHTNING & FIRE TILE ILLUMINATION
       // When a rare/scatter/awakener tile slams into a stopping column:
-      //  - 1st Tile Hit: Anubis shoots lightning at [col, row] -> Tile 1/3 Illuminated (no stage powerup yet)
+      //  - 1st Tile Hit: Anubis shoots lightning at [col, row] -> Tile 1/3 Illuminated
       //  - 2nd Tile Hit: Bastet shoots solar fire at [col, row] -> Tile 2/3 Illuminated + Extended Suspense Riser!
       //  - 3rd Tile Hit: Both Guardians fire converging beams -> 3/3 Supernova Bonus Explosion!
       // =========================================================================
       if (rareTileHit) {
         const hitCell = [rareTileHit.col, rareTileHit.row];
         const hitCount = rareTileHit.count;
+
+        // Record illuminated cell for the post-spin Guardian Power-Up & Candy-Crush Cascade!
+        const key = `${hitCell[0]},${hitCell[1]}`;
+        const existingKeys = new Set(spinIlluminatedCellsRef.current.map(([c, r]) => `${c},${r}`));
+        if (!existingKeys.has(key)) {
+          spinIlluminatedCellsRef.current.push(hitCell);
+        }
+        if (Array.isArray(rareTileHit.allIlluminatedCells)) {
+          rareTileHit.allIlluminatedCells.forEach(([ic, ir]) => {
+            const ik = `${ic},${ir}`;
+            if (!existingKeys.has(ik)) {
+              existingKeys.add(ik);
+              spinIlluminatedCellsRef.current.push([ic, ir]);
+            }
+          });
+        }
 
         if (hitCount === 1) {
           // 1st Illuminated Tile: Lord Anubis shoots High-Voltage Lightning Bolt at the slammed tile!
@@ -1195,6 +1309,51 @@ export default function App() {
       setResponsibleGamingOpen(true);
     }
 
+    // Scan 5x3 grid for illuminated rare/awakener/scatter cells that Guardians zap on the board
+    const gridAwakenerCells = [];
+    const expandedCols = pending?.nextExpanded || [false, false, false, false, false];
+    for (let c = 0; c < COLS; c++) {
+      if (expandedCols[c]) continue;
+      for (let r = 0; r < ROWS; r++) {
+        const sym = nextGrid?.[c]?.[r];
+        if (
+          sym?.id === 'anubis_scepter' ||
+          sym?.id === 'bastet_lotus' ||
+          sym?.isGuardianAwakener
+        ) {
+          gridAwakenerCells.push([c, r]);
+        }
+      }
+    }
+
+    const illuminatedDuringSpin = [...(spinIlluminatedCellsRef.current || [])].filter(
+      ([c]) => !expandedCols[c]
+    );
+    spinIlluminatedCellsRef.current = [];
+
+    const allWinCells = Array.from(winCoordSet).map((k) => k.split(',').map(Number));
+    const hasExpandingWild = expandedCols.some((e) => e === true);
+    const hasLotusMatch = wins.some((w) => w.symbol?.id === 'bastet_lotus');
+    const hasScepterMatch = wins.some((w) => w.symbol?.id === 'anubis_scepter');
+    const hasGuardianAwakener = hasLotusMatch || hasScepterMatch;
+    const hasFiveOfAKind = wins.some((w) => w.matchCount >= 5);
+    const effectiveWinBaselineBet = Math.max(spinBet, (lineBet || currentLineBet) * 15);
+    const isBig =
+      finalWin >= effectiveWinBaselineBet * 15 ||
+      forcedMode === 'bigwin' ||
+      forcedMode === 'megawin' ||
+      forcedMode === 'ultrawin';
+    const isSelectCombination =
+      isBig || hasExpandingWild || hasFiveOfAKind || hasGuardianAwakener;
+
+    // Determine if a Guardian Power-Up + Board Zap + Tile Explosion + Candy-Crush Cascade should occur!
+    const shouldTriggerGuardianPowerUpSequence =
+      bonusCount < 3 &&
+      (isSelectCombination ||
+        illuminatedDuringSpin.length > 0 ||
+        gridAwakenerCells.length >= 2 ||
+        (totalCoinsWon > 0 && gridAwakenerCells.length > 0));
+
     if (totalCoinsWon > 0) {
       if (isSC) {
         paymentService.recordScWon(finalWin);
@@ -1214,15 +1373,6 @@ export default function App() {
       setWinningLines(wins);
       setWinningCells(winCoordSet);
 
-      // Normalize Big Win / Mega Win threshold to a full 15-line equivalent bet so 1-5 line spins
-      // do not falsely classify normal 3-of-a-kind line wins as 15x Big Wins or 30x Mega Wins.
-      const effectiveWinBaselineBet = Math.max(spinBet, (lineBet || currentLineBet) * 15);
-      const isBig =
-        finalWin >= effectiveWinBaselineBet * 15 ||
-        forcedMode === 'bigwin' ||
-        forcedMode === 'megawin' ||
-        forcedMode === 'ultrawin';
-
       // Trigger tactile cabinet recoil and floating win text
       triggerCabinetImpact(isBig ? 'mega' : 'win');
       setFloatingWinText(isSC ? `+${formatCoinValue(finalWin)} SC` : `+${finalWin.toLocaleString()} GC`);
@@ -1235,18 +1385,6 @@ export default function App() {
         setBigWinAmount(0);
         setWinSplashAmount(finalWin); // WinCelebrationSplash handles display and sound once
       }
-
-      // Guardian Selective Animation & Persistent Charge Build-Up Engine:
-      // Characters only power up on truly rare select combinations (Sacred Awakener Relic paylines, 5-of-a-kind, Expanding Wilds, or Big Wins 15x+ bet).
-      const allWinCells = Array.from(winCoordSet).map((k) => k.split(',').map(Number));
-      const hasExpandingWild = pending?.nextExpanded && pending.nextExpanded.some((e) => e === true);
-      const hasLotusMatch = wins.some((w) => w.symbol?.id === 'bastet_lotus');
-      const hasScepterMatch = wins.some((w) => w.symbol?.id === 'anubis_scepter');
-      const hasGuardianAwakener = hasLotusMatch || hasScepterMatch;
-      const hasFiveOfAKind = wins.some((w) => w.matchCount >= 5);
-      const isSelectCombination =
-        isBig || hasExpandingWild || hasFiveOfAKind || hasGuardianAwakener;
-      const currentCharge = guardianChargeLevelRef.current ?? guardianChargeLevel;
 
       if (bonusCount >= 3) {
         // =========================================================================
@@ -1284,66 +1422,9 @@ export default function App() {
         setTimeout(() => {
           setGuardianAction(false);
         }, 1600);
-      } else if (isSelectCombination) {
-        // =========================================================================
-        // 2026 ALTERNATING GUARDIAN POWER-UPS & FULL CHARGE CLIMAX:
-        // 1. Power-ups strictly alternate between Lord Anubis and Queen Bastet.
-        // 2. Once both are fully powered up (4/4) and get another power-up:
-        //    They shoot lightning & fire at the combination, causing major illumination,
-        //    a celebratory "BONUS!" animation, and launching Free Automatic Spins!
-        // =========================================================================
-        const areBothFullyPowered =
-          anubisChargeRef.current >= 4 && bastetChargeRef.current >= 4;
-
-        let statusText = '';
-
-        if (areBothFullyPowered) {
-          // CLIMAX: Fully powered up AND received another power-up from this combination!
-          triggerGuardianClimax(allWinCells);
-          statusText = '⚡🔥 DUAL GUARDIANS FULLY CHARGED! LIGHTNING & FIRE STRIKE COMBINATION — BONUS ACTIVATED!';
-        } else {
-          // Standard alternating power-up sequence
-          setGuardianAction(true);
-          setTimeout(() => setGuardianAction(false), 1600);
-
-          const currentTarget = nextPowerUpGuardianRef.current;
-          if (currentTarget === 'anubis') {
-            const nextA = Math.min(4, anubisChargeRef.current + 1);
-            triggerAnubisPowerUp(nextA);
-            nextPowerUpGuardianRef.current = 'bastet';
-            setNextPowerUpGuardian('bastet');
-            statusText = `⚡ LORD ANUBIS POWERS UP (STAGE ${nextA}/4)! [NEXT POWER-UP -> QUEEN BASTET]`;
-          } else {
-            const nextB = Math.min(4, bastetChargeRef.current + 1);
-            triggerBastetPowerUp(nextB);
-            nextPowerUpGuardianRef.current = 'anubis';
-            setNextPowerUpGuardian('anubis');
-            statusText = `🌸 QUEEN BASTET POWERS UP (STAGE ${nextB}/4)! [NEXT POWER-UP -> LORD ANUBIS]`;
-          }
-
-          if (anubisChargeRef.current >= 4 && bastetChargeRef.current >= 4) {
-            statusText = '🔥⚡ BOTH GUARDIANS REACHED MAXIMUM APEX OVERCHARGE (4/4)! NEXT WIN UNLEASHES THE DIVINE BONUS!';
-          }
-        }
-
-        const firstWin = wins[0];
-        if (isBig) {
-          setStatusMessage(
-            `${statusText} ${THEME_COPY.megaWinTickerPrefix} ${
-              isSC ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD PRIZE)` : `${finalWin.toLocaleString()} GC`
-            }!`
-          );
-        } else {
-          setStatusMessage(
-            `${statusText} ${wins.length} PAYLINE${wins.length > 1 ? 'S' : ''} (${firstWin.matchCount}× ${firstWin.symbol.name}) PAID ${
-              isSC ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)` : `${finalWin.toLocaleString()} GC`
-            }!`
-          );
-        }
-      } else {
+      } else if (!shouldTriggerGuardianPowerUpSequence) {
         // =========================================================================
         // REGULAR LOW WIN (3 Royal Symbols): GUARDIANS REMAIN CALM & DIGNIFIED
-        // They do NOT move or attack on ordinary wins, preserving their current charge!
         // =========================================================================
         setGuardianAction(false);
         const firstWin = wins[0];
@@ -1353,17 +1434,288 @@ export default function App() {
           }!`
         );
       }
-    } else {
-      // Losses: Bet subtracted at spin start
+    } else if (!shouldTriggerGuardianPowerUpSequence) {
+      // Losses without Guardian Zap: Bet subtracted at spin start
       setWinSplashAmount(0);
       if (nearMiss?.isNearMiss) {
-        // Near miss: 2 scatters landed! Play anticipation audio without granting free Guardian stages.
         soundEngine.playAnticipationRiser();
         setStatusMessage(`⚡ NEAR-MISS! ${nearMiss.description} • GUARDIANS PERCHED IN SUSPENSE!`);
       } else {
-        // On regular spin with no win: do NOT wipe out their hard-earned charge!
-        // Maintain their living presence.
         setStatusMessage(`${CASINO_BRAND.casinoFullTitle} • ${CASINO_BRAND.edition}`);
+      }
+    }
+
+    // =========================================================================
+    // 2026 GUARDIAN POWER-UP + BOARD ZAP PAUSE + TILE EXPLOSION + CANDY-CRUSH CASCADE
+    //  1. Locks reels (`isGuardianSequenceActive = true`) until the sequence finishes.
+    //  2. Pressing SPIN during the sequence fast-forwards immediately to the end!
+    //  3. Advances Anubis or Bastet's state (Stage 0 -> 1 -> 2 -> 3 -> 4) visibly.
+    //  4. Pauses while the board gets zapped, explodes the lit-up tiles, drops
+    //     surviving & new tiles down into the empty spaces, and evaluates a
+    //     second-chance win from the new combination!
+    // =========================================================================
+    if (shouldTriggerGuardianPowerUpSequence) {
+      isGuardianSequenceActiveRef.current = true;
+      setIsGuardianSequenceActive(true);
+      setGuardianAction(true);
+
+      // Collect unique board cells to zap & explode (excluding 1x3 expanded columns)
+      const zapMap = new Map();
+      const addZapCell = ([c, r]) => {
+        if (c >= 0 && c < COLS && r >= 0 && r < ROWS && !expandedCols[c]) {
+          zapMap.set(`${c},${r}`, [c, r]);
+        }
+      };
+      illuminatedDuringSpin.forEach(addZapCell);
+      gridAwakenerCells.forEach(addZapCell);
+      if (isSelectCombination || zapMap.size === 0) {
+        allWinCells.forEach(addZapCell);
+      }
+      if (zapMap.size === 0) {
+        addZapCell([1, 1]);
+        addZapCell([2, 1]);
+        addZapCell([3, 1]);
+      }
+      const cellsToZap = Array.from(zapMap.values());
+
+      // Advance the appropriate Guardian's Stage (0 -> 1 -> 2 -> 3 -> 4)
+      const areBothFullyPowered =
+        anubisChargeRef.current >= 4 && bastetChargeRef.current >= 4;
+      let wasClimaxStrike = false;
+      let activeGuardianSide = 'left';
+      let statusPrefix = '';
+
+      if (areBothFullyPowered) {
+        wasClimaxStrike = true;
+        activeGuardianSide = 'both';
+        triggerAnubisPowerUp(4);
+        triggerBastetPowerUp(4);
+        statusPrefix =
+          '⚡🔥 DUAL GUARDIANS APEX STRIKE (4/4)! ZAPPING & EXPLODING TILES FOR BONUS CASCADE!';
+      } else {
+        // Choose guardian based on symbol affinity or alternating turn
+        const hasAnubisRelic =
+          hasScepterMatch ||
+          cellsToZap.some(([c, r]) => nextGrid?.[c]?.[r]?.id === 'anubis_scepter');
+        const hasBastetRelic =
+          hasLotusMatch ||
+          cellsToZap.some(([c, r]) => nextGrid?.[c]?.[r]?.id === 'bastet_lotus');
+
+        let chosenGuardian = nextPowerUpGuardianRef.current;
+        if (hasAnubisRelic && !hasBastetRelic && anubisChargeRef.current < 4) {
+          chosenGuardian = 'anubis';
+        } else if (hasBastetRelic && !hasAnubisRelic && bastetChargeRef.current < 4) {
+          chosenGuardian = 'bastet';
+        } else if (chosenGuardian === 'anubis' && anubisChargeRef.current >= 4) {
+          chosenGuardian = 'bastet';
+        } else if (chosenGuardian === 'bastet' && bastetChargeRef.current >= 4) {
+          chosenGuardian = 'anubis';
+        }
+
+        if (chosenGuardian === 'anubis') {
+          activeGuardianSide = 'left';
+          const nextA = Math.min(4, anubisChargeRef.current + 1);
+          triggerAnubisPowerUp(nextA);
+          nextPowerUpGuardianRef.current = 'bastet';
+          setNextPowerUpGuardian('bastet');
+          statusPrefix = `⚡ LORD ANUBIS TRANSFORMS TO STAGE ${nextA}/4 & ZAPS ${cellsToZap.length} LIT TILE${cellsToZap.length > 1 ? 'S' : ''}!`;
+        } else {
+          activeGuardianSide = 'right';
+          const nextB = Math.min(4, bastetChargeRef.current + 1);
+          triggerBastetPowerUp(nextB);
+          nextPowerUpGuardianRef.current = 'anubis';
+          setNextPowerUpGuardian('anubis');
+          statusPrefix = `🌸 QUEEN BASTET TRANSFORMS TO STAGE ${nextB}/4 & ZAPS ${cellsToZap.length} LIT TILE${cellsToZap.length > 1 ? 'S' : ''}!`;
+        }
+      }
+
+      setStatusMessage(
+        `${statusPrefix} WATCH TILES EXPLODE & CASCADE FOR A SECOND-CHANCE WIN! (PRESS SPIN TO SKIP)`
+      );
+
+      // Fire projectile beams from the powered-up Guardian(s) at the lit-up tiles
+      if (activeGuardianSide === 'both') {
+        setGuardianStrikeEvent({
+          id: `zap_both_${Date.now()}`,
+          strikes: [
+            { from: 'left', type: 'lightning', targetCells: cellsToZap, delay: 0, duration: 540 },
+            { from: 'right', type: 'fire', targetCells: cellsToZap, delay: 90, duration: 540 },
+          ],
+        });
+        soundEngine.playThunderStrike?.();
+        setTimeout(() => soundEngine.playSolarFireball?.(), 95);
+      } else if (activeGuardianSide === 'left') {
+        setGuardianStrikeEvent({
+          id: `zap_left_${Date.now()}`,
+          strikes: [
+            { from: 'left', type: 'lightning', targetCells: cellsToZap, delay: 0, duration: 520 },
+          ],
+        });
+        soundEngine.playThunderStrike?.();
+      } else {
+        setGuardianStrikeEvent({
+          id: `zap_right_${Date.now()}`,
+          strikes: [
+            { from: 'right', type: 'fire', targetCells: cellsToZap, delay: 0, duration: 520 },
+          ],
+        });
+        soundEngine.playSolarFireball?.();
+      }
+
+      // Compute the new Candy-Crush cascaded 5x3 grid after `cellsToZap` explode
+      const { cascadedGrid, rowDropFromByCol } = computeCandyCrushCascade(
+        nextGrid,
+        cellsToZap,
+        expandedCols,
+        currencyMode
+      );
+
+      let sequenceCompleted = false;
+      const finishGuardianCascadeSequence = () => {
+        if (sequenceCompleted) return;
+        sequenceCompleted = true;
+        fastForwardGuardianSequenceRef.current = null;
+
+        // Evaluate the new cascaded 5x3 board for a second-chance win!
+        const cascadeEval = evaluateGridWins(
+          cascadedGrid,
+          activeLevel,
+          {},
+          linesCount || selectedLines,
+          lineBet
+        );
+
+        if (cascadeEval.totalCoinsWon > 0) {
+          const extraWin = cascadeEval.totalCoinsWon;
+          const combinedWin = Number((finalWin + extraWin).toFixed(isSC ? 2 : 0));
+
+          if (isSC) {
+            paymentService.recordScWon(extraWin);
+            setSweepsCoins((prev) => {
+              const next = Number((prev + extraWin).toFixed(2));
+              sweepsCoinsRef.current = next;
+              return next;
+            });
+          } else {
+            setGoldCoins((prev) => {
+              const next = prev + extraWin;
+              goldCoinsRef.current = next;
+              return next;
+            });
+          }
+
+          setLastWinCoins(combinedWin);
+          setWinningLines(cascadeEval.wins);
+          setWinningCells(cascadeEval.winCoordSet);
+          triggerCabinetImpact(combinedWin >= effectiveWinBaselineBet * 15 ? 'mega' : 'win');
+          setFloatingWinText(
+            isSC
+              ? `💥 CASCADE +${formatCoinValue(extraWin)} SC!`
+              : `💥 CASCADE +${extraWin.toLocaleString()} GC!`
+          );
+          setFloatingWinKey((k) => k + 1);
+
+          if (combinedWin >= effectiveWinBaselineBet * 15) {
+            setBigWinAmount(combinedWin);
+            setWinSplashAmount(0);
+          } else {
+            setWinSplashAmount(extraWin);
+          }
+
+          const firstCascadeWin = cascadeEval.wins[0];
+          setStatusMessage(
+            `💥 CANDY-CRUSH CASCADE WIN! NEW COMBINATION (${firstCascadeWin.matchCount}× ${
+              firstCascadeWin.symbol.name
+            }) PAID +${
+              isSC ? `${formatCoinValue(extraWin)} SC` : `${extraWin.toLocaleString()} GC`
+            } (TOTAL: ${
+              isSC ? `${formatCoinValue(combinedWin)} SC` : `${combinedWin.toLocaleString()} GC`
+            })!`
+          );
+        } else if (finalWin > 0) {
+          const firstWin = wins[0];
+          setStatusMessage(
+            `${statusPrefix} PAID ${
+              isSC ? `${formatCoinValue(finalWin)} SC` : `${finalWin.toLocaleString()} GC`
+            } (${firstWin.matchCount}× ${firstWin.symbol.name})!`
+          );
+        } else {
+          setStatusMessage(
+            `${statusPrefix} TILES DETONATED & CASCADED — READY FOR NEXT SPIN!`
+          );
+        }
+
+        setGuardianAction(false);
+        setGuardianStrikeEvent(null);
+        isGuardianSequenceActiveRef.current = false;
+        setIsGuardianSequenceActive(false);
+
+        if (wasClimaxStrike) {
+          setGuardianBonusCelebrationOpen(true);
+        } else if (
+          isHoldingSpinRef.current &&
+          bonusCount < 3 &&
+          !meterTriggeredBonus &&
+          !freeSpinsOpen &&
+          !bonusSession
+        ) {
+          setTimeout(() => {
+            if (
+              isHoldingSpinRef.current &&
+              !isSpinningRef.current &&
+              !isGuardianSequenceActiveRef.current
+            ) {
+              triggerSpinRef.current?.();
+            }
+          }, turboFlow ? 140 : 260);
+        }
+      };
+
+      // Register fast-forward handler so pressing SPIN snaps animations to their end state
+      fastForwardGuardianSequenceRef.current = () => {
+        if (anubisTimerRef.current) {
+          clearTimeout(anubisTimerRef.current);
+          anubisTimerRef.current = null;
+        }
+        if (bastetTimerRef.current) {
+          clearTimeout(bastetTimerRef.current);
+          bastetTimerRef.current = null;
+        }
+        if (anubisMartialTimerRef.current) {
+          clearTimeout(anubisMartialTimerRef.current);
+          anubisMartialTimerRef.current = null;
+        }
+        if (bastetMartialTimerRef.current) {
+          clearTimeout(bastetMartialTimerRef.current);
+          bastetMartialTimerRef.current = null;
+        }
+        setAnubisPowerUp(null);
+        setBastetPowerUp(null);
+        setAnubisMartialMove(null);
+        setBastetMartialMove(null);
+        setGuardianStrikeEvent(null);
+        triggerCabinetImpact('slam');
+
+        if (phaserEngineRef.current?.fastForwardCascade) {
+          const didFastForward = phaserEngineRef.current.fastForwardCascade();
+          if (!didFastForward) {
+            finishGuardianCascadeSequence();
+          }
+        } else {
+          finishGuardianCascadeSequence();
+        }
+      };
+
+      // Launch the 3-phase Zap Pause -> Explode -> Gravity Cascade on the Phaser 5x3 board
+      if (phaserEngineRef.current?.triggerTileCascade) {
+        phaserEngineRef.current.triggerTileCascade(
+          cellsToZap,
+          cascadedGrid,
+          rowDropFromByCol,
+          finishGuardianCascadeSequence
+        );
+      } else {
+        setTimeout(finishGuardianCascadeSequence, 1100);
       }
     }
 
@@ -1386,16 +1738,22 @@ export default function App() {
       ambientMusicEngine.setFlowMomentum?.(1);
     }
 
-    // Continuous Hold-to-Spin Flow Loop
+    // Continuous Hold-to-Spin Flow Loop (waits until any Guardian power-up/cascade sequence completes)
     if (
       isHoldingSpinRef.current &&
+      !shouldTriggerGuardianPowerUpSequence &&
+      !isGuardianSequenceActiveRef.current &&
       bonusCount < 3 &&
       !meterTriggeredBonus &&
       !freeSpinsOpen &&
       !bonusSession
     ) {
       setTimeout(() => {
-        if (isHoldingSpinRef.current && !isSpinningRef.current) {
+        if (
+          isHoldingSpinRef.current &&
+          !isSpinningRef.current &&
+          !isGuardianSequenceActiveRef.current
+        ) {
           triggerSpinRef.current?.();
         }
       }, turboFlow ? 140 : 280);
@@ -1796,6 +2154,19 @@ export default function App() {
         return;
       }
 
+      // GUARDIAN POWER-UP / ZAP / CASCADE SPIN LOCK & FAST-FORWARD:
+      // While Anubis or Bastet's power-up animation & Candy-Crush cascade are playing out,
+      // the reels do not spin — hitting Spin again cycles quickly to the end of their animation!
+      if (isGuardianSequenceActiveRef.current) {
+        if (fastForwardGuardianSequenceRef.current) {
+          fastForwardGuardianSequenceRef.current();
+        } else {
+          isGuardianSequenceActiveRef.current = false;
+          setIsGuardianSequenceActive(false);
+        }
+        return;
+      }
+
       // QUICK STOP / SLAM STOP: If reels are already spinning, immediately complete the spin
       if (isSpinningRef.current) {
         triggerCabinetImpact('slam');
@@ -1950,6 +2321,7 @@ export default function App() {
       setBigWinAmount(0);
       // Preserve persistent guardian charge level across spins as they build up to the Grand Celestial Strike!
       setGuardianStrikeEvent(null);
+      spinIlluminatedCellsRef.current = [];
       landedSymbolsByColRef.current = [null, null, null, null, null];
       isSpinningRef.current = true;
       setIsSpinning(true);
@@ -2172,16 +2544,36 @@ export default function App() {
     }
   }, [bigWinAmount, winSplashAmount, triggerSpin]);
 
-  // Autoplay handler
+  // Autoplay handler (waits for Guardian power-up & cascade animations to complete before spinning)
   useEffect(() => {
-    if (autoPlayCount > 0 && !isSpinning && bigWinAmount === 0 && !bonusSession && !freeSpinsOpen && isAssetsLoaded) {
+    if (
+      autoPlayCount > 0 &&
+      !isSpinning &&
+      !isGuardianSequenceActive &&
+      bigWinAmount === 0 &&
+      !bonusSession &&
+      !freeSpinsOpen &&
+      isAssetsLoaded
+    ) {
       const timer = setTimeout(() => {
-        setAutoPlayCount((prev) => Math.max(0, prev - 1));
-        triggerSpin();
+        if (!isGuardianSequenceActiveRef.current && !isSpinningRef.current) {
+          setAutoPlayCount((prev) => Math.max(0, prev - 1));
+          triggerSpin();
+        }
       }, turboFlow ? 450 : 900);
       return () => clearTimeout(timer);
     }
-  }, [autoPlayCount, isSpinning, bigWinAmount, bonusSession, freeSpinsOpen, triggerSpin, turboFlow, isAssetsLoaded]);
+  }, [
+    autoPlayCount,
+    isSpinning,
+    isGuardianSequenceActive,
+    bigWinAmount,
+    bonusSession,
+    freeSpinsOpen,
+    triggerSpin,
+    turboFlow,
+    isAssetsLoaded,
+  ]);
 
   // Desktop & Adaptive Keyboard Shortcuts (Space, Bet Up/Down, Lines Left/Right, Mute, Fullscreen, Paytable, Bonus, Navigation, Shortcut Helper, Escape)
   useEffect(() => {
@@ -3694,21 +4086,21 @@ export default function App() {
             anubisCharge >= 4 ? 'guardian-charge-overcharged' : ''
           } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''} ${
             anubisPowerUp ? 'guardian-pedestal-powerup-surge anubis-powerup-active' : ''
-          }`}
+          } ${anubisMartialMove ? `guardian-martial-active guardian-martial-${anubisMartialMove}` : ''}`}
           onClick={() => {
             const nextLvl = (anubisCharge + 1) % 5;
             triggerAnubisPowerUp(nextLvl);
             setStatusMessage(
               `⚡ ANUBIS POWER-UP: ${
                 nextLvl === 0
-                  ? 'DORMANT STONE'
+                  ? 'STAGE 0/4 • DORMANT STONE'
                   : nextLvl === 1
-                  ? 'ALIVE'
+                  ? 'STAGE 1/4 • LIVING ENTITY AWAKENED'
                   : nextLvl === 2
-                  ? 'DIVINE EYES'
+                  ? 'STAGE 2/4 • DIVINE ARMOR & EYES'
                   : nextLvl === 3
-                  ? 'PLASMA ORB'
-                  : 'APEX OVERCHARGE'
+                  ? 'STAGE 3/4 • PLASMA ORB MANIFESTED'
+                  : 'STAGE 4/4 • APEX OVERCHARGE'
               }!`
             );
           }}
@@ -3727,10 +4119,17 @@ export default function App() {
               </div>
             </div>
           )}
+          {anubisMartialMove && <div className="guardian-martial-shockwave" />}
 
           <div className="anubis-guardian-figure">
-            {/* Living Aura: Continuous hypnotic ambient pulsation */}
-            <div className="guardian-living-aura anubis-living-aura" />
+            {/* Living Aura: Continuous hypnotic ambient pulsation (Stage 1+) */}
+            {anubisCharge >= 1 && (
+              <div className="guardian-living-aura anubis-living-aura" />
+            )}
+            {/* Stage 2+ Spinning Sacred Chakra Halo Ring */}
+            {anubisCharge >= 2 && (
+              <div className="guardian-stage-2-halo-ring anubis-halo-ring" />
+            )}
             {/* Divine Eyes: Only lit at Stage 2+ */}
             {anubisCharge >= 2 && (
               <div className="guardian-divine-eyes anubis-divine-eyes" />
@@ -3739,9 +4138,12 @@ export default function App() {
             {anubisCharge >= 3 && (
               <div className="guardian-power-orb anubis-power-orb" />
             )}
-            {/* Blinding Crackling Lightning Aura: Only manifests at Stage 4+ */}
+            {/* Blinding Crackling Lightning Aura & Crown Halo: Only manifests at Stage 4+ */}
             {anubisCharge >= 4 && (
-              <div className="guardian-charged-crackling-aura" />
+              <>
+                <div className="guardian-charged-crackling-aura" />
+                <div className="guardian-stage-4-crown-halo anubis-crown-halo" />
+              </>
             )}
             {anubisCharge >= 2 && GUARDIANS.left.auraImage && (
               <img
@@ -3766,6 +4168,14 @@ export default function App() {
                 className="guardian-body-img neon-char-filter guardian-perched-charged"
                 threshold={26}
                 feather={44}
+              />
+            ) : anubisCharge === 2 && GUARDIANS.left.tallColumnImage ? (
+              <img
+                src={GUARDIANS.left.tallColumnImage}
+                alt={GUARDIANS.left.name}
+                className="guardian-body-img neon-char-filter guardian-stage-2-armored"
+                draggable={false}
+                decoding="async"
               />
             ) : GUARDIANS.left.keyedBackground ? (
               <NeonKeyedImage
@@ -3814,26 +4224,36 @@ export default function App() {
             <div className="guardian-plaque-txt">
               <span>
                 {anubisCharge === 0
-                  ? 'ANCIENT STATUE'
+                  ? 'STAGE 0/4 • STATUE'
                   : anubisCharge === 1
-                  ? 'LIVING ENTITY'
+                  ? 'STAGE 1/4 • AWAKENED'
                   : anubisCharge === 2
-                  ? 'EYES OF ANUBIS'
+                  ? 'STAGE 2/4 • DIVINE ARMOR'
                   : anubisCharge === 3
-                  ? 'PLASMA SUMMONER'
-                  : 'APEX OVERCHARGE'}
+                  ? 'STAGE 3/4 • PLASMA ORB'
+                  : 'STAGE 4/4 • APEX GOD'}
               </span>
               <strong>
                 {anubisCharge === 0
-                  ? 'DORMANT'
+                  ? 'DORMANT STONE'
                   : anubisCharge === 1
-                  ? 'ALIVE'
+                  ? 'LIVING DEITY'
                   : anubisCharge === 2
-                  ? 'DIVINE GLOW'
+                  ? 'EYES IGNITED'
                   : anubisCharge === 3
-                  ? 'PLASMA ORB'
-                  : 'READY TO STRIKE'}
+                  ? 'ORB MANIFEST'
+                  : 'MAX OVERCHARGE'}
               </strong>
+              <div className="guardian-stage-pips-row anubis-pips" aria-label={`Anubis Stage ${anubisCharge} of 4`}>
+                {[1, 2, 3, 4].map((pipIdx) => (
+                  <span
+                    key={pipIdx}
+                    className={`guardian-stage-pip ${anubisCharge >= pipIdx ? 'active' : ''} ${
+                      anubisCharge === 4 ? 'apex-full' : ''
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
           <div className="guardian-floor-runes" />
@@ -3869,14 +4289,14 @@ export default function App() {
                 setStatusMessage(
                   `⚡ ANUBIS POWER-UP: ${
                     nextLvl === 0
-                      ? 'DORMANT STONE'
+                      ? 'STAGE 0/4 • DORMANT STONE'
                       : nextLvl === 1
-                      ? 'ALIVE'
+                      ? 'STAGE 1/4 • LIVING ENTITY AWAKENED'
                       : nextLvl === 2
-                      ? 'DIVINE EYES'
+                      ? 'STAGE 2/4 • DIVINE ARMOR & EYES'
                       : nextLvl === 3
-                      ? 'PLASMA ORB'
-                      : 'APEX OVERCHARGE'
+                      ? 'STAGE 3/4 • PLASMA ORB MANIFESTED'
+                      : 'STAGE 4/4 • APEX OVERCHARGE'
                   }!`
                 );
               }}
@@ -3888,6 +4308,8 @@ export default function App() {
                     ? GUARDIANS.left.apexBodyImage
                     : anubisCharge === 3 && GUARDIANS.left.chargedBodyImage
                     ? GUARDIANS.left.chargedBodyImage
+                    : anubisCharge === 2 && GUARDIANS.left.tallColumnImage
+                    ? GUARDIANS.left.tallColumnImage
                     : GUARDIANS.left.bodyImage
                 }
                 alt="Lord Anubis"
@@ -3897,17 +4319,27 @@ export default function App() {
               <div className="mpg-meta">
                 <span className="mpg-name">⚡ LORD ANUBIS</span>
                 <span className="mpg-stage">
-                  LVL {anubisCharge}/4 •{' '}
+                  STAGE {anubisCharge}/4 •{' '}
                   {anubisCharge === 0
                     ? 'STONE'
                     : anubisCharge === 1
                     ? 'ALIVE'
                     : anubisCharge === 2
-                    ? 'EYES'
+                    ? 'ARMOR'
                     : anubisCharge === 3
                     ? 'ORB'
                     : 'APEX!'}
                 </span>
+                <div className="guardian-stage-pips-row anubis-pips mpg-pips">
+                  {[1, 2, 3, 4].map((pipIdx) => (
+                    <span
+                      key={pipIdx}
+                      className={`guardian-stage-pip ${anubisCharge >= pipIdx ? 'active' : ''} ${
+                        anubisCharge === 4 ? 'apex-full' : ''
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
             </button>
 
@@ -3920,14 +4352,14 @@ export default function App() {
                 setStatusMessage(
                   `🌸 BASTET POWER-UP: ${
                     nextLvl === 0
-                      ? 'DORMANT STONE'
+                      ? 'STAGE 0/4 • DORMANT STONE'
                       : nextLvl === 1
-                      ? 'ALIVE'
+                      ? 'STAGE 1/4 • LIVING ENTITY AWAKENED'
                       : nextLvl === 2
-                      ? 'SOLAR EYES'
+                      ? 'STAGE 2/4 • SOLAR ARMOR & EYES'
                       : nextLvl === 3
-                      ? 'SUNFIRE ORB'
-                      : 'APEX OVERCHARGE'
+                      ? 'STAGE 3/4 • SUNFIRE ORB MANIFESTED'
+                      : 'STAGE 4/4 • APEX OVERCHARGE'
                   }!`
                 );
               }}
@@ -3936,23 +4368,33 @@ export default function App() {
               <div className="mpg-meta mpg-meta-right">
                 <span className="mpg-name">QUEEN BASTET 🌸</span>
                 <span className="mpg-stage">
-                  LVL {bastetCharge}/4 •{' '}
+                  STAGE {bastetCharge}/4 •{' '}
                   {bastetCharge === 0
                     ? 'STONE'
                     : bastetCharge === 1
                     ? 'ALIVE'
                     : bastetCharge === 2
-                    ? 'EYES'
+                    ? 'ARMOR'
                     : bastetCharge === 3
                     ? 'ORB'
                     : 'APEX!'}
                 </span>
+                <div className="guardian-stage-pips-row bastet-pips mpg-pips">
+                  {[1, 2, 3, 4].map((pipIdx) => (
+                    <span
+                      key={pipIdx}
+                      className={`guardian-stage-pip ${bastetCharge >= pipIdx ? 'active' : ''} ${
+                        bastetCharge === 4 ? 'apex-full' : ''
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
               <img
                 src={
                   bastetCharge >= 4 && GUARDIANS.right.apexBodyImage
                     ? GUARDIANS.right.apexBodyImage
-                    : bastetCharge === 3 && GUARDIANS.right.chargedBodyImage
+                    : bastetCharge >= 2 && GUARDIANS.right.chargedBodyImage
                     ? GUARDIANS.right.chargedBodyImage
                     : GUARDIANS.right.bodyImage
                 }
@@ -4212,14 +4654,32 @@ export default function App() {
                 </button>
 
                 <button
-                  className={`psd-spin-button ${isSpinning ? 'spinning' : ''} ${!isAssetsLoaded ? 'assets-loading' : ''}`}
+                  className={`psd-spin-button ${isSpinning ? 'spinning' : ''} ${
+                    isGuardianSequenceActive ? 'guardian-sequence-active' : ''
+                  } ${!isAssetsLoaded ? 'assets-loading' : ''}`}
                   onClick={() => triggerSpin()}
                   disabled={!isAssetsLoaded}
                   onPointerDown={() => { isHoldingSpinRef.current = true; }}
                   onPointerUp={() => { isHoldingSpinRef.current = false; }}
                   onPointerLeave={() => { isHoldingSpinRef.current = false; }}
-                  aria-label={!isAssetsLoaded ? 'Loading Assets' : (isSpinning ? 'Instant Stop' : 'Spin Reels')}
-                  title={!isAssetsLoaded ? 'Pre-caching 3D Relic Assets...' : (isSpinning ? 'Instant Stop (Spacebar)' : 'Spin Reels (Hold Spacebar or Click for Continuous Flow)')}
+                  aria-label={
+                    !isAssetsLoaded
+                      ? 'Loading Assets'
+                      : isGuardianSequenceActive
+                      ? 'Fast-Forward Guardian Animation'
+                      : isSpinning
+                      ? 'Instant Stop'
+                      : 'Spin Reels'
+                  }
+                  title={
+                    !isAssetsLoaded
+                      ? 'Pre-caching 3D Relic Assets...'
+                      : isGuardianSequenceActive
+                      ? 'Click or Press Spacebar to Fast-Forward Guardian Power-Up & Cascade!'
+                      : isSpinning
+                      ? 'Instant Stop (Spacebar)'
+                      : 'Spin Reels (Hold Spacebar or Click for Continuous Flow)'
+                  }
                 >
                   <div className={`spin-shockwave-ring ${spinShockwave ? 'active' : ''}`} />
                   <img
@@ -4418,21 +4878,21 @@ export default function App() {
             bastetCharge >= 4 ? 'guardian-charge-overcharged' : ''
           } ${guardianStrikeEvent ? 'guardian-charge-strike' : ''} ${
             bastetPowerUp ? 'guardian-pedestal-powerup-surge bastet-powerup-active' : ''
-          }`}
+          } ${bastetMartialMove ? `guardian-martial-active guardian-martial-${bastetMartialMove}` : ''}`}
           onClick={() => {
             const nextLvl = (bastetCharge + 1) % 5;
             triggerBastetPowerUp(nextLvl);
             setStatusMessage(
               `🌸 BASTET POWER-UP: ${
                 nextLvl === 0
-                  ? 'DORMANT STONE'
+                  ? 'STAGE 0/4 • DORMANT STONE'
                   : nextLvl === 1
-                  ? 'ALIVE'
+                  ? 'STAGE 1/4 • LIVING ENTITY AWAKENED'
                   : nextLvl === 2
-                  ? 'SOLAR EYES'
+                  ? 'STAGE 2/4 • SOLAR ARMOR & EYES'
                   : nextLvl === 3
-                  ? 'SUNFIRE ORB'
-                  : 'APEX OVERCHARGE'
+                  ? 'STAGE 3/4 • SUNFIRE ORB MANIFESTED'
+                  : 'STAGE 4/4 • APEX OVERCHARGE'
               }!`
             );
           }}
@@ -4451,10 +4911,17 @@ export default function App() {
               </div>
             </div>
           )}
+          {bastetMartialMove && <div className="guardian-martial-shockwave" />}
 
           <div className="anubis-guardian-figure bastet-figure">
-            {/* Living Aura: Continuous hypnotic ambient pulsation */}
-            <div className="guardian-living-aura bastet-living-aura" />
+            {/* Living Aura: Continuous hypnotic ambient pulsation (Stage 1+) */}
+            {bastetCharge >= 1 && (
+              <div className="guardian-living-aura bastet-living-aura" />
+            )}
+            {/* Stage 2+ Spinning Sacred Solar Halo Ring */}
+            {bastetCharge >= 2 && (
+              <div className="guardian-stage-2-halo-ring bastet-halo-ring" />
+            )}
             {/* Divine Eyes: Only lit at Stage 2+ */}
             {bastetCharge >= 2 && (
               <div className="guardian-divine-eyes bastet-divine-eyes" />
@@ -4463,9 +4930,12 @@ export default function App() {
             {bastetCharge >= 3 && (
               <div className="guardian-power-orb bastet-power-orb" />
             )}
-            {/* Blinding Solar Fire & Crackling Aura: Only manifests at Stage 4+ */}
+            {/* Blinding Solar Fire & Crackling Aura + Crown Halo: Only manifests at Stage 4+ */}
             {bastetCharge >= 4 && (
-              <div className="guardian-charged-crackling-aura bastet-charged-crackling-aura" />
+              <>
+                <div className="guardian-charged-crackling-aura bastet-charged-crackling-aura" />
+                <div className="guardian-stage-4-crown-halo bastet-crown-halo" />
+              </>
             )}
             {bastetCharge >= 2 && GUARDIANS.right.auraImage && (
               <img
@@ -4488,6 +4958,14 @@ export default function App() {
                 src={GUARDIANS.right.chargedBodyImage}
                 alt={GUARDIANS.right.name}
                 className="guardian-body-img bastet-guardian-img guardian-perched-charged"
+                threshold={26}
+                feather={44}
+              />
+            ) : bastetCharge === 2 && GUARDIANS.right.chargedBodyImage ? (
+              <NeonKeyedImage
+                src={GUARDIANS.right.chargedBodyImage}
+                alt={GUARDIANS.right.name}
+                className="guardian-body-img bastet-guardian-img guardian-stage-2-armored"
                 threshold={26}
                 feather={44}
               />
@@ -4538,26 +5016,36 @@ export default function App() {
             <div className="guardian-plaque-txt">
               <span>
                 {bastetCharge === 0
-                  ? 'ANCIENT STATUE'
+                  ? 'STAGE 0/4 • STATUE'
                   : bastetCharge === 1
-                  ? 'LIVING ENTITY'
+                  ? 'STAGE 1/4 • AWAKENED'
                   : bastetCharge === 2
-                  ? 'EYES OF BASTET'
+                  ? 'STAGE 2/4 • SOLAR ARMOR'
                   : bastetCharge === 3
-                  ? 'SOLAR SUMMONER'
-                  : 'APEX OVERCHARGE'}
+                  ? 'STAGE 3/4 • SUNFIRE ORB'
+                  : 'STAGE 4/4 • APEX GODDESS'}
               </span>
               <strong>
                 {bastetCharge === 0
-                  ? 'DORMANT'
+                  ? 'DORMANT STONE'
                   : bastetCharge === 1
-                  ? 'ALIVE'
+                  ? 'LIVING DEITY'
                   : bastetCharge === 2
-                  ? 'SOLAR GLOW'
+                  ? 'EYES IGNITED'
                   : bastetCharge === 3
-                  ? 'SUNFIRE ORB'
-                  : 'READY TO STRIKE'}
+                  ? 'ORB MANIFEST'
+                  : 'MAX OVERCHARGE'}
               </strong>
+              <div className="guardian-stage-pips-row bastet-pips" aria-label={`Bastet Stage ${bastetCharge} of 4`}>
+                {[1, 2, 3, 4].map((pipIdx) => (
+                  <span
+                    key={pipIdx}
+                    className={`guardian-stage-pip ${bastetCharge >= pipIdx ? 'active' : ''} ${
+                      bastetCharge === 4 ? 'apex-full' : ''
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
           <div className="guardian-floor-runes" />
