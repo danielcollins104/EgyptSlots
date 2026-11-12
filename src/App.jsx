@@ -254,11 +254,43 @@ export default function App() {
     try {
       const user = authService.getCurrentUser();
       const userAcc = authService.getUserData(user?.id);
-      if (userAcc && typeof userAcc.sweepsCoins === 'number') {
-        return userAcc.sweepsCoins;
+      let initialSC =
+        userAcc && typeof userAcc.sweepsCoins === 'number'
+          ? userAcc.sweepsCoins
+          : (() => {
+              const saved = localStorage.getItem('dc_casino_sweeps_coins');
+              return saved !== null ? parseFloat(saved) : SWEEPSTAKES_CONFIG.defaultSweepsCoins;
+            })();
+
+      // One-time repair for Guest -> VIP checkout race condition where sweepsCoins jumped to ~2000 SC
+      // after buying a $4.99 / $5.00 starter package
+      if (!localStorage.getItem('dc_sc_checkout_2000_fix_v1')) {
+        localStorage.setItem('dc_sc_checkout_2000_fix_v1', 'true');
+        const txHistory = paymentService.getTransactionHistory();
+        const purchases = (txHistory || []).filter((t) =>
+          String(t.type || '').toUpperCase().includes('PURCHASE')
+        );
+        const totalPurchasedSC = purchases.reduce(
+          (sum, t) => sum + Math.max(0, Number(t.sweepsCoins) || 0),
+          0
+        );
+        if (initialSC >= 500 && totalPurchasedSC < 500) {
+          const latestPurchaseSC = Number(purchases[0]?.sweepsCoins) || 0;
+          initialSC =
+            latestPurchaseSC > 0 && latestPurchaseSC < 500
+              ? Number(latestPurchaseSC.toFixed(2))
+              : totalPurchasedSC > 0
+              ? Number(totalPurchasedSC.toFixed(2))
+              : 5.0;
+          localStorage.setItem('dc_casino_sweeps_coins', initialSC.toFixed(2));
+          authService.saveUserData('usr_vip_high_roller', { sweepsCoins: initialSC });
+          authService.saveUserData(null, { sweepsCoins: initialSC });
+          if (user?.id) {
+            authService.saveUserData(user.id, { sweepsCoins: initialSC });
+          }
+        }
       }
-      const saved = localStorage.getItem('dc_casino_sweeps_coins');
-      return saved !== null ? parseFloat(saved) : SWEEPSTAKES_CONFIG.defaultSweepsCoins;
+      return initialSC;
     } catch {
       return SWEEPSTAKES_CONFIG.defaultSweepsCoins;
     }
@@ -2013,8 +2045,28 @@ export default function App() {
   };
 
   const handlePurchaseSuccess = (data) => {
-    const addedGC = data.goldCoins ?? data.goldCoinsAdded ?? 0;
-    const addedSC = data.freeSweepsCoins ?? data.sweepsCoinsAdded ?? 0;
+    const addedGC = Math.max(0, Math.round(Number(data?.goldCoins ?? data?.goldCoinsAdded ?? 0)));
+    let addedSC = Math.max(
+      0,
+      Number(data?.freeSweepsCoins ?? data?.sweepsCoins ?? data?.sweepsCoinsAdded ?? 0)
+    );
+
+    // Guard against goldCoins/gcPerDollar (e.g. 2000) ever leaking into addedSC for standard packages
+    const priceUsd = Number(data?.priceUsd ?? data?.amountUsd ?? 0);
+    if (priceUsd > 0 && priceUsd <= 250 && addedSC > priceUsd * 2) {
+      const canonicalPkg =
+        SWEEPSTAKES_CONFIG.storePackages.find((p) => p.id === data?.id) ||
+        SWEEPSTAKES_CONFIG.rescuePackages.find((p) => p.id === data?.id);
+      addedSC = canonicalPkg ? canonicalPkg.freeSweepsCoins : Number(Math.round(priceUsd).toFixed(2));
+    }
+
+    // Capture exact live balances BEFORE any Guest -> VIP session upgrade so onAuthStateChanged
+    // cannot overwrite sweepsCoinsRef.current with a stale cached account balance (such as 2000 SC).
+    const baseGC = Number(goldCoinsRef.current ?? goldCoins) || 0;
+    const baseSC = Number(sweepsCoinsRef.current ?? sweepsCoins) || 0;
+    const nextGC = Math.round(baseGC + addedGC);
+    const nextSC = Number((baseSC + addedSC).toFixed(2));
+    const nextMode = addedSC > 0 ? 'SC' : currencyMode;
 
     // If the user was a Guest when they completed a purchase, automatically upgrade them to a verified VIP account so SC is unlocked!
     let activeUser = authService.getCurrentUser();
@@ -2030,12 +2082,15 @@ export default function App() {
         scEligibility: 'eligible',
         joinedAt: new Date().toISOString(),
       };
+      // Persist the exact post-purchase balance into the VIP account BEFORE dispatching saveSession
+      authService.saveUserData(activeUser.id, {
+        goldCoins: nextGC,
+        sweepsCoins: nextSC,
+        currencyMode: nextMode,
+      });
       authService.saveSession(activeUser);
       setCurrentUser(activeUser);
     }
-
-    const nextGC = (goldCoinsRef.current ?? goldCoins) + addedGC;
-    const nextSC = Number(((sweepsCoinsRef.current ?? sweepsCoins) + addedSC).toFixed(2));
 
     setGoldCoins(nextGC);
     goldCoinsRef.current = nextGC;
@@ -2055,7 +2110,12 @@ export default function App() {
     authService.saveUserData(activeUser?.id, {
       goldCoins: nextGC,
       sweepsCoins: nextSC,
-      currencyMode: addedSC > 0 ? 'SC' : currencyMode,
+      currencyMode: nextMode,
+    });
+    authService.saveUserData(null, {
+      goldCoins: nextGC,
+      sweepsCoins: nextSC,
+      currencyMode: nextMode,
     });
 
     // Ensure all purchase/offer modals are closed immediately
@@ -2074,6 +2134,13 @@ export default function App() {
       let fitIdx = BET_TIERS_SC.length - 1;
       while (fitIdx > 0 && BET_TIERS_SC[fitIdx] > nextSC) fitIdx--;
       setBetIndexSC(fitIdx);
+    }
+    if (Number((LINE_BET_TIERS_SC[lineBetIndexSC] * selectedLines).toFixed(2)) > nextSC && nextSC >= LINE_BET_TIERS_SC[0]) {
+      let fitLineIdx = lineBetIndexSC;
+      while (fitLineIdx > 0 && Number((LINE_BET_TIERS_SC[fitLineIdx] * selectedLines).toFixed(2)) > nextSC) {
+        fitLineIdx--;
+      }
+      setLineBetIndexSC(fitLineIdx);
     }
 
     soundEngine.playWin(true);
@@ -2151,7 +2218,7 @@ export default function App() {
         }
 
         if (!matchedPkg) {
-          matchedPkg = SWEEPSTAKES_CONFIG.storePackages[2]; // Fallback to Silver Bundle
+          matchedPkg = SWEEPSTAKES_CONFIG.storePackages[0]; // Fallback to Starter Bundle ($4.99 / 5.00 SC)
         }
 
         if (matchedPkg) {
@@ -3450,6 +3517,8 @@ export default function App() {
                 sweepsCoinsRef.current = defSC;
                 try {
                   localStorage.setItem('dc_casino_sweeps_coins', defSC.toFixed(2));
+                  authService.saveUserData('usr_vip_high_roller', { sweepsCoins: defSC });
+                  authService.saveUserData(null, { sweepsCoins: defSC });
                 } catch {}
                 setStatusMessage('RESET SWEEPS COINS TO 10.00 SC ($10.00 USD)!');
               } else {
@@ -3458,6 +3527,8 @@ export default function App() {
                 goldCoinsRef.current = defGC;
                 try {
                   localStorage.setItem('dc_casino_gold_coins', String(defGC));
+                  authService.saveUserData('usr_vip_high_roller', { goldCoins: defGC });
+                  authService.saveUserData(null, { goldCoins: defGC });
                 } catch {}
                 setStatusMessage(THEME_COPY.resetBankrollTicker);
               }
@@ -4091,6 +4162,8 @@ export default function App() {
                   sweepsCoinsRef.current = defSC;
                   try {
                     localStorage.setItem('dc_casino_sweeps_coins', defSC.toFixed(2));
+                    authService.saveUserData('usr_vip_high_roller', { sweepsCoins: defSC });
+                    authService.saveUserData(null, { sweepsCoins: defSC });
                   } catch {}
                   setStatusMessage('RESET SWEEPS COINS TO 10.00 SC ($10.00 USD)!');
                 } else {
@@ -4099,6 +4172,8 @@ export default function App() {
                   goldCoinsRef.current = defGC;
                   try {
                     localStorage.setItem('dc_casino_gold_coins', String(defGC));
+                    authService.saveUserData('usr_vip_high_roller', { goldCoins: defGC });
+                    authService.saveUserData(null, { goldCoins: defGC });
                   } catch {}
                   setStatusMessage(THEME_COPY.resetBankrollTicker);
                 }

@@ -29,6 +29,11 @@ import {
   getStripePaymentLink,
   getPaymentReturnUrl,
 } from '../config/sweepstakesConfig';
+import {
+  sweepstakesCheckoutController,
+  SWEEPSTAKES_PAYMENT_RAILS,
+  POPULAR_US_BANKS,
+} from '../services/sweepstakesCheckoutController';
 import { paymentService } from '../services/paymentService';
 import { authService } from '../services/authService';
 import { soundEngine } from '../audio/soundEngine';
@@ -116,12 +121,19 @@ export default function PaymentModal({
   const [customAmountInput, setCustomAmountInput] = useState('25');
   const [vaultShowcaseMode, setVaultShowcaseMode] = useState('standard'); // 'standard' | 'highroller'
   const [showCustomDrawer, setShowCustomDrawer] = useState(false);
-  const [showCardDrawer, setShowCardDrawer] = useState(false);
+  const [activePaymentRail, setActivePaymentRail] = useState('card'); // 'card' | 'cashapp' | 'banking' | 'crypto'
+  const [showCardDrawer, setShowCardDrawer] = useState(true);
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
   const [cardHolderName, setCardHolderName] = useState('');
   const [cardZip, setCardZip] = useState('');
+  const [saveCardForFuture, setSaveCardForFuture] = useState(true);
+  const [savedCards, setSavedCards] = useState(() => sweepstakesCheckoutController.getSavedCards());
+  const [showCardBridgeLinks, setShowCardBridgeLinks] = useState(false);
+  const [cashAppSenderTag, setCashAppSenderTag] = useState('');
+  const [selectedBankId, setSelectedBankId] = useState('chime');
+  const [bankAccountHandle, setBankAccountHandle] = useState('');
   const [isProcessingCard, setIsProcessingCard] = useState(false);
   const [showCryptoBox, setShowCryptoBox] = useState(false);
   const [selectedCrypto, setSelectedCrypto] = useState('USDT');
@@ -158,7 +170,10 @@ export default function PaymentModal({
       } else {
         setStep(1);
       }
-      setShowCardDrawer(false);
+      setActivePaymentRail('card');
+      setShowCardDrawer(true);
+      setSavedCards(sweepstakesCheckoutController.getSavedCards());
+      setShowCardBridgeLinks(false);
       setIsProcessingCard(false);
       setShowCryptoBox(false);
       setCopiedAddress(false);
@@ -177,7 +192,8 @@ export default function PaymentModal({
 
   // Fetch live on-chain RPC status for the 3 self-custody wallets & run auto-polling when Crypto drawer is open
   useEffect(() => {
-    if (!isOpen || !showCryptoBox || !selectedPkg || purchaseCompletedPkg) return;
+    const isCryptoActive = showCryptoBox || activePaymentRail === 'crypto' || showCardBridgeLinks;
+    if (!isOpen || !isCryptoActive || !selectedPkg || purchaseCompletedPkg) return;
 
     let cancelled = false;
     paymentService
@@ -208,6 +224,10 @@ export default function PaymentModal({
           minTimestampSec: cryptoSessionStartSec,
         });
         if (!cancelled && res && res.verified) {
+          const boostedPkg = sweepstakesCheckoutController.computePackageWithRailBonus(
+            selectedPkg,
+            'crypto'
+          );
           setCryptoVerifyState({
             status: 'verified',
             message: `${res.statusText || 'On-Chain Transfer Verified'} (${res.amountReceived} ${activeCrypto.unit})`,
@@ -217,18 +237,18 @@ export default function PaymentModal({
           soundEngine.playWinCelebration('big');
           await ensureLoggedInForPurchase();
           paymentService.recordPurchase({
-            packageId: selectedPkg.id,
-            amountUsd: selectedPkg.priceUsd,
-            goldCoins: selectedPkg.goldCoins,
-            freeSweepsCoins: selectedPkg.freeSweepsCoins,
-            sweepsCoins: selectedPkg.freeSweepsCoins,
+            packageId: boostedPkg.id,
+            amountUsd: boostedPkg.priceUsd,
+            goldCoins: boostedPkg.goldCoins,
+            freeSweepsCoins: boostedPkg.freeSweepsCoins,
+            sweepsCoins: boostedPkg.freeSweepsCoins,
             method: `crypto_${selectedCrypto.toLowerCase()}_verified`,
             sessionId: res.txHash,
             status: 'completed',
           });
-          setPurchaseCompletedPkg(selectedPkg);
+          setPurchaseCompletedPkg(boostedPkg);
           setTimeout(() => {
-            if (onPurchaseSuccess) onPurchaseSuccess(selectedPkg);
+            if (onPurchaseSuccess) onPurchaseSuccess(boostedPkg);
             onClose();
           }, 1400);
         }
@@ -242,6 +262,8 @@ export default function PaymentModal({
   }, [
     isOpen,
     showCryptoBox,
+    activePaymentRail,
+    showCardBridgeLinks,
     selectedCrypto,
     selectedPkg,
     cryptoTxHashInput,
@@ -255,6 +277,13 @@ export default function PaymentModal({
   const ensureLoggedInForPurchase = async () => {
     const existing = authService.getCurrentUser();
     if (existing) return existing;
+    // Preserve the player's exact live pre-purchase balances before upgrading Guest -> VIP
+    // so onAuthStateChanged never overwrites sweepsCoins with a stale cached account balance (e.g. 2000 SC).
+    authService.saveUserData('usr_vip_high_roller', {
+      goldCoins: Number(goldCoins) || 0,
+      sweepsCoins: Number(sweepsCoins) || 0,
+      currencyMode: 'SC',
+    });
     return await authService.loginAsVipGuest();
   };
 
@@ -265,11 +294,27 @@ export default function PaymentModal({
       setCustomAmountInput(String(pkg.priceUsd));
     }
     setStep(2);
-    setShowCardDrawer(false);
+    setActivePaymentRail('card');
+    setShowCardDrawer(true);
     setShowCryptoBox(false);
     setCheckoutError('');
     soundEngine.playButtonClick(560);
   };
+
+  const handleSelectRail = (railId) => {
+    setActivePaymentRail(railId);
+    setCheckoutError('');
+    setShowCardDrawer(railId === 'card');
+    setShowCryptoBox(railId === 'crypto');
+    soundEngine.playButtonClick(520);
+  };
+
+  const effectivePkg =
+    sweepstakesCheckoutController.computePackageWithRailBonus(selectedPkg, activePaymentRail) ||
+    selectedPkg;
+  const detectedCardBrand = sweepstakesCheckoutController.detectCardBrand(cardNumber);
+  const cashAppDetails = sweepstakesCheckoutController.getCashAppCheckoutDetails(effectivePkg);
+  const cardBridgeLinks = sweepstakesCheckoutController.getCardToCryptoBridgeLinks(effectivePkg);
 
   const parsedCustomUsd = Math.max(1, Math.min(1000000, parseFloat(customAmountInput) || 1));
   const customPkgPreview = calculateCustomPackage(parsedCustomUsd);
@@ -293,79 +338,14 @@ export default function PaymentModal({
     }
   };
 
-  const formatCardNumber = (val) => {
-    const digits = String(val || '').replace(/\D/g, '').slice(0, 16);
-    return digits.replace(/(\d{4})(?=\d)/g, '$1 ');
-  };
+  const formatCardNumber = (val) => sweepstakesCheckoutController.formatCardNumber(val);
+  const formatCardExpiry = (val) => sweepstakesCheckoutController.formatExpiry(val);
 
-  const formatCardExpiry = (val) => {
-    const digits = String(val || '').replace(/\D/g, '').slice(0, 4);
-    if (digits.length >= 3) {
-      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}`;
-    }
-    return digits;
-  };
-
-  const handleInlineCardSubmit = async (e) => {
-    if (e) e.preventDefault();
-    if (!selectedPkg || isProcessingCard) return;
+  const handleSavedCardPay = async (savedCard) => {
+    if (!effectivePkg || isProcessingCard || !savedCard) return;
     setCheckoutError('');
 
-    const rgCheck = paymentService.checkDepositLimit(selectedPkg.priceUsd);
-    if (!rgCheck.allowed) {
-      setCheckoutError(rgCheck.reason);
-      return;
-    }
-
-    const rawDigits = cardNumber.replace(/\D/g, '');
-    if (rawDigits.length < 15) {
-      setCheckoutError('Please enter a valid 15 or 16-digit card number.');
-      return;
-    }
-    const expParts = cardExpiry.split('/');
-    const expMonth = parseInt(expParts[0], 10);
-    const expYear = parseInt(expParts[1], 10);
-    if (!expMonth || expMonth < 1 || expMonth > 12 || !expYear || expYear < 25) {
-      setCheckoutError('Please enter a valid expiration date (MM/YY).');
-      return;
-    }
-    const cleanCvc = cardCvc.replace(/\D/g, '');
-    if (cleanCvc.length < 3) {
-      setCheckoutError('Please enter your 3 or 4-digit security code (CVC).');
-      return;
-    }
-
-    setIsProcessingCard(true);
-    soundEngine.playButtonClick(680);
-
-    try {
-      await ensureLoggedInForPurchase();
-      const last4 = rawDigits.slice(-4);
-      await paymentService.processPurchase(selectedPkg, 'stripe_card', {
-        cardLast4: last4,
-        cardHolderName: cardHolderName.trim() || 'VIP Cardholder',
-        zip: cardZip.trim(),
-      });
-      soundEngine.playWinCelebration('big');
-      setPurchaseCompletedPkg(selectedPkg);
-      setTimeout(() => {
-        setIsProcessingCard(false);
-        if (onPurchaseSuccess) {
-          onPurchaseSuccess(selectedPkg);
-        }
-        onClose();
-      }, 1300);
-    } catch (err) {
-      setIsProcessingCard(false);
-      setCheckoutError(err.message || 'Unable to process card right now. Please try again.');
-    }
-  };
-
-  const handleExpressWalletPay = async (walletMethod = 'apple_pay') => {
-    if (!selectedPkg || isProcessingCard) return;
-    setCheckoutError('');
-
-    const rgCheck = paymentService.checkDepositLimit(selectedPkg.priceUsd);
+    const rgCheck = paymentService.checkDepositLimit(effectivePkg.priceUsd);
     if (!rgCheck.allowed) {
       setCheckoutError(rgCheck.reason);
       return;
@@ -376,15 +356,111 @@ export default function PaymentModal({
 
     try {
       await ensureLoggedInForPurchase();
-      await paymentService.processPurchase(selectedPkg, walletMethod, {
-        cardLast4: walletMethod === 'apple_pay' ? 'APAY' : 'GPAY',
+      await paymentService.processPurchase(effectivePkg, `saved_${savedCard.brand.toLowerCase()}`, {
+        cardLast4: savedCard.last4,
+        cardHolderName: savedCard.holderName || 'VIP Cardholder',
       });
       soundEngine.playWinCelebration('big');
-      setPurchaseCompletedPkg(selectedPkg);
+      setPurchaseCompletedPkg(effectivePkg);
       setTimeout(() => {
         setIsProcessingCard(false);
         if (onPurchaseSuccess) {
-          onPurchaseSuccess(selectedPkg);
+          onPurchaseSuccess(effectivePkg);
+        }
+        onClose();
+      }, 1250);
+    } catch (err) {
+      setIsProcessingCard(false);
+      setCheckoutError(err.message || 'Saved card checkout failed.');
+    }
+  };
+
+  const handleRemoveSavedCard = (cardId) => {
+    const next = sweepstakesCheckoutController.removeSavedCard(cardId);
+    setSavedCards(next);
+    soundEngine.playButtonClick(440);
+  };
+
+  const handleInlineCardSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!effectivePkg || isProcessingCard) return;
+    setCheckoutError('');
+
+    const rgCheck = paymentService.checkDepositLimit(effectivePkg.priceUsd);
+    if (!rgCheck.allowed) {
+      setCheckoutError(rgCheck.reason);
+      return;
+    }
+
+    const validation = sweepstakesCheckoutController.validateCardInput({
+      cardNumber,
+      cardExpiry,
+      cardCvc,
+    });
+    if (!validation.valid) {
+      setCheckoutError(validation.error);
+      return;
+    }
+
+    setIsProcessingCard(true);
+    soundEngine.playButtonClick(680);
+
+    try {
+      await ensureLoggedInForPurchase();
+      if (saveCardForFuture) {
+        sweepstakesCheckoutController.saveCardForOneClick({
+          brand: validation.brand,
+          last4: validation.last4,
+          expiry: cardExpiry,
+          holderName: cardHolderName.trim() || 'VIP Player',
+          zip: cardZip.trim(),
+        });
+        setSavedCards(sweepstakesCheckoutController.getSavedCards());
+      }
+      await paymentService.processPurchase(effectivePkg, 'stripe_card', {
+        cardLast4: validation.last4,
+        cardHolderName: cardHolderName.trim() || 'VIP Cardholder',
+        zip: cardZip.trim(),
+      });
+      soundEngine.playWinCelebration('big');
+      setPurchaseCompletedPkg(effectivePkg);
+      setTimeout(() => {
+        setIsProcessingCard(false);
+        if (onPurchaseSuccess) {
+          onPurchaseSuccess(effectivePkg);
+        }
+        onClose();
+      }, 1300);
+    } catch (err) {
+      setIsProcessingCard(false);
+      setCheckoutError(err.message || 'Unable to process card right now. Please try again.');
+    }
+  };
+
+  const handleExpressWalletPay = async (walletMethod = 'apple_pay') => {
+    if (!effectivePkg || isProcessingCard) return;
+    setCheckoutError('');
+
+    const rgCheck = paymentService.checkDepositLimit(effectivePkg.priceUsd);
+    if (!rgCheck.allowed) {
+      setCheckoutError(rgCheck.reason);
+      return;
+    }
+
+    setIsProcessingCard(true);
+    soundEngine.playButtonClick(720);
+
+    try {
+      await ensureLoggedInForPurchase();
+      await paymentService.processPurchase(effectivePkg, walletMethod, {
+        cardLast4: walletMethod === 'apple_pay' ? 'APAY' : 'GPAY',
+      });
+      soundEngine.playWinCelebration('big');
+      setPurchaseCompletedPkg(effectivePkg);
+      setTimeout(() => {
+        setIsProcessingCard(false);
+        if (onPurchaseSuccess) {
+          onPurchaseSuccess(effectivePkg);
         }
         onClose();
       }, 1300);
@@ -394,58 +470,100 @@ export default function PaymentModal({
     }
   };
 
-  // Step 2: Pay with Card or Cash App Pay -> Redirect to Stripe Checkout or open Inline Card Sheet
-  const handleStripeRedirect = async (methodType = 'card') => {
-    if (!selectedPkg || redirectingMethod) return;
-    soundEngine.playButtonClick(660);
+  const handleCashAppClaim = async () => {
+    if (!effectivePkg || isProcessingCard) return;
     setCheckoutError('');
 
-    // Enforce Responsible Gaming deposit limit & cool-off before purchase redirect
-    const rgCheck = paymentService.checkDepositLimit(selectedPkg.priceUsd);
+    const rgCheck = paymentService.checkDepositLimit(effectivePkg.priceUsd);
     if (!rgCheck.allowed) {
       setCheckoutError(rgCheck.reason);
       return;
     }
 
-    if (methodType === 'card' && showCardDrawer) {
-      setShowCardDrawer(false);
-      return;
-    }
-
-    setRedirectingMethod(methodType);
+    setIsProcessingCard(true);
+    soundEngine.playButtonClick(700);
 
     try {
-      const user = await ensureLoggedInForPurchase();
-      const session = await paymentService.createStripeCheckoutSession(
-        selectedPkg,
-        methodType,
-        user
-      );
-      if (methodType === 'card' && (session?.mode === 'inline_card_checkout' || session?.stripeWarning || !session?.url)) {
-        setRedirectingMethod(null);
-        setShowCryptoBox(false);
-        setShowCardDrawer(true);
-        return;
-      }
-      if (session && session.url) {
-        window.location.href = session.url;
-        return;
-      }
+      await ensureLoggedInForPurchase();
+      await paymentService.processPurchase(effectivePkg, 'cashapp_instant', {
+        cardLast4: cashAppSenderTag.trim() ? cashAppSenderTag.trim().slice(-4).toUpperCase() : 'CASH',
+      });
+      soundEngine.playWinCelebration('big');
+      setPurchaseCompletedPkg(effectivePkg);
+      setTimeout(() => {
+        setIsProcessingCard(false);
+        if (onPurchaseSuccess) {
+          onPurchaseSuccess(effectivePkg);
+        }
+        onClose();
+      }, 1300);
     } catch (err) {
-      console.warn('Stripe checkout session fallback:', err);
+      setIsProcessingCard(false);
+      setCheckoutError(err.message || 'Unable to confirm Cash App transfer.');
     }
+  };
 
-    if (methodType === 'card') {
-      setRedirectingMethod(null);
-      setShowCryptoBox(false);
-      setShowCardDrawer(true);
+  const handleBankTransferPay = async (e) => {
+    if (e) e.preventDefault();
+    if (!effectivePkg || isProcessingCard) return;
+    setCheckoutError('');
+
+    const rgCheck = paymentService.checkDepositLimit(effectivePkg.priceUsd);
+    if (!rgCheck.allowed) {
+      setCheckoutError(rgCheck.reason);
       return;
     }
 
-    const baseCashApp =
-      getCashAppPayCheckoutLink(selectedPkg) ||
-      getCashAppPaymentLink(selectedPkg?.priceUsd || 19.99);
-    window.location.href = baseCashApp;
+    if (!bankAccountHandle.trim()) {
+      setCheckoutError('Please enter your Online Banking Email, $ChimeSign, or last 4 digits of your checking account.');
+      return;
+    }
+
+    setIsProcessingCard(true);
+    soundEngine.playButtonClick(700);
+
+    try {
+      await ensureLoggedInForPurchase();
+      await paymentService.processPurchase(effectivePkg, `bank_${selectedBankId}`, {
+        cardLast4: bankAccountHandle.trim().slice(-4).toUpperCase() || 'BANK',
+      });
+      soundEngine.playWinCelebration('big');
+      setPurchaseCompletedPkg(effectivePkg);
+      setTimeout(() => {
+        setIsProcessingCard(false);
+        if (onPurchaseSuccess) {
+          onPurchaseSuccess(effectivePkg);
+        }
+        onClose();
+      }, 1300);
+    } catch (err) {
+      setIsProcessingCard(false);
+      setCheckoutError(err.message || 'Online banking authorization failed.');
+    }
+  };
+
+  // Step 2: Open Cash App deep link or toggle Card Sheet
+  const handleStripeRedirect = async (methodType = 'card') => {
+    if (!effectivePkg || redirectingMethod) return;
+    soundEngine.playButtonClick(660);
+    setCheckoutError('');
+
+    const rgCheck = paymentService.checkDepositLimit(effectivePkg.priceUsd);
+    if (!rgCheck.allowed) {
+      setCheckoutError(rgCheck.reason);
+      return;
+    }
+
+    if (methodType === 'cashapp') {
+      const baseCashApp =
+        getCashAppPayCheckoutLink(effectivePkg) ||
+        getCashAppPaymentLink(effectivePkg?.priceUsd || 19.99);
+      window.open(baseCashApp, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    setActivePaymentRail('card');
+    setShowCardDrawer(true);
   };
 
   const handleCopyCryptoAddress = (addr) => {
@@ -483,6 +601,9 @@ export default function PaymentModal({
       });
 
       if (verification && verification.verified) {
+        const boostedPkg =
+          sweepstakesCheckoutController.computePackageWithRailBonus(selectedPkg, 'crypto') ||
+          selectedPkg;
         setCryptoVerifyState({
           status: 'verified',
           message: `✅ ${verification.statusText || 'On-Chain Transfer Verified'}! (${verification.amountReceived} ${currentCryptoObj.unit})`,
@@ -492,21 +613,21 @@ export default function PaymentModal({
         soundEngine.playWinCelebration('big');
         await ensureLoggedInForPurchase();
         paymentService.recordPurchase({
-          packageId: selectedPkg.id,
-          amountUsd: selectedPkg.priceUsd,
-          goldCoins: selectedPkg.goldCoins,
-          freeSweepsCoins: selectedPkg.freeSweepsCoins,
-          sweepsCoins: selectedPkg.freeSweepsCoins,
+          packageId: boostedPkg.id,
+          amountUsd: boostedPkg.priceUsd,
+          goldCoins: boostedPkg.goldCoins,
+          freeSweepsCoins: boostedPkg.freeSweepsCoins,
+          sweepsCoins: boostedPkg.freeSweepsCoins,
           method: `crypto_${selectedCrypto.toLowerCase()}_verified`,
           sessionId: verification.txHash,
           status: 'completed',
         });
 
-        setPurchaseCompletedPkg(selectedPkg);
+        setPurchaseCompletedPkg(boostedPkg);
         setTimeout(() => {
           setIsProcessingCrypto(false);
           if (onPurchaseSuccess) {
-            onPurchaseSuccess(selectedPkg);
+            onPurchaseSuccess(boostedPkg);
           }
           onClose();
         }, 1200);
@@ -963,14 +1084,14 @@ export default function PaymentModal({
                 </div>
               )}
 
-              {/* STEP 2: ULTRA-SIMPLE 1-TAP EXPRESS CHECKOUT */}
-              {step === 2 && selectedPkg && (
+              {/* STEP 2: CHUMBA / PULSZ / MCLUCK / STAKE.US MULTI-RAIL SWEEPSTAKES CHECKOUT */}
+              {step === 2 && effectivePkg && (
                 <div className="sc-payment-step sc-clean-checkout-step">
-                  {/* Simple Selected Pack Summary */}
+                  {/* Selected Pack Summary with Live +5% Rail Bonus Indicator */}
                   <div className="cx-summary">
                     <img
                       src={
-                        selectedPkg.relicArt || '/assets/symbols/high/high_necklace_no_frame.png'
+                        effectivePkg.relicArt || '/assets/symbols/high/high_necklace_no_frame.png'
                       }
                       alt=""
                       className="cx-summary-icon"
@@ -978,8 +1099,24 @@ export default function PaymentModal({
                     />
                     <div className="cx-summary-text">
                       <span className="cx-summary-coins">
-                        {selectedPkg.goldCoins.toLocaleString()} GC + $
-                        {selectedPkg.freeSweepsCoins.toFixed(2)} SC FREE
+                        {effectivePkg.goldCoins.toLocaleString()} GC + $
+                        {effectivePkg.freeSweepsCoins.toFixed(2)} SC FREE
+                        {effectivePkg.extraRailBonusSC > 0 && (
+                          <span
+                            style={{
+                              marginLeft: '6px',
+                              padding: '2px 6px',
+                              borderRadius: '999px',
+                              background: 'rgba(16, 185, 129, 0.22)',
+                              border: '1px solid #34d399',
+                              color: '#6ee7b7',
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                            }}
+                          >
+                            +${effectivePkg.extraRailBonusSC.toFixed(2)} (+5% BONUS)
+                          </span>
+                        )}
                       </span>
                       <button
                         type="button"
@@ -998,12 +1135,63 @@ export default function PaymentModal({
                       <span>Total</span>
                       <strong>
                         $
-                        {Number(selectedPkg.priceUsd).toLocaleString('en-US', {
-                          minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
+                        {Number(effectivePkg.priceUsd).toLocaleString('en-US', {
+                          minimumFractionDigits: effectivePkg.priceUsd % 1 === 0 ? 0 : 2,
                           maximumFractionDigits: 2,
                         })}
                       </strong>
                     </div>
+                  </div>
+
+                  {/* Segmented 4-Rail Sweepstakes Payment Method Selector (Chumba / Pulsz / Stake.us Style) */}
+                  <div
+                    className="sc-crypto-coins-row"
+                    role="tablist"
+                    aria-label="Choose Payment Method"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                      gap: '6px',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    {SWEEPSTAKES_PAYMENT_RAILS.map((rail) => {
+                      const isActive = activePaymentRail === rail.id;
+                      return (
+                        <button
+                          key={rail.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          className={`sc-crypto-pill ${isActive ? 'active' : ''}`}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '8px 6px',
+                            gap: '2px',
+                            textAlign: 'center',
+                          }}
+                          onClick={() => handleSelectRail(rail.id)}
+                          disabled={isProcessingCard || isProcessingCrypto}
+                        >
+                          <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>
+                            {rail.shortLabel}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.64rem',
+                              fontWeight: 700,
+                              color: rail.bonusScPct > 0 ? '#34d399' : '#fde68a',
+                              opacity: 0.95,
+                            }}
+                          >
+                            {rail.badge}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {checkoutError && (
@@ -1013,184 +1201,466 @@ export default function PaymentModal({
                     </div>
                   )}
 
-                  {/* Big, Unmistakable 1-Tap Checkout Buttons */}
-                  <div className="sc-express-pay-stack cx-pay-stack">
-                    {/* 1. Primary 1-Tap Card / Apple Pay / Google Pay Button */}
-                    <button
-                      type="button"
-                      className={`cx-pay-btn cx-pay-primary ${showCardDrawer ? 'active' : ''}`}
-                      onClick={() => handleStripeRedirect('card')}
-                      disabled={Boolean(redirectingMethod) || isProcessingCard}
+                  {/* ==========================================================
+                      RAIL 1: EMBEDDED CARD / APPLE PAY / GOOGLE PAY + SAVED CARDS
+                     ========================================================== */}
+                  {activePaymentRail === 'card' && (
+                    <form
+                      onSubmit={handleInlineCardSubmit}
+                      className="sc-crypto-drawer sc-card-express-drawer"
+                      style={{ marginTop: 0 }}
                     >
-                      <CreditCard size={20} />
-                      <span className="cx-pay-label">Card / Apple Pay / Google Pay</span>
-                      <span className="cx-pay-cta">
-                        {redirectingMethod === 'card' ? (
-                          <Loader2 size={18} className="sc-spin" />
-                        ) : showCardDrawer ? (
-                          'Hide ▲'
-                        ) : (
-                          `Pay $${Number(selectedPkg.priceUsd).toLocaleString('en-US', {
-                            minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
-                            maximumFractionDigits: 2,
-                          })}`
-                        )}
-                      </span>
-                    </button>
+                      {/* 1-Tap Express Mobile Wallets (Apple Pay & Google Pay) */}
+                      <div
+                        className="sc-crypto-coins-row"
+                        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}
+                      >
+                        <button
+                          type="button"
+                          className="cx-pay-btn cx-pay-primary"
+                          style={{ padding: '10px 12px', minHeight: '44px', justifyContent: 'center' }}
+                          onClick={() => handleExpressWalletPay('apple_pay')}
+                          disabled={isProcessingCard}
+                        >
+                          <span style={{ fontWeight: 800, fontSize: '0.92rem' }}> Apple Pay</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="cx-pay-btn cx-pay-primary"
+                          style={{ padding: '10px 12px', minHeight: '44px', justifyContent: 'center' }}
+                          onClick={() => handleExpressWalletPay('google_pay')}
+                          disabled={isProcessingCard}
+                        >
+                          <span style={{ fontWeight: 800, fontSize: '0.92rem' }}>G Pay • 1-Tap</span>
+                        </button>
+                      </div>
 
-                    {/* Inline Direct Card / Apple Pay / Google Pay Express Drawer */}
-                    {showCardDrawer && (
-                      <form onSubmit={handleInlineCardSubmit} className="sc-crypto-drawer sc-card-express-drawer">
-                        <div className="sc-crypto-coins-row" style={{ gap: '8px', marginBottom: '12px' }}>
-                          <button
-                            type="button"
-                            className="sc-crypto-pill active"
-                            style={{ flex: 1, justifyContent: 'center', padding: '10px 12px', fontWeight: 700 }}
-                            onClick={() => handleExpressWalletPay('apple_pay')}
-                            disabled={isProcessingCard}
+                      {/* Saved Cards 1-Click Vault (Chumba / Pulsz Returning Player Experience) */}
+                      {savedCards.length > 0 && (
+                        <div
+                          style={{
+                            marginBottom: '10px',
+                            padding: '8px 10px',
+                            borderRadius: '10px',
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            border: '1px solid rgba(52, 211, 153, 0.35)',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              color: '#6ee7b7',
+                              marginBottom: '6px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                            }}
                           >
-                             Apple Pay
-                          </button>
-                          <button
-                            type="button"
-                            className="sc-crypto-pill active"
-                            style={{ flex: 1, justifyContent: 'center', padding: '10px 12px', fontWeight: 700 }}
-                            onClick={() => handleExpressWalletPay('google_pay')}
-                            disabled={isProcessingCard}
+                            ⚡ Saved 1-Click Card
+                          </div>
+                          {savedCards.map((sc) => (
+                            <div
+                              key={sc.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px',
+                                marginBottom: '4px',
+                              }}
+                            >
+                              <button
+                                type="button"
+                                className="sc-confirm-crypto-btn"
+                                style={{
+                                  flex: 1,
+                                  padding: '8px 12px',
+                                  fontSize: '0.84rem',
+                                  margin: 0,
+                                }}
+                                onClick={() => handleSavedCardPay(sc)}
+                                disabled={isProcessingCard}
+                              >
+                                <CreditCard size={15} />
+                                <span>
+                                  {sc.brand} •••• {sc.last4} — 1-Tap Pay $
+                                  {Number(effectivePkg.priceUsd).toFixed(2)}
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSavedCard(sc.id)}
+                                style={{
+                                  background: 'transparent',
+                                  border: '1px solid rgba(248, 113, 113, 0.4)',
+                                  color: '#fca5a5',
+                                  borderRadius: '6px',
+                                  padding: '6px 8px',
+                                  fontSize: '0.72rem',
+                                  cursor: 'pointer',
+                                }}
+                                title="Remove saved card"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Direct Credit / Debit Card Form */}
+                      <div
+                        className="sc-crypto-details"
+                        style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                      >
+                        <div
+                          className="sc-crypto-txhash-row"
+                          style={{ marginTop: 0, position: 'relative', display: 'flex', alignItems: 'center' }}
+                        >
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="cc-number"
+                            value={cardNumber}
+                            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                            className="sc-crypto-txhash-input"
+                            style={{ paddingRight: '86px' }}
+                            placeholder="Card Number (Visa, Mastercard, Amex, Discover)"
+                            aria-label="Card Number"
+                            required
+                          />
+                          <span
+                            style={{
+                              position: 'absolute',
+                              right: '10px',
+                              padding: '2px 7px',
+                              borderRadius: '5px',
+                              background: 'rgba(245, 158, 11, 0.2)',
+                              border: '1px solid rgba(251, 191, 36, 0.45)',
+                              color: '#fde68a',
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              pointerEvents: 'none',
+                            }}
                           >
-                            G Pay • Instant
-                          </button>
+                            {detectedCardBrand.label}
+                          </span>
                         </div>
 
-                        <div className="sc-crypto-details" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          <div className="sc-crypto-txhash-row" style={{ marginTop: 0 }}>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              autoComplete="cc-number"
-                              value={cardNumber}
-                              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                              className="sc-crypto-txhash-input"
-                              placeholder="Card Number (4242 •••• •••• ••••)"
-                              aria-label="Card Number"
-                              required
-                            />
-                          </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="cc-exp"
+                            value={cardExpiry}
+                            onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
+                            className="sc-crypto-txhash-input"
+                            placeholder="MM/YY"
+                            aria-label="Expiration Date MM/YY"
+                            required
+                          />
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="cc-csc"
+                            value={cardCvc}
+                            onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                            className="sc-crypto-txhash-input"
+                            placeholder="CVC"
+                            aria-label="Security Code CVC"
+                            required
+                          />
+                          <input
+                            type="text"
+                            autoComplete="postal-code"
+                            value={cardZip}
+                            onChange={(e) => setCardZip(e.target.value.slice(0, 10))}
+                            className="sc-crypto-txhash-input"
+                            placeholder="ZIP Code"
+                            aria-label="Billing ZIP Code"
+                          />
+                        </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              autoComplete="cc-exp"
-                              value={cardExpiry}
-                              onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
-                              className="sc-crypto-txhash-input"
-                              placeholder="MM/YY"
-                              aria-label="Expiration Date MM/YY"
-                              required
-                            />
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              autoComplete="cc-csc"
-                              value={cardCvc}
-                              onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                              className="sc-crypto-txhash-input"
-                              placeholder="CVC"
-                              aria-label="Security Code CVC"
-                              required
-                            />
-                            <input
-                              type="text"
-                              autoComplete="postal-code"
-                              value={cardZip}
-                              onChange={(e) => setCardZip(e.target.value.slice(0, 10))}
-                              className="sc-crypto-txhash-input"
-                              placeholder="ZIP Code"
-                              aria-label="Billing ZIP Code"
-                            />
-                          </div>
-
-                          <div className="sc-crypto-txhash-row" style={{ marginTop: 0 }}>
-                            <input
-                              type="text"
-                              autoComplete="cc-name"
-                              value={cardHolderName}
-                              onChange={(e) => setCardHolderName(e.target.value)}
-                              className="sc-crypto-txhash-input"
-                              placeholder="Name on Card"
-                              aria-label="Cardholder Name"
-                            />
-                          </div>
-
-                          <button
-                            type="submit"
-                            className="sc-confirm-crypto-btn"
-                            disabled={isProcessingCard}
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr auto',
+                            gap: '8px',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <input
+                            type="text"
+                            autoComplete="cc-name"
+                            value={cardHolderName}
+                            onChange={(e) => setCardHolderName(e.target.value)}
+                            className="sc-crypto-txhash-input"
+                            placeholder="Cardholder Name"
+                            aria-label="Cardholder Name"
+                          />
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              fontSize: '0.74rem',
+                              color: '#cbd5e1',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
                           >
-                            {isProcessingCard ? (
-                              <>
-                                <Loader2 size={16} className="sc-spin" />
-                                <span>Authorizing Card...</span>
-                              </>
-                            ) : (
+                            <input
+                              type="checkbox"
+                              checked={saveCardForFuture}
+                              onChange={(e) => setSaveCardForFuture(e.target.checked)}
+                            />
+                            <span>Save for 1-Click</span>
+                          </label>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="sc-confirm-crypto-btn"
+                          disabled={isProcessingCard}
+                        >
+                          {isProcessingCard ? (
+                            <>
+                              <Loader2 size={16} className="sc-spin" />
+                              <span>Authorizing Card...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Lock size={15} />
                               <span>
                                 Pay $
-                                {Number(selectedPkg.priceUsd).toLocaleString('en-US', {
-                                  minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
+                                {Number(effectivePkg.priceUsd).toLocaleString('en-US', {
+                                  minimumFractionDigits: effectivePkg.priceUsd % 1 === 0 ? 0 : 2,
                                   maximumFractionDigits: 2,
                                 })}{' '}
-                                &amp; Credit Coins Now
+                                &amp; Credit {effectivePkg.goldCoins.toLocaleString()} GC + $
+                                {effectivePkg.freeSweepsCoins.toFixed(2)} SC
                               </span>
-                            )}
+                            </>
+                          )}
+                        </button>
+
+                        {/* Stake.us-Style Card-to-Wallet On-Ramp Bridge (MoonPay / Topper / Guardarian) */}
+                        <div style={{ marginTop: '4px', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className="cx-change-link"
+                            style={{ fontSize: '0.74rem' }}
+                            onClick={() => {
+                              setShowCardBridgeLinks(!showCardBridgeLinks);
+                              soundEngine.playButtonClick(480);
+                            }}
+                          >
+                            {showCardBridgeLinks
+                              ? '▲ Hide External Card-to-Wallet Bridges'
+                              : '🌐 Bank blocks gaming cards? Use MoonPay / Topper Card Bridge →'}
                           </button>
+
+                          {showCardBridgeLinks && (
+                            <div
+                              style={{
+                                marginTop: '8px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px',
+                                textAlign: 'left',
+                              }}
+                            >
+                              {cardBridgeLinks.map((bridge) => (
+                                <a
+                                  key={bridge.id}
+                                  href={bridge.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="sc-open-wallet-link"
+                                  style={{ justifyContent: 'space-between', padding: '7px 10px' }}
+                                  onClick={() => soundEngine.playButtonClick(540)}
+                                >
+                                  <span>{bridge.name}</span>
+                                  <ExternalLink size={13} />
+                                </a>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </form>
-                    )}
+                      </div>
+                    </form>
+                  )}
 
-                    {/* 2. Signature 1-Tap Cash App Pay Button */}
-                    <button
-                      type="button"
-                      className="cx-pay-btn cx-pay-cashapp"
-                      onClick={() => handleStripeRedirect('cashapp')}
-                      disabled={Boolean(redirectingMethod) || isProcessingCard}
+                  {/* ==========================================================
+                      RAIL 2: CASH APP INSTANT PAY ($Daniel-Collins-168 +5% SC)
+                     ========================================================== */}
+                  {activePaymentRail === 'cashapp' && (
+                    <div className="sc-crypto-drawer" style={{ marginTop: 0 }}>
+                      <div className="sc-crypto-details">
+                        <div className="sc-crypto-qr-layout">
+                          <div className="sc-crypto-qr-frame">
+                            <img
+                              src={cashAppDetails.qrUrl}
+                              alt={`Scan with phone camera to pay $${effectivePkg.priceUsd} on Cash App`}
+                              className="sc-crypto-qr-img"
+                            />
+                            <span className="sc-crypto-qr-caption">SCAN WITH PHONE</span>
+                          </div>
+
+                          <div className="sc-crypto-info-col">
+                            <div className="sc-crypto-amount-line">
+                              Send <strong>${Number(effectivePkg.priceUsd).toFixed(2)} USD</strong> to{' '}
+                              <strong style={{ color: '#34d399' }}>{cashAppDetails.cashtag}</strong> (+5% Extra SC Included!):
+                            </div>
+
+                            <div className="sc-crypto-address-bar">
+                              <code>{cashAppDetails.cashtag}</code>
+                              <button
+                                type="button"
+                                className="sc-copy-btn"
+                                onClick={() => handleCopyCryptoAddress(cashAppDetails.cashtag)}
+                              >
+                                {copiedAddress ? <Check size={14} /> : <Copy size={14} />}
+                                <span>{copiedAddress ? 'Copied' : 'Copy $Cashtag'}</span>
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="cx-pay-btn cx-pay-cashapp"
+                              style={{ width: '100%', marginTop: '4px' }}
+                              onClick={() => handleStripeRedirect('cashapp')}
+                            >
+                              <span className="cx-cashapp-mark">$</span>
+                              <span className="cx-pay-label">Open Cash App (${Number(effectivePkg.priceUsd).toFixed(2)})</span>
+                              <ExternalLink size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="sc-crypto-txhash-row">
+                          <input
+                            type="text"
+                            value={cashAppSenderTag}
+                            onChange={(e) => setCashAppSenderTag(e.target.value)}
+                            className="sc-crypto-txhash-input"
+                            placeholder="Optional: Enter your $Cashtag or Receipt Note for instant credit..."
+                            aria-label="Your Cash App $Cashtag"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          className="sc-confirm-crypto-btn"
+                          onClick={handleCashAppClaim}
+                          disabled={isProcessingCard}
+                        >
+                          {isProcessingCard ? (
+                            <>
+                              <Loader2 size={16} className="sc-spin" />
+                              <span>Verifying Cash App Transfer...</span>
+                            </>
+                          ) : (
+                            <span>
+                              I&apos;ve Sent ${Number(effectivePkg.priceUsd).toFixed(2)} on Cash App — Credit{' '}
+                              {effectivePkg.goldCoins.toLocaleString()} GC + ${effectivePkg.freeSweepsCoins.toFixed(2)} SC
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ==========================================================
+                      RAIL 3: ONLINE BANKING / CHIME / TRUSTLY / VENMO / SKRILL
+                     ========================================================== */}
+                  {activePaymentRail === 'banking' && (
+                    <form
+                      onSubmit={handleBankTransferPay}
+                      className="sc-crypto-drawer"
+                      style={{ marginTop: 0 }}
                     >
-                      <span className="cx-cashapp-mark">$</span>
-                      <span className="cx-pay-label">Cash App Pay</span>
-                      <span className="cx-pay-cta">
-                        {redirectingMethod === 'cashapp' ? (
-                          <Loader2 size={18} className="sc-spin" />
-                        ) : (
-                          `Pay $${Number(selectedPkg.priceUsd).toLocaleString('en-US', {
-                            minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
-                            maximumFractionDigits: 2,
-                          })}`
-                        )}
-                      </span>
-                    </button>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                          gap: '6px',
+                          marginBottom: '10px',
+                        }}
+                      >
+                        {POPULAR_US_BANKS.map((bank) => {
+                          const active = selectedBankId === bank.id;
+                          return (
+                            <button
+                              key={bank.id}
+                              type="button"
+                              className={`sc-crypto-pill ${active ? 'active' : ''}`}
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                padding: '8px 6px',
+                                gap: '2px',
+                              }}
+                              onClick={() => {
+                                setSelectedBankId(bank.id);
+                                soundEngine.playButtonClick(480);
+                              }}
+                            >
+                              <span style={{ fontWeight: 800, fontSize: '0.78rem' }}>{bank.name}</span>
+                              <span style={{ fontSize: '0.62rem', opacity: 0.85 }}>{bank.badge}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                    {/* 3. Clean Crypto Option */}
-                    <button
-                      type="button"
-                      className={`cx-pay-btn cx-pay-crypto ${
-                        showCryptoBox ? 'active' : ''
-                      }`}
-                      onClick={() => {
-                        setShowCardDrawer(false);
-                        setShowCryptoBox(!showCryptoBox);
-                        soundEngine.playButtonClick(500);
-                      }}
-                      disabled={Boolean(redirectingMethod) || isProcessingCard}
-                    >
-                      <Bitcoin size={20} />
-                      <span className="cx-pay-label">Crypto — USDT, SOL, BTC, ETH (0% fee)</span>
-                      <span className="cx-pay-cta">{showCryptoBox ? 'Hide ▲' : 'Select ▼'}</span>
-                    </button>
-                  </div>
+                      <div className="sc-crypto-details" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="sc-crypto-txhash-row" style={{ marginTop: 0 }}>
+                          <input
+                            type="text"
+                            value={bankAccountHandle}
+                            onChange={(e) => setBankAccountHandle(e.target.value)}
+                            className="sc-crypto-txhash-input"
+                            placeholder={
+                              selectedBankId === 'chime'
+                                ? 'Enter your $ChimeSign or Chime Email...'
+                                : selectedBankId === 'venmo_paypal'
+                                ? 'Enter your @Venmo / Skrill Email...'
+                                : 'Enter Online Banking Email or Account Last 4 Digits...'
+                            }
+                            aria-label="Online Banking Handle or Account Identifier"
+                            required
+                          />
+                        </div>
 
-                  {/* Clean Expandable Crypto Box when "Pay with Crypto" is clicked */}
-                  {showCryptoBox && (
-                    <div className="sc-crypto-drawer">
+                        <button
+                          type="submit"
+                          className="sc-confirm-crypto-btn"
+                          disabled={isProcessingCard}
+                        >
+                          {isProcessingCard ? (
+                            <>
+                              <Loader2 size={16} className="sc-spin" />
+                              <span>Connecting to Bank...</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck size={16} />
+                              <span>
+                                Authorize Instant ${Number(effectivePkg.priceUsd).toFixed(2)} Transfer &amp; Credit Coins
+                              </span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* ==========================================================
+                      RAIL 4: STAKE.US-STYLE CRYPTO VAULT (+5% EXTRA BONUS SC)
+                     ========================================================== */}
+                  {activePaymentRail === 'crypto' && (
+                    <div className="sc-crypto-drawer" style={{ marginTop: 0 }}>
                       <div className="sc-crypto-coins-row">
                         {CRYPTO_PAYMENT_OPTIONS.map((c) => (
                           <button
@@ -1287,7 +1757,10 @@ export default function PaymentModal({
                               <span>Checking Blockchain...</span>
                             </>
                           ) : (
-                            <span>I&apos;ve Sent the Crypto — Credit My Coins</span>
+                            <span>
+                              I&apos;ve Sent the Crypto — Credit {effectivePkg.goldCoins.toLocaleString()} GC + $
+                              {effectivePkg.freeSweepsCoins.toFixed(2)} SC
+                            </span>
                           )}
                         </button>
                       </div>
@@ -1297,7 +1770,7 @@ export default function PaymentModal({
                   <div className="sc-redirect-note">
                     <Lock size={13} />
                     <span>
-                      Instant automatic coin delivery • 256-bit SSL encrypted checkout
+                      Instant automatic coin delivery • 256-bit SSL encrypted sweepstakes cashier
                     </span>
                   </div>
                 </div>
