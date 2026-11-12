@@ -189,7 +189,7 @@ export default function AuthModal({
                 <Gift size={18} className="sc-emerald-icon" />
                 <div>
                   <strong>FREE WELCOME BONUS INCLUDED</strong>
-                  <span>1,000 Gold Coins + 10.00 FREE Sweeps Coins ($10 Value)</span>
+                  <span>100,000 Gold Coins + 10.00 FREE Sweeps Coins ($10 Value)</span>
                 </div>
               </div>
 

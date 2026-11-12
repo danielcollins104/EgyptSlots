@@ -151,6 +151,10 @@ class SoundEngine {
     if (now - last < minIntervalMs) {
       return false;
     }
+    const keys = Object.keys(this.cooldowns);
+    if (keys.length > 64) {
+      this.cooldowns = {};
+    }
     this.cooldowns[cueId] = now;
     return true;
   }
@@ -166,24 +170,27 @@ class SoundEngine {
         terminalNode.connect(targetBus);
       } catch (_) {}
     }
-    const osc = nodes.find((n) => n && typeof n.stop === 'function');
-    if (osc) {
-      osc.onended = () => {
-        nodes.forEach((n) => {
-          try {
-            if (n && typeof n.disconnect === 'function') n.disconnect();
-          } catch (_) {}
-        });
-      };
-    }
-    const fallbackMs = Math.max(60, Math.ceil(durationSeconds * 1000) + 100);
-    setTimeout(() => {
+    let cleanedUp = false;
+    let fallbackTimer = null;
+    const disconnectAll = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      if (fallbackTimer !== null) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
       nodes.forEach((n) => {
         try {
           if (n && typeof n.disconnect === 'function') n.disconnect();
         } catch (_) {}
       });
-    }, fallbackMs);
+    };
+    const osc = nodes.find((n) => n && typeof n.stop === 'function');
+    if (osc) {
+      osc.onended = disconnectAll;
+    }
+    const fallbackMs = Math.max(60, Math.ceil(durationSeconds * 1000) + 100);
+    fallbackTimer = setTimeout(disconnectAll, fallbackMs);
   }
 
   // Helper to synthesize a warm, consonant marimba / harp / celesta note with soft attack

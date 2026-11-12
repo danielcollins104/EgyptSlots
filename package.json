@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "cap sync",
     "sync": "cap sync",
-    "build:all": "vite build && cap sync",
-    "deploy": "vite build && cap sync && wrangler deploy",
+    "build:all": "npm run build",
+    "deploy": "npm run build && wrangler deploy",
     "preview": "vite preview",
     "server": "node server/server.js",
     "security:audit": "node scripts/test-security-audit.js",

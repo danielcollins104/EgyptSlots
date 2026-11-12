@@ -117,7 +117,11 @@ export class SecurityServer {
   /**
    * Secure Stripe Webhook Handler with Idempotency & Cryptographic Signature Protection
    */
-  async handleStripeWebhook({ eventId, eventType, dataObject, signatureHeader, webhookSecret, rawBody }) {
+  async handleStripeWebhook(payload = {}) {
+    const eventId = payload.eventId || payload.id;
+    const eventType = payload.eventType || payload.type;
+    const dataObject = payload.dataObject || payload.data?.object || {};
+    const { signatureHeader, webhookSecret, rawBody } = payload;
     // 1. Prevent Replay Attacks: Idempotency verification
     if (this.processedPaymentEvents.has(eventId)) {
       return { status: 'ignored', message: `Event ${eventId} has already been processed.` };
@@ -173,7 +177,9 @@ export class SecurityServer {
         (matchedPkg ? 'usr_stripe_checkout' : null);
       const goldCoins = parseInt(metadata.goldCoins || (matchedPkg ? String(matchedPkg.goldCoins) : '0'), 10);
       const freeSweepsCoins = parseFloat(
-        metadata.freeSweepsCoins || (matchedPkg ? String(matchedPkg.freeSweepsCoins) : '0')
+        metadata.freeSweepsCoins ||
+          metadata.bonusTokens ||
+          (matchedPkg ? String(matchedPkg.freeSweepsCoins) : '0')
       );
 
       if (!userId || goldCoins <= 0) {

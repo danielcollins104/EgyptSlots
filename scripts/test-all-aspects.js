@@ -37,6 +37,8 @@ import { SWEEPSTAKES_CONFIG } from '../src/config/sweepstakesConfig.js';
 import { AMBIENT_PLAYLIST } from '../src/audio/ambientMusicEngine.js';
 import { spinPhysicalReels, getReelHeights } from '../src/engine/math/ReelStripModel.js';
 import { paymentService } from '../src/services/paymentService.js';
+import { sweepstakesCheckoutController } from '../src/services/sweepstakesCheckoutController.js';
+import { SecurityServer } from '../server/SecurityServer.js';
 
 const rootDir = process.cwd();
 
@@ -665,6 +667,112 @@ paymentService.saveResponsibleGamingState({
   maxSpinBetGC: 0,
   realityCheckMinutes: 0,
 });
+
+// ----------------------------------------------------------------------------
+// 15. MVC CHECKOUT ORCHESTRATOR, RAIL BONUS SC & WEBHOOK BONUS TOKENS SYNC
+// ----------------------------------------------------------------------------
+console.log('\n--- 15. Testing MVC Sweepstakes Checkout Orchestrator & Webhook Sync ---');
+const baseStarterPkg = SWEEPSTAKES_CONFIG.storePackages[0]; // $4.99 -> 5.00 SC
+const cardPkg = sweepstakesCheckoutController.computePackageWithRailBonus(baseStarterPkg, 'card');
+const cashAppPkg = sweepstakesCheckoutController.computePackageWithRailBonus(baseStarterPkg, 'cashapp');
+const cryptoPkg = sweepstakesCheckoutController.computePackageWithRailBonus(baseStarterPkg, 'crypto');
+assert(
+  cardPkg.freeSweepsCoins === baseStarterPkg.freeSweepsCoins && cardPkg.extraRailBonusSC === 0,
+  'Standard Card rail preserves exact base Sweeps Coins (5.00 SC on $4.99 starter pack)'
+);
+assert(
+  cashAppPkg.freeSweepsCoins === Number((baseStarterPkg.freeSweepsCoins * 1.05).toFixed(2)) &&
+    cryptoPkg.freeSweepsCoins === Number((baseStarterPkg.freeSweepsCoins * 1.05).toFixed(2)),
+  'Cash App & Crypto Vault rails accurately compute +5% extra Sweeps Coins without jump-to-2000 corruption'
+);
+
+const futureYear2 = ((new Date().getFullYear() + 2) % 100).toString().padStart(2, '0');
+const pastYear2 = ((new Date().getFullYear() - 1) % 100).toString().padStart(2, '0');
+const validVisa = sweepstakesCheckoutController.validateCardInput({
+  cardNumber: '4242 4242 4242 4242',
+  cardExpiry: `12/${futureYear2}`,
+  cardCvc: '123',
+});
+const expiredVisa = sweepstakesCheckoutController.validateCardInput({
+  cardNumber: '4242 4242 4242 4242',
+  cardExpiry: `01/${pastYear2}`,
+  cardCvc: '123',
+});
+const validAmex = sweepstakesCheckoutController.validateCardInput({
+  cardNumber: '3782 822463 10005',
+  cardExpiry: `12/${futureYear2}`,
+  cardCvc: '1234',
+});
+assert(
+  validVisa.valid && validVisa.brand === 'VISA' && validVisa.last4 === '4242' && !expiredVisa.valid,
+  'Dynamic card validator accepts valid Visa and rejects expired card dates'
+);
+assert(
+  validAmex.valid && validAmex.brand === 'AMEX' && validAmex.last4 === '0005',
+  'Amex 15-digit 4-6-5 format and 4-digit CID validate cleanly'
+);
+
+const savedToken = sweepstakesCheckoutController.saveCardForOneClick({
+  brand: 'VISA',
+  last4: '4242',
+  expiry: `12/${futureYear2}`,
+  holderName: 'Daniel VIP',
+});
+const rawSavedCards = localStorage.getItem('dc_saved_payment_cards_v1') || '';
+assert(
+  Boolean(savedToken?.id) &&
+    !rawSavedCards.includes('42424242') &&
+    !rawSavedCards.includes('cardCvc'),
+  '1-Click Saved Card vault stores tokenized last4 metadata only (never raw PAN or CVC)'
+);
+
+const webhookSecServer = new SecurityServer();
+const balBeforeWebhook = webhookSecServer.wallet.getAccount('usr_webhook_custom_tester').sweepsCoins;
+const webhookRes = await webhookSecServer.handleStripeWebhook({
+  id: 'evt_custom_bonus_tokens_sync_1',
+  type: 'checkout.session.completed',
+  data: {
+    object: {
+      metadata: {
+        packageId: 'pkg_custom_25',
+        userId: 'usr_webhook_custom_tester',
+        goldCoins: '50000',
+        bonusTokens: '25.00',
+      },
+    },
+  },
+});
+const balAfterWebhook = webhookSecServer.wallet.getAccount('usr_webhook_custom_tester').sweepsCoins;
+assert(
+  webhookRes.status === 'processed' && Number((balAfterWebhook - balBeforeWebhook).toFixed(2)) === 25,
+  'SecurityServer Stripe webhook credits exact +25.00 custom-pack SC from metadata.bonusTokens'
+);
+
+// ----------------------------------------------------------------------------
+// 16. VIP LOYALTY XP PROGRESSION, DAILY STREAK & GUEST-TO-VIP BALANCE MERGE
+// ----------------------------------------------------------------------------
+console.log('\n--- 16. Testing VIP Loyalty XP, Daily Streak & Balance Preservation ---');
+localStorage.setItem('dc_casino_gold_coins', '340000');
+localStorage.setItem('dc_casino_sweeps_coins', '42.50');
+const mergedNewVipAcc = authService.getUserData('usr_fresh_vip_merge_test');
+assert(
+  mergedNewVipAcc.goldCoins === 340000 && mergedNewVipAcc.sweepsCoins === 42.5,
+  'New VIP login preserves higher active Guest session GC (340,000) and SC ($42.50)'
+);
+
+const vipStep1 = authService.recordVipSpinXp('usr_vip_xp_tester', 140, false);
+const vipStep2 = authService.recordVipSpinXp('usr_vip_xp_tester', 20, true);
+assert(
+  vipStep1.level === 1 && vipStep2.leveledUp === true && vipStep2.level === 2 && vipStep2.rewardSC === 0.25,
+  'Crossing 250 VIP XP triggers Level 2 (SILVER SCARAB) milestone and awards +$0.25 Free SC'
+);
+
+const dailyClaim1 = authService.claimDailyReward('usr_daily_streak_tester');
+const cannotDoubleClaim = authService.canClaimDailyReward('usr_daily_streak_tester');
+assert(
+  dailyClaim1.success && dailyClaim1.addedGC === 5000 && dailyClaim1.addedSC === 0.5 && !cannotDoubleClaim,
+  'Daily login bonus grants +5,000 GC & +$0.50 Free SC and enforces 24-hour cooldown'
+);
 
 // ----------------------------------------------------------------------------
 // SUMMARY REPORT

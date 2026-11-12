@@ -555,6 +555,10 @@ export default function PaymentModal({
     }
 
     if (methodType === 'cashapp') {
+      try {
+        localStorage.setItem('dc_pending_purchase_pkg', effectivePkg.id || '');
+        localStorage.setItem('dc_pending_purchase_custom_pkg', JSON.stringify(effectivePkg));
+      } catch {}
       const baseCashApp =
         getCashAppPayCheckoutLink(effectivePkg) ||
         getCashAppPaymentLink(effectivePkg?.priceUsd || 19.99);
@@ -750,7 +754,7 @@ export default function PaymentModal({
 
   const calculatedCryptoAmount = selectedPkg
     ? (selectedPkg.priceUsd * currentCryptoObj.rateMultiplier).toFixed(
-        currentCryptoObj.symbol === 'USDT' ? 2 : 6
+        currentCryptoObj.unit === 'USDT' ? 2 : 6
       )
     : '0';
 

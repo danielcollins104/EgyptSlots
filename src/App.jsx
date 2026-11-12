@@ -324,22 +324,36 @@ export default function App() {
   const sessionSpinCountRef = useRef(0);
   const hasShownHotStreakPromoRef = useRef(false);
 
-  // Daily Login Reward & Faucet State
+  // Daily Login Reward, Streak & VIP Loyalty Progression State
   const [canClaimDaily, setCanClaimDaily] = useState(() => authService.canClaimDailyReward(currentUser?.id));
+  const [vipProg, setVipProg] = useState(() => authService.getVipProgression(currentUser?.id));
 
   useEffect(() => {
     setCanClaimDaily(authService.canClaimDailyReward(currentUser?.id));
+    setVipProg(authService.getVipProgression(currentUser?.id));
   }, [currentUser]);
 
   const handleClaimDailyBonus = () => {
     const res = authService.claimDailyReward(currentUser?.id);
     if (res.success) {
-      setGoldCoins(res.goldCoins);
-      setSweepsCoins(res.sweepsCoins);
-      goldCoinsRef.current = res.goldCoins;
-      sweepsCoinsRef.current = res.sweepsCoins;
+      const nextGC = Math.max(res.goldCoins, (goldCoinsRef.current || 0) + (res.addedGC || 5000));
+      const nextSC = Number(Math.max(res.sweepsCoins, (sweepsCoinsRef.current || 0) + (res.addedSC || 0.5)).toFixed(2));
+      setGoldCoins(nextGC);
+      setSweepsCoins(nextSC);
+      goldCoinsRef.current = nextGC;
+      sweepsCoinsRef.current = nextSC;
+      authService.saveUserData(currentUser?.id, { goldCoins: nextGC, sweepsCoins: nextSC });
+      if (res.addedSC > 0) {
+        paymentService.recordBonusScGranted(res.addedSC);
+      }
       setCanClaimDaily(false);
-      setStatusMessage('DAILY BONUS CLAIMED! +5,000 GC & +0.50 FREE SC ADDED TO YOUR VAULT!');
+      setVipProg(authService.getVipProgression(currentUser?.id));
+      const streakLabel = res.streakDays > 1 ? ` (🔥 DAY ${res.streakDays} STREAK!)` : '';
+      setFloatingWinText(`🎁 +${(res.addedGC || 5000).toLocaleString()} GC & +$${(res.addedSC || 0.5).toFixed(2)} SC!`);
+      setFloatingWinKey((k) => k + 1);
+      setStatusMessage(
+        `DAILY BONUS CLAIMED${streakLabel}! +${(res.addedGC || 5000).toLocaleString()} GC & +$${(res.addedSC || 0.5).toFixed(2)} FREE SC ADDED TO YOUR VAULT!`
+      );
       soundEngine.playWinCelebration(false);
     } else {
       setStatusMessage('DAILY BONUS ALREADY CLAIMED TODAY. PLEASE CHECK BACK TOMORROW!');
@@ -753,6 +767,29 @@ export default function App() {
   const [responsibleGamingOpen, setResponsibleGamingOpen] = useState(false);
   const [paytableInitialTab, setPaytableInitialTab] = useState('symbols');
 
+  const isAnyModalOrBonusActive = Boolean(
+    showSplash ||
+      paytableOpen ||
+      paymentModalOpen ||
+      adminCenterOpen ||
+      authModalOpen ||
+      lowBalanceOfferOpen ||
+      vipPromoAdOpen ||
+      responsibleGamingOpen ||
+      keyboardShortcutsOpen ||
+      bonusSession ||
+      freeSpinsOpen ||
+      celestialBonusOpen ||
+      guardianBonusCelebrationOpen ||
+      collectorCelebrationOpen
+  );
+  const isAnyModalOrBonusActiveRef = useRef(isAnyModalOrBonusActive);
+  isAnyModalOrBonusActiveRef.current = isAnyModalOrBonusActive;
+  const autoPlayCountRef = useRef(autoPlayCount);
+  autoPlayCountRef.current = autoPlayCount;
+  const bigWinAmountRef = useRef(bigWinAmount);
+  bigWinAmountRef.current = bigWinAmount;
+
   useEffect(() => {
     const handleFsChange = () => {
       setIsFullscreen(Boolean(document.fullscreenElement));
@@ -888,22 +925,32 @@ export default function App() {
     } catch (_) {}
   }, []);
 
-  // VIP Player Authentication Listener: auto-react to login/logout events & swap per-account bankrolls
+  // VIP Player Authentication Listener: auto-react to login/logout events & preserve any higher Guest session winnings
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChanged((user) => {
       setCurrentUser(user);
       const acc = authService.getUserData(user?.id);
       if (acc) {
-        setGoldCoins(acc.goldCoins);
-        goldCoinsRef.current = acc.goldCoins;
-        setSweepsCoins(acc.sweepsCoins);
-        sweepsCoinsRef.current = acc.sweepsCoins;
+        const mergedGC = user
+          ? Math.max(Number(acc.goldCoins) || 0, Number(goldCoinsRef.current) || 0)
+          : Number(acc.goldCoins) || 0;
+        const mergedSC = user
+          ? Number(Math.max(Number(acc.sweepsCoins) || 0, Number(sweepsCoinsRef.current) || 0).toFixed(2))
+          : Number(acc.sweepsCoins) || 0;
+        setGoldCoins(mergedGC);
+        goldCoinsRef.current = mergedGC;
+        setSweepsCoins(mergedSC);
+        sweepsCoinsRef.current = mergedSC;
+        if (user && (mergedGC !== acc.goldCoins || mergedSC !== acc.sweepsCoins)) {
+          authService.saveUserData(user.id, { goldCoins: mergedGC, sweepsCoins: mergedSC });
+        }
         if (user && acc.currencyMode) {
           setCurrencyMode(acc.currencyMode);
         } else if (!user) {
           setCurrencyMode('GC');
         }
       }
+      setVipProg(authService.getVipProgression(user?.id));
       if (!user && currencyMode === 'SC') {
         setCurrencyMode('GC');
         setStatusMessage('GUEST SESSION • SWITCHED TO SOCIAL GOLD COINS (GC).');
@@ -1826,6 +1873,44 @@ export default function App() {
       }, turboFlow ? 140 : 280);
     }
 
+    // Award VIP Loyalty XP on every spin & trigger Milestone Level-Up Cashback Drop every 250 XP!
+    const vipUpdate = authService.recordVipSpinXp(
+      currentUser?.id,
+      totalCoinsWon > 0 ? 25 : 10,
+      totalCoinsWon > 0
+    );
+    setVipProg(vipUpdate);
+    if (vipUpdate.leveledUp) {
+      if (isSC && vipUpdate.rewardSC > 0) {
+        paymentService.recordBonusScGranted(vipUpdate.rewardSC);
+        setSweepsCoins((prev) => {
+          const next = Number((prev + vipUpdate.rewardSC).toFixed(2));
+          sweepsCoinsRef.current = next;
+          return next;
+        });
+        if (totalCoinsWon === 0) {
+          setFloatingWinText(`👑 VIP LV.${vipUpdate.level} BONUS +$${vipUpdate.rewardSC.toFixed(2)} SC!`);
+          setFloatingWinKey((k) => k + 1);
+          setStatusMessage(
+            `👑 VIP LEVEL ${vipUpdate.level} (${vipUpdate.tierName}) REACHED! INSTANT +$${vipUpdate.rewardSC.toFixed(2)} FREE BONUS SC CREDITED!`
+          );
+        }
+      } else if (!isSC && vipUpdate.rewardGC > 0) {
+        setGoldCoins((prev) => {
+          const next = prev + vipUpdate.rewardGC;
+          goldCoinsRef.current = next;
+          return next;
+        });
+        if (totalCoinsWon === 0) {
+          setFloatingWinText(`👑 VIP LV.${vipUpdate.level} BONUS +${vipUpdate.rewardGC.toLocaleString()} GC!`);
+          setFloatingWinKey((k) => k + 1);
+          setStatusMessage(
+            `👑 VIP LEVEL ${vipUpdate.level} (${vipUpdate.tierName}) REACHED! INSTANT +${vipUpdate.rewardGC.toLocaleString()} BONUS GC CREDITED!`
+          );
+        }
+      }
+    }
+
     // Launch the Celestial Free Spins Feature if 3+ Scatters landed!
     if (bonusCount >= 3) {
       setAutoPlayCount(0);
@@ -1857,13 +1942,15 @@ export default function App() {
       if (
         (isDepleted || isCriticallyLow) &&
         nowTimestamp - lastLowBalanceOfferTimeRef.current > cooldownMs &&
-        !isHoldingSpinRef.current
+        !isHoldingSpinRef.current &&
+        autoPlayCountRef.current === 0
       ) {
         setTimeout(() => {
           if (
             !isSpinningRef.current &&
-            !freeSpinsOpen &&
-            !bonusSession &&
+            !isGuardianSequenceActiveRef.current &&
+            !isAnyModalOrBonusActiveRef.current &&
+            bigWinAmountRef.current === 0 &&
             !isHoldingSpinRef.current
           ) {
             const currentLiveBal = isSC ? (sweepsCoinsRef.current ?? sweepsCoins) : (goldCoinsRef.current ?? goldCoins);
@@ -1874,20 +1961,23 @@ export default function App() {
           }
         }, 1200);
       } else {
-        // High-Conversion Mid-Session Milestone / Hot-Streak VIP Flash Drop
+        // Respectful Mid-Session Milestone VIP Flash Drop (only after 18+ spins when idle, never during a flow streak chain)
         sessionSpinCountRef.current += 1;
         if (
           !hasShownHotStreakPromoRef.current &&
-          (sessionSpinCountRef.current === 8 || flowStreak >= 3) &&
+          sessionSpinCountRef.current >= 18 &&
+          flowStreak <= 2 &&
           !isHoldingSpinRef.current &&
-          nowTimestamp - lastLowBalanceOfferTimeRef.current > 45000
+          autoPlayCountRef.current === 0 &&
+          nowTimestamp - lastLowBalanceOfferTimeRef.current > 60000
         ) {
           hasShownHotStreakPromoRef.current = true;
           setTimeout(() => {
             if (
               !isSpinningRef.current &&
-              !freeSpinsOpen &&
-              !bonusSession &&
+              !isGuardianSequenceActiveRef.current &&
+              !isAnyModalOrBonusActiveRef.current &&
+              bigWinAmountRef.current === 0 &&
               !isHoldingSpinRef.current
             ) {
               setVipPromoAdReason('hot_streak');
@@ -1897,7 +1987,7 @@ export default function App() {
         }
       }
     }
-  }, [evaluateGridWins, currencyMode, turboFlow, flowStreak, sweepsCoins, goldCoins, freeSpinsOpen, bonusSession]);
+  }, [evaluateGridWins, currencyMode, turboFlow, flowStreak, sweepsCoins, goldCoins, freeSpinsOpen, bonusSession, currentUser]);
 
   const handleEnterBonusFromCollector = () => {
     setCollectorCelebrationOpen(false);
@@ -2057,7 +2147,10 @@ export default function App() {
       const canonicalPkg =
         SWEEPSTAKES_CONFIG.storePackages.find((p) => p.id === data?.id) ||
         SWEEPSTAKES_CONFIG.rescuePackages.find((p) => p.id === data?.id);
-      addedSC = canonicalPkg ? canonicalPkg.freeSweepsCoins : Number(Math.round(priceUsd).toFixed(2));
+      const railBonusMult = 1 + (Math.max(0, Number(data?.railBonusPct) || 0) / 100);
+      addedSC = canonicalPkg
+        ? Number((canonicalPkg.freeSweepsCoins * railBonusMult).toFixed(2))
+        : Number((Math.round(priceUsd) * railBonusMult).toFixed(2));
     }
 
     // Capture exact live balances BEFORE any Guest -> VIP session upgrade so onAuthStateChanged
@@ -2179,8 +2272,58 @@ export default function App() {
         localStorage.getItem('dc_pending_purchase_pkg');
 
       if (isSuccess) {
+        // Security & Replay Guard: Require either an un-claimed checkout session_id OR a recent pending purchase timestamp (< 2 hours)
+        const sessionIdParam = String(params.get('session_id') || params.get('checkout_id') || '').trim();
+        const pendingTimeRaw = localStorage.getItem('dc_pending_purchase_time');
+        const pendingTimeMs = pendingTimeRaw ? parseInt(pendingTimeRaw, 10) : 0;
+        const hasValidPendingMarker =
+          pendingTimeMs > 0 && Date.now() - pendingTimeMs <= 2 * 60 * 60 * 1000;
+
+        let claimedSessions = [];
+        try {
+          const rawClaimed = localStorage.getItem('dc_claimed_checkout_sessions_v1');
+          claimedSessions = rawClaimed ? JSON.parse(rawClaimed) : [];
+        } catch {}
+
+        const isSessionAlreadyClaimed = Boolean(
+          sessionIdParam && claimedSessions.includes(sessionIdParam)
+        );
+
+        if (isSessionAlreadyClaimed || (!hasValidPendingMarker && !sessionIdParam)) {
+          try {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          } catch {}
+          return;
+        }
+
+        if (sessionIdParam) {
+          try {
+            claimedSessions.unshift(sessionIdParam);
+            localStorage.setItem(
+              'dc_claimed_checkout_sessions_v1',
+              JSON.stringify(claimedSessions.slice(0, 100))
+            );
+          } catch {}
+        }
+
         let matchedPkg = null;
-        if (pkgId) {
+        try {
+          const savedPendingRaw = localStorage.getItem('dc_pending_purchase_custom_pkg');
+          if (savedPendingRaw) {
+            const parsedPending = JSON.parse(savedPendingRaw);
+            if (
+              parsedPending &&
+              parsedPending.priceUsd > 0 &&
+              parsedPending.goldCoins > 0 &&
+              (!pkgId || parsedPending.id === pkgId)
+            ) {
+              matchedPkg = parsedPending;
+            }
+          }
+        } catch {}
+
+        if (!matchedPkg && pkgId) {
           matchedPkg =
             SWEEPSTAKES_CONFIG.storePackages.find((p) => p.id === pkgId) ||
             (SWEEPSTAKES_CONFIG.featuredRoyalPackage?.id === pkgId
@@ -2190,35 +2333,23 @@ export default function App() {
             SWEEPSTAKES_CONFIG.rescuePackages.find((p) => p.id === pkgId);
         }
 
-        // Check for custom amount purchase via URL query params or saved custom package
+        // Check for custom amount purchase via URL query params (capped to canonical calculateCustomPackage + 5% rail bonus)
         if (!matchedPkg) {
           const urlAmount = parseFloat(params.get('amount') || '0');
-          const urlGC = parseInt(params.get('gc') || '0', 10);
-          const urlSC = parseFloat(params.get('sc') || '0');
-          if (urlAmount >= 1) {
+          if (urlAmount >= 1 && urlAmount <= 2500) {
             const calc = calculateCustomPackage(urlAmount);
+            const maxAllowedGC = Math.round(calc.goldCoins * 1.1);
+            const maxAllowedSC = Number((calc.freeSweepsCoins * 1.05).toFixed(2));
+            const urlGC = parseInt(params.get('gc') || '0', 10);
+            const urlSC = parseFloat(params.get('sc') || '0');
             matchedPkg = {
               ...calc,
               id: pkgId || calc.id,
               priceUsd: urlAmount,
-              goldCoins: urlGC > 0 ? urlGC : calc.goldCoins,
-              freeSweepsCoins: urlSC > 0 ? urlSC : calc.freeSweepsCoins,
+              goldCoins: urlGC > 0 ? Math.min(urlGC, maxAllowedGC) : calc.goldCoins,
+              freeSweepsCoins: urlSC > 0 ? Math.min(urlSC, maxAllowedSC) : calc.freeSweepsCoins,
             };
-          } else {
-            try {
-              const savedCustom = localStorage.getItem('dc_pending_purchase_custom_pkg');
-              if (savedCustom) {
-                const parsed = JSON.parse(savedCustom);
-                if (parsed && parsed.priceUsd > 0 && parsed.goldCoins > 0) {
-                  matchedPkg = parsed;
-                }
-              }
-            } catch {}
           }
-        }
-
-        if (!matchedPkg) {
-          matchedPkg = SWEEPSTAKES_CONFIG.storePackages[0]; // Fallback to Starter Bundle ($4.99 / 5.00 SC)
         }
 
         if (matchedPkg) {
@@ -2230,17 +2361,19 @@ export default function App() {
             sweepsCoins: matchedPkg.freeSweepsCoins,
             method: 'stripe_checkout',
             status: 'completed',
+            sessionId: sessionIdParam || `chk_${Date.now()}`,
           });
           handlePurchaseSuccess(matchedPkg);
           soundEngine.playWinCelebration('big');
         }
 
-        // Clean query params so refresh doesn't trigger duplicate credit
+        // Clean query params and consume pending purchase markers so refresh cannot trigger duplicate credit
         try {
           const cleanUrl = window.location.origin + window.location.pathname;
           window.history.replaceState({}, document.title, cleanUrl);
           localStorage.removeItem('dc_pending_purchase_pkg');
           localStorage.removeItem('dc_pending_purchase_custom_pkg');
+          localStorage.removeItem('dc_pending_purchase_time');
         } catch {}
       }
     } catch (err) {
@@ -2703,6 +2836,9 @@ export default function App() {
         if (adminCenterOpen) setAdminCenterOpen(false);
         if (authModalOpen) setAuthModalOpen(false);
         if (lowBalanceOfferOpen) setLowBalanceOfferOpen(false);
+        if (vipPromoAdOpen) setVipPromoAdOpen(false);
+        if (responsibleGamingOpen) setResponsibleGamingOpen(false);
+        if (mobileMenuOpen) setMobileMenuOpen(false);
         return;
       }
 
@@ -2758,8 +2894,8 @@ export default function App() {
         }
       }
 
-      // Spacebar: Spin trigger
-      if (e.code === 'Space' && !showSplash && !paytableOpen && !bonusSession && !freeSpinsOpen && isAssetsLoaded) {
+      // Spacebar: Spin trigger (only when no modal or bonus game overlay is open)
+      if (e.code === 'Space' && !isAnyModalOrBonusActiveRef.current && isAssetsLoaded) {
         e.preventDefault();
         if (e.repeat) return; // Prevent browser repeat events
         isHoldingSpinRef.current = true;
@@ -2775,13 +2911,13 @@ export default function App() {
       }
 
       // Lines Left/Right: ArrowLeft / KeyA (Decrease Lines), ArrowRight / KeyD (Increase Lines)
-      if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && !isSpinning && !isAnyModalOrBonusActiveRef.current && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
         if (e.repeat) return;
         handleLinesChange(-1);
         return;
       }
-      if ((e.code === 'ArrowRight' || e.code === 'KeyD') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if ((e.code === 'ArrowRight' || e.code === 'KeyD') && !isSpinning && !isAnyModalOrBonusActiveRef.current && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
         if (e.repeat) return;
         handleLinesChange(1);
@@ -2789,7 +2925,7 @@ export default function App() {
       }
 
       // Bet Up: ArrowUp or KeyW
-      if ((e.code === 'ArrowUp' || e.code === 'KeyW') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if ((e.code === 'ArrowUp' || e.code === 'KeyW') && !isSpinning && !isAnyModalOrBonusActiveRef.current && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
         if (e.repeat) return;
         handleBetChange(1);
@@ -2797,7 +2933,7 @@ export default function App() {
       }
 
       // Bet Down: ArrowDown or KeyS
-      if ((e.code === 'ArrowDown' || e.code === 'KeyS') && !isSpinning && !showSplash && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if ((e.code === 'ArrowDown' || e.code === 'KeyS') && !isSpinning && !isAnyModalOrBonusActiveRef.current && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
         if (e.repeat) return;
         handleBetChange(-1);
@@ -3217,6 +3353,29 @@ export default function App() {
           </button>
 
           <div className="sweepstakes-action-btns">
+            {canClaimDaily && (
+              <button
+                type="button"
+                className="dc-pay-btn daily-free-claim-btn"
+                onClick={() => {
+                  soundEngine.playButtonClick(780);
+                  handleClaimDailyBonus();
+                }}
+                title={`Claim Daily Login Streak Bonus (Day ${vipProg?.dailyStreak || 1}): Free Gold Coins + Free Redeemable Sweeps Coins!`}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981, #047857)',
+                  borderColor: '#6ee7b7',
+                  boxShadow: '0 0 14px rgba(16, 185, 129, 0.55)',
+                }}
+              >
+                <Sparkles size={15} className="pay-btn-icon" />
+                <div className="pay-btn-labels">
+                  <span className="pay-btn-primary">DAILY FREE</span>
+                  <span className="pay-btn-secondary">+GC &amp; SC</span>
+                </div>
+              </button>
+            )}
+
             <button
               type="button"
               className="dc-pay-btn vip-flash-deal-btn"
@@ -3225,12 +3384,12 @@ export default function App() {
                 setVipPromoAdReason('vip_flash');
                 setVipPromoAdOpen(true);
               }}
-              title="Claim VIP Founder's 50% OFF Flash Bundle (+Free Redeemable SC)"
+              title={`VIP Level ${vipProg?.level || 1} (${vipProg?.tierName || 'BRONZE INITIATE'}) • ${vipProg?.progressPct || 0}% to Next Level Drop! Click for 50% OFF VIP Deal`}
             >
               <Gift size={15} className="pay-btn-icon" />
               <div className="pay-btn-labels">
                 <span className="pay-btn-primary">50% OFF</span>
-                <span className="pay-btn-secondary">VIP DEAL</span>
+                <span className="pay-btn-secondary">VIP LV.{vipProg?.level || 1}</span>
               </div>
             </button>
 

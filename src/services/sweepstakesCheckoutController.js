@@ -102,24 +102,43 @@ export const sweepstakesCheckoutController = {
   },
 
   /**
-   * Validates card inputs (number length, expiry month/year, CVC)
+   * Validates card inputs (network digit length, dynamic expiry month/year, CVC)
    */
   validateCardInput({ cardNumber = '', cardExpiry = '', cardCvc = '' } = {}) {
     const rawDigits = String(cardNumber).replace(/\D/g, '');
     const brand = this.detectCardBrand(rawDigits);
 
-    if (rawDigits.length < 15 || rawDigits.length > 16) {
+    if (brand.id === 'amex') {
+      if (rawDigits.length !== 15) {
+        return { valid: false, error: 'American Express card numbers must be 15 digits.' };
+      }
+    } else if (rawDigits.length < 15 || rawDigits.length > 16) {
       return { valid: false, error: 'Please enter a valid 15 or 16-digit card number.' };
     }
 
     const expParts = String(cardExpiry).split('/');
     const expMonth = parseInt(expParts[0], 10);
     const expYear = parseInt(expParts[1], 10);
-    if (!expMonth || expMonth < 1 || expMonth > 12 || !expYear || expYear < 25) {
-      return { valid: false, error: 'Please enter a valid expiration date (MM/YY).' };
+    const now = new Date();
+    const currentYear2Digit = now.getFullYear() % 100;
+    const currentMonth = now.getMonth() + 1;
+
+    if (
+      !expMonth ||
+      expMonth < 1 ||
+      expMonth > 12 ||
+      Number.isNaN(expYear) ||
+      expYear < currentYear2Digit ||
+      (expYear === currentYear2Digit && expMonth < currentMonth) ||
+      expYear > currentYear2Digit + 20
+    ) {
+      return { valid: false, error: 'Please enter a valid, non-expired card date (MM/YY).' };
     }
 
     const cleanCvc = String(cardCvc).replace(/\D/g, '');
+    if (brand.id === 'amex' && cleanCvc.length !== 4) {
+      return { valid: false, error: 'Please enter your 4-digit Amex security code (CID).' };
+    }
     if (cleanCvc.length < 3 || cleanCvc.length > 4) {
       return { valid: false, error: 'Please enter your 3 or 4-digit security code (CVC).' };
     }

@@ -143,6 +143,7 @@ export class ApiRouter {
         params.append('metadata[packageId]', pkg.id);
         params.append('metadata[goldCoins]', String(pkg.goldCoins));
         params.append('metadata[bonusTokens]', String(pkg.freeSweepsCoins));
+        params.append('metadata[freeSweepsCoins]', String(pkg.freeSweepsCoins));
         params.append('metadata[paymentMethod]', paymentMethod);
         if (userId) {
           params.append('metadata[userId]', userId);

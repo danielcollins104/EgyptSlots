@@ -94,6 +94,7 @@ class AmbientMusicEngine {
       });
 
       this.audio.addEventListener('play', () => {
+        this.consecutiveErrors = 0;
         this.isPlaying = true;
         this._notify();
       });
@@ -104,6 +105,12 @@ class AmbientMusicEngine {
       });
 
       this.audio.addEventListener('error', (e) => {
+        this.consecutiveErrors = (this.consecutiveErrors || 0) + 1;
+        if (this.consecutiveErrors >= this.playlist.length) {
+          this.isPlaying = false;
+          this._notify();
+          return;
+        }
         console.warn('Ambient music load error, skipping to next track:', e);
         this.nextTrack(true);
       });

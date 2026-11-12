@@ -39,6 +39,9 @@ export default {
       const assetRes = await env.ASSETS.fetch(request);
       const newHeaders = new Headers(assetRes.headers);
       newHeaders.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+      newHeaders.set('X-Content-Type-Options', 'nosniff');
+      newHeaders.set('X-Frame-Options', 'SAMEORIGIN');
+      newHeaders.set('Referrer-Policy', 'strict-origin-when-cross-origin');
       return new Response(assetRes.body, {
         status: assetRes.status,
         statusText: assetRes.statusText,

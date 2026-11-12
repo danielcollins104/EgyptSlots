@@ -65,14 +65,36 @@ export const authService = {
         return JSON.parse(raw);
       }
       // First-time VIP registration starter package: 100,000 GC + 10.00 SC
+      // Only carry over Guest session winnings when upgrading the first-ever Guest session on this device
+      // so subsequent independent accounts (e.g. Alice -> Bob) remain 100% isolated.
+      let hasExistingAccounts = false;
+      try {
+        const accountsRaw = localStorage.getItem(STORAGE_KEYS.AUTH_ACCOUNTS);
+        const accounts = accountsRaw ? JSON.parse(accountsRaw) : {};
+        hasExistingAccounts = Object.keys(accounts).length > 0;
+      } catch {}
+
+      const guestData = hasExistingAccounts ? null : this._getGuestData();
+      let liveGuestGC = Number(guestData?.goldCoins) || 0;
+      let liveGuestSC = Number(guestData?.sweepsCoins) || 0;
+      if (!hasExistingAccounts) {
+        try {
+          const savedGC = parseInt(localStorage.getItem('dc_casino_gold_coins') || '0', 10);
+          const savedSC = parseFloat(localStorage.getItem('dc_casino_sweeps_coins') || '0');
+          if (!Number.isNaN(savedGC) && savedGC > liveGuestGC) liveGuestGC = savedGC;
+          if (!Number.isNaN(savedSC) && savedSC > liveGuestSC && savedSC < 500) liveGuestSC = savedSC;
+        } catch {}
+      }
+
       const initial = {
-        goldCoins: 100000,
-        sweepsCoins: 10.0,
-        currencyMode: 'GC',
-        bonusMeter: 0,
-        totalSpins: 0,
-        totalWins: 0,
-        vipPoints: 100,
+        goldCoins: Math.max(100000, liveGuestGC),
+        sweepsCoins: Number(Math.max(10.0, liveGuestSC).toFixed(2)),
+        currencyMode: guestData?.currencyMode || 'GC',
+        bonusMeter: guestData?.bonusMeter || 0,
+        totalSpins: guestData?.totalSpins || 0,
+        totalWins: guestData?.totalWins || 0,
+        vipPoints: Math.max(100, guestData?.vipPoints || 100),
+        dailyStreak: guestData?.dailyStreak || 0,
         createdAt: new Date().toISOString(),
         lastActiveAt: new Date().toISOString(),
       };
@@ -162,19 +184,25 @@ export const authService = {
     return elapsed >= 24 * 60 * 60 * 1000;
   },
 
-  // Claim free daily bonus (5,000 GC + 0.50 FREE SC)
+  // Claim free daily bonus (Base 5,000 GC + 0.50 FREE SC, scaling up with consecutive daily login streaks!)
   claimDailyReward(userId) {
     if (!this.canClaimDailyReward(userId)) {
       return { success: false, reason: 'Already claimed in the past 24 hours.' };
     }
     const data = this.getUserData(userId);
-    const rewardGC = 5000;
-    const rewardSC = 0.50;
-    const updatedGC = (data.goldCoins || 0) + rewardGC;
-    const updatedSC = (data.sweepsCoins || 0) + rewardSC;
+    const nowMs = Date.now();
+    const lastClaimMs = data.lastDailyClaimAt ? new Date(data.lastDailyClaimAt).getTime() : 0;
+    const withinStreakWindow = lastClaimMs > 0 && nowMs - lastClaimMs <= 48 * 60 * 60 * 1000;
+    const nextStreak = withinStreakWindow ? Math.min(7, (Number(data.dailyStreak) || 1) + 1) : 1;
+
+    const rewardGC = 5000 + (nextStreak - 1) * 1500;
+    const rewardSC = Number((0.50 + (nextStreak - 1) * 0.10).toFixed(2));
+    const updatedGC = Math.round((data.goldCoins || 0) + rewardGC);
+    const updatedSC = Number(((data.sweepsCoins || 0) + rewardSC).toFixed(2));
     this.saveUserData(userId, {
       goldCoins: updatedGC,
       sweepsCoins: updatedSC,
+      dailyStreak: nextStreak,
       lastDailyClaimAt: new Date().toISOString(),
     });
     return {
@@ -183,6 +211,67 @@ export const authService = {
       sweepsCoins: updatedSC,
       addedGC: rewardGC,
       addedSC: rewardSC,
+      streakDays: nextStreak,
+    };
+  },
+
+  // Retrieve player's live VIP Loyalty Tier, XP progress, and milestone status
+  getVipProgression(userId) {
+    const data = this.getUserData(userId);
+    const vipPoints = Math.max(0, Number(data?.vipPoints) || 0);
+    const level = Math.max(1, Math.floor(vipPoints / 250) + 1);
+    const xpIntoLevel = vipPoints % 250;
+    const progressPct = Math.min(100, Math.round((xpIntoLevel / 250) * 100));
+
+    const tiers = [
+      { minLv: 1, name: 'BRONZE INITIATE', badge: '🥉', color: '#f59e0b' },
+      { minLv: 2, name: 'SILVER SCARAB', badge: '🥈', color: '#38bdf8' },
+      { minLv: 3, name: 'GOLD PHARAOH', badge: '👑', color: '#fde047' },
+      { minLv: 5, name: 'EMERALD DYNASTY', badge: '💎', color: '#34d399' },
+      { minLv: 8, name: 'ROYAL DIAMOND APEX', badge: '⚡', color: '#c084fc' },
+    ];
+    let activeTier = tiers[0];
+    for (const t of tiers) {
+      if (level >= t.minLv) activeTier = t;
+    }
+
+    return {
+      vipPoints,
+      level,
+      xpIntoLevel,
+      xpRequired: 250,
+      progressPct,
+      tierName: activeTier.name,
+      tierBadge: activeTier.badge,
+      tierColor: activeTier.color,
+      dailyStreak: Math.max(1, Number(data?.dailyStreak) || 1),
+    };
+  },
+
+  // Award VIP XP on every spin and return level-up reward details if a 250-XP milestone is crossed
+  recordVipSpinXp(userId, xpEarned = 10, isWin = false) {
+    const data = this.getUserData(userId);
+    const prevPoints = Math.max(0, Number(data?.vipPoints) || 0);
+    const prevLevel = Math.max(1, Math.floor(prevPoints / 250) + 1);
+    const nextPoints = prevPoints + Math.max(1, Math.round(xpEarned));
+    const nextLevel = Math.max(1, Math.floor(nextPoints / 250) + 1);
+    const leveledUp = nextLevel > prevLevel;
+
+    const rewardGC = leveledUp ? Math.min(25000, nextLevel * 2500) : 0;
+    const rewardSC = leveledUp ? 0.25 : 0;
+
+    this.saveUserData(userId, {
+      vipPoints: nextPoints,
+      totalSpins: (Number(data?.totalSpins) || 0) + 1,
+      totalWins: (Number(data?.totalWins) || 0) + (isWin ? 1 : 0),
+    });
+
+    const prog = this.getVipProgression(userId);
+    return {
+      ...prog,
+      leveledUp,
+      rewardGC,
+      rewardSC,
     };
   },
 
