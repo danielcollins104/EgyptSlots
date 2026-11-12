@@ -183,11 +183,12 @@ export default function BonusGameModal({
 
   // Universal Footer Total Pulse & Delta Micro-Animation
   const [footerWinPulse, setFooterWinPulse] = useState(null);
+  const [bonusStageShake, setBonusStageShake] = useState(false);
 
   // Hands-Free Automatic Celebration Mode (Default: ON so bonus rounds play out automatically like a Free Money Party!)
   const [autoPlayBonus, setAutoPlayBonus] = useState(true);
   const autoPlayBonusRef = useRef(true);
-  const [doorsCountdown, setDoorsCountdown] = useState(3);
+  const [doorsCountdown, setDoorsCountdown] = useState(1);
   const [tourFinishedCountdown, setTourFinishedCountdown] = useState(null);
 
   const pickTileFnRef = useRef(null);
@@ -195,6 +196,14 @@ export default function BonusGameModal({
   const startAscensionFnRef = useRef(null);
   const completeBonusFnRef = useRef(null);
   const vaultRefillingRef = useRef(false);
+  const vaultDynamiteUsedRef = useRef(false);
+  const hwOverchargeUsedRef = useRef(false);
+
+  const triggerBonusShake = useCallback(() => {
+    setBonusStageShake(false);
+    requestAnimationFrame(() => setBonusStageShake(true));
+    setTimeout(() => setBonusStageShake(false), 420);
+  }, []);
 
   useEffect(() => {
     autoPlayBonusRef.current = autoPlayBonus;
@@ -251,9 +260,11 @@ export default function BonusGameModal({
     setHwEntered(initialTab === 'holdspin');
     setAutoPlayBonus(true);
     autoPlayBonusRef.current = true;
-    setDoorsCountdown(3);
+    setDoorsCountdown(1);
     setTourFinishedCountdown(null);
     vaultRefillingRef.current = false;
+    vaultDynamiteUsedRef.current = false;
+    hwOverchargeUsedRef.current = false;
     setPicksLeft(bonusSession.initialPicks || 5);
     setVaultMultiplier(bonusSession.startingMultiplier || 1);
     setVaultTiles(buildVaultBoard(currentBet, isSC));
@@ -470,18 +481,18 @@ export default function BonusGameModal({
       if (hwStepFnRef.current) {
         hwStepFnRef.current();
       }
-    }, 850);
+    }, 380);
     return () => {
       if (hwAutoTimerRef.current) clearTimeout(hwAutoTimerRef.current);
     };
   }, [bonusSession, activeTab, hwCompleted]);
 
-  // Auto-claim Jackpot Celebration Popup after 2.5s so hands-free celebration never stalls
+  // Auto-claim Jackpot Celebration Popup after 1.3s so hands-free celebration never stalls
   useEffect(() => {
     if (!jackpotCelebration || !autoPlayBonus) return;
     const tm = setTimeout(() => {
       setJackpotCelebration(null);
-    }, 2500);
+    }, 1300);
     return () => clearTimeout(tm);
   }, [jackpotCelebration, autoPlayBonus]);
 
@@ -496,28 +507,22 @@ export default function BonusGameModal({
     return order.find((id) => id !== activeTab) || order[0] || null;
   }, [hwCompleted, picksLeft, wheelSpinsLeft, raFlightsLeft, activeTab]);
 
-  // 1. ROYAL CHAKRA PORTALS: 3-second Auto-Start Countdown into the selected Bonus Chamber
+  // 1. ROYAL CHAKRA PORTALS: Snappy 1-second Auto-Start Countdown into the selected Bonus Chamber
   useEffect(() => {
     if (!bonusSession || activeTab !== 'doors' || !autoPlayBonus || !nextChamberId) {
-      setDoorsCountdown(3);
+      setDoorsCountdown(1);
       return;
     }
-    setDoorsCountdown(3);
-    const interval = setInterval(() => {
-      setDoorsCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          soundEngine.playButtonClick?.(620);
-          setActiveTab(nextChamberId);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 950);
-    return () => clearInterval(interval);
+    setDoorsCountdown(1);
+    const tm = setTimeout(() => {
+      soundEngine.playButtonClick?.(620);
+      setActiveTab(nextChamberId);
+      setDoorsCountdown(0);
+    }, 650);
+    return () => clearTimeout(tm);
   }, [bonusSession, activeTab, autoPlayBonus, nextChamberId]);
 
-  // 2. SACRED RELIC VAULT: Auto-pick unsealed relics every 1.2s while picks remain
+  // 2. SACRED RELIC VAULT: Rapid auto-pick unsealed relics every 520ms while picks remain
   useEffect(() => {
     if (!bonusSession || activeTab !== 'vault' || !autoPlayBonus || jackpotCelebration) {
       return;
@@ -530,18 +535,18 @@ export default function BonusGameModal({
           const chosen = unpicked[Math.floor(Math.random() * unpicked.length)];
           pickTileFnRef.current(chosen.id, null);
         }
-      }, 1200);
+      }, 520);
       return () => clearTimeout(tm);
     }
   }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, picksLeft, vaultTiles]);
 
-  // 3. 3D FORTUNE WHEEL: Auto-spin wheel while wheel spins remain
+  // 3. 3D FORTUNE WHEEL: Rapid auto-spin wheel while wheel spins remain
   useEffect(() => {
     if (!bonusSession || activeTab !== 'wheel' || !autoPlayBonus || jackpotCelebration || wheelSpinning) {
       return;
     }
     if (wheelSpinsLeft > 0) {
-      const delay = wheelWinPop ? 2200 : 1000;
+      const delay = wheelWinPop ? 850 : 420;
       const tm = setTimeout(() => {
         if (spinWheelFnRef.current) {
           spinWheelFnRef.current();
@@ -551,13 +556,13 @@ export default function BonusGameModal({
     }
   }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, wheelSpinning, wheelSpinsLeft, wheelWinPop]);
 
-  // 4. ASCENSION OF RA: Auto-launch Sun Chariot flights while flights remain
+  // 4. ASCENSION OF RA: Rapid auto-launch Sun Chariot flights while flights remain
   useEffect(() => {
     if (!bonusSession || activeTab !== 'ascension' || !autoPlayBonus || jackpotCelebration || raFlying) {
       return;
     }
     if (raFlightsLeft > 0) {
-      const delay = raCashedOut || raCrashed ? 2200 : 1000;
+      const delay = raCashedOut || raCrashed ? 850 : 420;
       const tm = setTimeout(() => {
         if (startAscensionFnRef.current) {
           startAscensionFnRef.current();
@@ -567,7 +572,7 @@ export default function BonusGameModal({
     }
   }, [bonusSession, activeTab, autoPlayBonus, jackpotCelebration, raFlying, raFlightsLeft, raCashedOut, raCrashed]);
 
-  // 5. BONUS CHAMBER COMPLETION & AUTO-COLLECT: When the active chosen chamber finishes, run a 4s celebratory countdown and bank winnings
+  // 5. BONUS CHAMBER COMPLETION & AUTO-COLLECT: Snappy 2s celebratory countdown and bank winnings
   const allChambersFinished =
     Boolean(bonusSession) &&
     !jackpotCelebration &&
@@ -581,7 +586,7 @@ export default function BonusGameModal({
       setTourFinishedCountdown(null);
       return;
     }
-    setTourFinishedCountdown(4);
+    setTourFinishedCountdown(2);
     const interval = setInterval(() => {
       setTourFinishedCountdown((prev) => {
         if (prev === null) return null;
@@ -594,7 +599,7 @@ export default function BonusGameModal({
         }
         return prev - 1;
       });
-    }, 1000);
+    }, 850);
     return () => clearInterval(interval);
   }, [allChambersFinished, autoPlayBonus]);
 
@@ -608,20 +613,37 @@ export default function BonusGameModal({
       raWinCoins
   );
 
-  // --- 1. PICK VAULT HANDLER ---
+  // --- 1. PICK VAULT HANDLER (WITH OCCASIONAL CHAIN-REACTION DYNAMITE SUB-BONUS!) ---
   const handlePickTile = (tileId, e) => {
     if (picksLeft <= 0) return;
     const target = vaultTiles.find((t) => t.id === tileId);
     if (!target || target.picked) return;
 
-    setBurstTiles((prev) => new Set([...prev, tileId]));
+    triggerBonusShake();
+
+    // Rare & Occasional "Bonus Within a Bonus": Chain-Reaction Dynamite Chest (~18% chance once per Vault)
+    // Detonates 2 additional unpicked chests simultaneously for FREE!
+    const otherUnpicked = vaultTiles.filter((t) => !t.picked && t.id !== tileId);
+    let chainBonusTargets = [];
+    if (
+      !vaultDynamiteUsedRef.current &&
+      otherUnpicked.length >= 2 &&
+      Math.random() < 0.18
+    ) {
+      vaultDynamiteUsedRef.current = true;
+      chainBonusTargets = otherUnpicked.slice(0, 2);
+      soundEngine.playThunderStrike?.();
+    }
+
+    const allBurstIds = [tileId, ...chainBonusTargets.map((c) => c.id)];
+    setBurstTiles((prev) => new Set([...prev, ...allBurstIds]));
     setTimeout(() => {
       setBurstTiles((prev) => {
         const next = new Set(prev);
-        next.delete(tileId);
+        allBurstIds.forEach((id) => next.delete(id));
         return next;
       });
-    }, 1200);
+    }, 900);
 
     const { prize } = target;
     let nextMult = vaultMultiplier;
@@ -636,7 +658,7 @@ export default function BonusGameModal({
       nextPicks += prize.extraPicks;
       soundEngine.playBonusPick(true);
       setMultiplierBlaze(true);
-      setTimeout(() => setMultiplierBlaze(false), 2000);
+      setTimeout(() => setMultiplierBlaze(false), 1400);
     } else if (prize.kind === 'extra_picks') {
       nextPicks += prize.extraPicks;
       soundEngine.playBonusPick(true);
@@ -652,13 +674,28 @@ export default function BonusGameModal({
       soundEngine.playBonusPick(false);
     }
 
-    const wonCoins =
+    const primaryCoins =
       prize.kind === 'jackpot'
         ? prize.baseCoins
         : roundWin(prize.baseCoins * nextMult);
 
+    const chainAwardById = new Map();
+    let chainExtraCoins = 0;
+    chainBonusTargets.forEach((ct) => {
+      const cAmt =
+        ct.prize.kind === 'jackpot'
+          ? ct.prize.baseCoins
+          : roundWin(ct.prize.baseCoins * nextMult);
+      chainAwardById.set(ct.id, cAmt);
+      chainExtraCoins = roundWin(chainExtraCoins + cAmt);
+    });
+
+    const wonCoins = roundWin(primaryCoins + chainExtraCoins);
+
     const pickSubtitle =
-      prize.kind === 'jackpot'
+      chainBonusTargets.length > 0
+        ? `💣 BONUS WITHIN A BONUS: 3× DYNAMITE BLAST!`
+        : prize.kind === 'jackpot'
         ? `${prize.label} UNLOCKED!`
         : prize.kind === 'multiplier'
         ? `${nextMult}× VAULT MULTIPLIER!`
@@ -669,8 +706,13 @@ export default function BonusGameModal({
     spawnFloatingWinBurst(`+${wonCoins.toLocaleString()}`, pickSubtitle, {
       x: spawnX,
       y: spawnY,
-      isJackpot: prize.kind === 'jackpot',
-      variant: prize.kind === 'multiplier' ? 'emerald' : prize.kind === 'jackpot' ? 'royal' : 'gold',
+      isJackpot: prize.kind === 'jackpot' || chainBonusTargets.length > 0,
+      variant:
+        chainBonusTargets.length > 0 || prize.kind === 'jackpot'
+          ? 'royal'
+          : prize.kind === 'multiplier'
+          ? 'emerald'
+          : 'gold',
       deltaCoins: wonCoins,
     });
 
@@ -678,15 +720,15 @@ export default function BonusGameModal({
     setPicksLeft(nextPicks);
     setVaultWinCoins((prev) => roundWin(prev + wonCoins));
 
-    const updatedTiles = vaultTiles.map((t) =>
-      t.id === tileId
-        ? {
-            ...t,
-            picked: true,
-            awardedCoins: wonCoins,
-          }
-        : t
-    );
+    const updatedTiles = vaultTiles.map((t) => {
+      if (t.id === tileId) {
+        return { ...t, picked: true, awardedCoins: primaryCoins };
+      }
+      if (chainAwardById.has(t.id)) {
+        return { ...t, picked: true, awardedCoins: chainAwardById.get(t.id) };
+      }
+      return t;
+    });
     const pickedCountNow = updatedTiles.filter((t) => t.picked).length;
 
     // Sacred Vault Chamber Refill Mechanism: If 8+ tiles picked and picks remain, unseal fresh relics!
@@ -703,12 +745,16 @@ export default function BonusGameModal({
         setVaultBanner(
           `✨ SACRED VAULT CHAMBER REFILLED! 12 FRESH RELICS UNSEALED AT ${nextMult}× MULTIPLIER (${nextPicks} PICKS LEFT)!`
         );
-      }, 650);
+      }, 420);
     } else {
       setVaultTiles(updatedTiles);
     }
 
-    if (prize.kind === 'multiplier') {
+    if (chainBonusTargets.length > 0) {
+      setVaultBanner(
+        `💣 BONUS WITHIN A BONUS! CHAIN-REACTION DYNAMITE DETONATED 3 CHESTS AT ONCE FOR +${wonCoins.toLocaleString()} COINS!`
+      );
+    } else if (prize.kind === 'multiplier') {
       setVaultBanner(
         `⚡ ${prize.label} VAULT MULTIPLIER UPGRADED TO ${nextMult}× + ${wonCoins.toLocaleString()} COINS!`
       );
@@ -763,15 +809,15 @@ export default function BonusGameModal({
     let deltaDeg = targetMod - currentMod;
     if (deltaDeg <= 0) deltaDeg += 360;
 
-    const fullSpins = (5 + Math.floor(Math.random() * 2)) * 360;
+    const fullSpins = (3 + Math.floor(Math.random() * 2)) * 360;
     const finalDeg = currentDeg + fullSpins + deltaDeg;
 
     let lastTickStep = Math.floor(currentDeg / sliceDeg);
 
     gsap.to(wheelRotationRef.current, {
       deg: finalDeg,
-      duration: 4.5,
-      ease: 'power4.out',
+      duration: 1.75,
+      ease: 'power3.out',
       onUpdate: () => {
         const degNow = wheelRotationRef.current.deg;
         if (wheelCanvasRef.current) {
@@ -786,6 +832,7 @@ export default function BonusGameModal({
       onComplete: () => {
         setWheelSpinning(false);
         setActiveWedgeIdx(chosenIdx);
+        triggerBonusShake();
         const wedge = wedges[chosenIdx];
         const wRect = wheelCanvasRef.current?.getBoundingClientRect();
         const wCenterX = wRect ? wRect.left + wRect.width / 2 : window.innerWidth * 0.4;
@@ -1015,31 +1062,47 @@ export default function BonusGameModal({
       }
 
       if (newLandedCount > 0) {
+        triggerBonusShake();
+
+        // Occasional "Bonus Within a Bonus": Lightning Orb Overcharge (~18% chance once per Hold & Win session)
+        let overchargeExtra = 0;
+        if (!hwOverchargeUsedRef.current && totalLocked >= 5 && Math.random() < 0.18) {
+          hwOverchargeUsedRef.current = true;
+          overchargeExtra = roundWin(currentBet * 2);
+          hwTotalWinRef.current = roundWin(hwTotalWinRef.current + overchargeExtra);
+          setHwTotalWin(hwTotalWinRef.current);
+          soundEngine.playThunderStrike?.();
+        }
+
         hwSpinsLeftRef.current = 3; // Reset to 3 respins on new coin!
         setHwSpinsLeft(3);
         setHwRespinResetPop(true);
-        setTimeout(() => setHwRespinResetPop(false), 1550);
+        setTimeout(() => setHwRespinResetPop(false), 950);
         soundEngine.playRespinReset();
         spawnFloatingWinBurst(
-          `+${newWonCoins.toLocaleString()}`,
-          rescuedByGuardian
+          `+${roundWin(newWonCoins + overchargeExtra).toLocaleString()}`,
+          overchargeExtra > 0
+            ? '⚡ BONUS WITHIN A BONUS: ORB OVERCHARGE!'
+            : rescuedByGuardian
             ? '⚡ GUARDIAN SECOND-WIND! RESPINS → 3'
             : `${newLandedCount} NEW ORB${newLandedCount > 1 ? 'S' : ''} LOCKED! RESPINS → 3`,
           {
-            variant: rescuedByGuardian || newLandedCount >= 2 ? 'royal' : 'emerald',
-            deltaCoins: newWonCoins,
+            variant: overchargeExtra > 0 || rescuedByGuardian || newLandedCount >= 2 ? 'royal' : 'emerald',
+            deltaCoins: roundWin(newWonCoins + overchargeExtra),
           }
         );
         setHwBanner(
-          rescuedByGuardian
+          overchargeExtra > 0
+            ? `⚡ BONUS WITHIN A BONUS! ANUBIS OVERCHARGED LOCKED ORBS (+${overchargeExtra.toLocaleString()} EXTRA) & RESET RESPINS TO 3!`
+            : rescuedByGuardian
             ? `⚡ GUARDIAN SECOND-WIND RESCUE! BONUS ORB SUMMONED — RESPINS RESET TO 3!`
             : `🌈 ${newLandedCount} NEW JEWEL ORB${newLandedCount > 1 ? 'S' : ''} LOCKED! RESPINS AUTOMATICALLY RESET TO 3!`
         );
 
-        // Automatically schedule next respin wave
+        // Rapidly schedule next respin wave
         hwAutoTimerRef.current = setTimeout(() => {
           if (hwStepFnRef.current) hwStepFnRef.current();
-        }, 1550);
+        }, 620);
       } else {
         const nextSpins = hwSpinsLeftRef.current - 1;
         hwSpinsLeftRef.current = nextSpins;
@@ -1049,6 +1112,7 @@ export default function BonusGameModal({
         if (nextSpins <= 0) {
           hwCompletedRef.current = true;
           setHwCompleted(true);
+          triggerBonusShake();
           soundEngine.playWinCelebration('epic');
           spawnFloatingWinBurst(
             `+${nextTotalWin.toLocaleString()}`,
@@ -1067,10 +1131,10 @@ export default function BonusGameModal({
           );
           hwAutoTimerRef.current = setTimeout(() => {
             if (hwStepFnRef.current) hwStepFnRef.current();
-          }, 1250);
+          }, 480);
         }
       }
-    }, 900);
+    }, 380);
   };
 
   hwStepFnRef.current = handleHoldSpinRespin;
@@ -1131,13 +1195,14 @@ export default function BonusGameModal({
             `🛡️ RA'S SOLAR AEGIS ABSORBED THE STORM AT GATE #${step + 1} (×${ascensionNodes[step]})! CHARIOT CONTINUES ASCENDING!`
           );
           step++;
-          raTimerRef.current = setTimeout(runNextStep, BONUS_CONFIG.ascension?.stepDelay || 1200);
+          raTimerRef.current = setTimeout(runNextStep, 480);
           return;
         }
 
         setRaStep(step);
         setRaFlying(false);
         setRaCrashed(true);
+        triggerBonusShake();
         soundEngine.playAscensionCrash();
         const safeMult = step > 0 ? ascensionNodes[step - 1] : Math.max(2, BONUS_CONFIG.ascension?.consolationMult || 2);
         const consolationCoins = roundWin(safeMult * currentBet);
@@ -1155,6 +1220,7 @@ export default function BonusGameModal({
       } else {
         setRaStep(step);
         setRaGateBurstStep(step);
+        triggerBonusShake();
         soundEngine.playAscensionStep(step);
 
         // Smart Celebration Auto-Bank: When Auto-Play is ON and chariot reaches a high gate (8x, 15x, 30x, 50x) after shield is used or at 15x+, bank the jackpot haul automatically!
@@ -1187,11 +1253,11 @@ export default function BonusGameModal({
 
         setRaBanner(`☀️ REACHED GATE #${step + 1}: GUARANTEED FREE MONEY AT ×${reachedMult}! AUTO-CLIMBING HIGHER!`);
         step++;
-        raTimerRef.current = setTimeout(runNextStep, BONUS_CONFIG.ascension?.stepDelay || 1100);
+        raTimerRef.current = setTimeout(runNextStep, 480);
       }
     };
 
-    raTimerRef.current = setTimeout(runNextStep, BONUS_CONFIG.ascension?.startDelay || 900);
+    raTimerRef.current = setTimeout(runNextStep, 380);
   };
 
   const handleCashOutAscension = () => {
@@ -1248,7 +1314,7 @@ export default function BonusGameModal({
 
   return (
     <div className="bonus-modal-backdrop">
-      <div className="bonus-modal-cabinet">
+      <div className={`bonus-modal-cabinet ${bonusStageShake ? 'fs-stage-impact-shake' : ''}`}>
         {/* Top Header & 4 Progressive 3D Cabochon Jackpot Meters */}
         <div className="bonus-modal-header">
           {/* Centered Title & Hands-Free Auto-Play Toggle */}

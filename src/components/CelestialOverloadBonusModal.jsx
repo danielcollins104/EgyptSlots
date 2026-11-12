@@ -255,9 +255,9 @@ export default function CelestialOverloadBonusModal({
       soundEngine.playThunderStrike?.();
       setTimeout(() => soundEngine.playSolarFireball?.(), 140);
 
-      // Trigger visual strike
+      // Trigger visual strike (snappy 420ms explosion)
       setActiveStrikeEffect(altarId);
-      setTimeout(() => setActiveStrikeEffect(null), 850);
+      setTimeout(() => setActiveStrikeEffect(null), 420);
 
       // Elemental Resonance combo calculation
       let isResonance = false;
@@ -354,7 +354,7 @@ export default function CelestialOverloadBonusModal({
           setBannerMessage(
             '👑 CELESTIAL OVERLOAD COMPLETED! THE GODS BESTOW THEIR ULTIMATE BLESSINGS!'
           );
-        }, 1100);
+        }, 520);
       } else if (revealedCountAfter >= altars.length) {
         // Wave 2 Temple Awakening: unseal 6 fresh Celestial Altars when picks remain!
         setTimeout(() => {
@@ -372,9 +372,9 @@ export default function CelestialOverloadBonusModal({
           );
           soundEngine.playBonusTrigger();
           setBannerMessage(
-            `🔥 WAVE 2 TEMPLE AWAKENING! 6 FRESH CELESTIAL ALTARS UNSEALED AT ${nextMultiplier}× MULTIPLIER!`
+            `🔥 BONUS WITHIN A BONUS: WAVE 2 TEMPLE AWAKENING! 6 FRESH ALTARS AT ${nextMultiplier}× MULTIPLIER!`
           );
-        }, 900);
+        }, 450);
       }
     },
     [altars, isCompleted, picksRemaining, totalPicksGranted, activeMultiplier, lastElement, currentBet, isSC, roundPrize, formatPrize]
@@ -386,7 +386,7 @@ export default function CelestialOverloadBonusModal({
   };
   collectFnRef.current = handleCollectPrize;
 
-  // Hands-Free Automatic Altar Strike Loop
+  // Hands-Free Rapid Automatic Altar Strike Loop
   useEffect(() => {
     if (!isOpen || isCompleted || !autoStrike || picksRemaining <= 0 || activeStrikeEffect !== null) {
       return;
@@ -399,17 +399,17 @@ export default function CelestialOverloadBonusModal({
       if (chosen) {
         handleAltarPick(chosen.id, null);
       }
-    }, 1350);
+    }, 520);
     return () => clearTimeout(tm);
   }, [isOpen, isCompleted, autoStrike, picksRemaining, activeStrikeEffect, altars, handleAltarPick]);
 
-  // Automatic Collect Countdown when Celestial Overload Completes
+  // Snappy 2s Automatic Collect Countdown when Celestial Overload Completes
   useEffect(() => {
     if (!isOpen || !isCompleted || !autoStrike) {
-      setCollectCountdown(4);
+      setCollectCountdown(2);
       return;
     }
-    setCollectCountdown(4);
+    setCollectCountdown(2);
     const interval = setInterval(() => {
       setCollectCountdown((prev) => {
         if (prev <= 1) {
@@ -421,7 +421,7 @@ export default function CelestialOverloadBonusModal({
         }
         return prev - 1;
       });
-    }, 1000);
+    }, 850);
     return () => clearInterval(interval);
   }, [isOpen, isCompleted, autoStrike]);
 

@@ -5338,6 +5338,17 @@ export default function App() {
         linesCount={selectedLines}
         lineBet={currentLineBet}
         onComplete={handleCompleteFreeSpins}
+        onTriggerNestedBonus={() => {
+          soundEngine.playBonusTrigger?.();
+          setBonusSession({
+            triggerReason: 'GOLDEN PORTAL BONUS-WITHIN-A-BONUS',
+            initialPicks: 4,
+            wheelSpins: 2,
+            startingMultiplier: 2,
+            scatterWinCoins: 0,
+            defaultGame: 'vault',
+          });
+        }}
       />
 
       {/* 3D Royal Bonus Collector Full Celebration Animation */}

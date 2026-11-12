@@ -16,12 +16,12 @@ export default function GuardianBonusCelebrationModal({
   onClose,
   initialSpins = 6,
 }) {
-  const [countdown, setCountdown] = useState(4);
+  const [countdown, setCountdown] = useState(2);
 
-  // Play fanfare and initiate auto-start countdown
+  // Play fanfare and initiate snappy 2s auto-start countdown
   useEffect(() => {
     if (!isOpen) {
-      setCountdown(4);
+      setCountdown(2);
       return;
     }
 
@@ -29,7 +29,7 @@ export default function GuardianBonusCelebrationModal({
       soundEngine.playBonusTrigger?.();
       setTimeout(() => {
         soundEngine.playCollectorFullFanfare?.();
-      }, 350);
+      }, 200);
     } catch {}
 
     const interval = setInterval(() => {
@@ -41,7 +41,7 @@ export default function GuardianBonusCelebrationModal({
         }
         return prev - 1;
       });
-    }, 1000);
+    }, 750);
 
     return () => clearInterval(interval);
   }, [isOpen, onStartFreeSpins]);
