@@ -626,10 +626,10 @@ export const paymentService = {
 
       if (response.ok) {
         const data = await response.json();
-        if (data && data.url) {
+        if (data && (data.url || data.mode === 'inline_card_checkout')) {
           return {
             success: true,
-            url: data.url,
+            url: data.url || null,
             sessionId: data.sessionId,
             mode: data.mode || 'stripe_checkout_session',
             stripeWarning: data.stripeWarning,

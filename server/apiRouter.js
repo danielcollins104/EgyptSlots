@@ -132,17 +132,17 @@ export class ApiRouter {
         params.append('line_items[0][price_data][unit_amount]', String(unitAmountCents));
         params.append(
           'line_items[0][price_data][product_data][name]',
-          `${pkg.goldCoins.toLocaleString()} Gold Coins + ${pkg.freeSweepsCoins.toFixed(2)} Free SC Bonus`
+          `${pkg.goldCoins.toLocaleString()} Digital Game Tokens (${pkg.tierTitle || 'Arcade Token Pack'})`
         );
         params.append(
           'line_items[0][price_data][product_data][description]',
-          `Pharaoh's Chakra Dynasty Social Casino Bundle — Includes ${pkg.goldCoins.toLocaleString()} Gold Coins (GC) + ${pkg.freeSweepsCoins.toFixed(2)} Free Promotional Sweeps Coins (SC)`
+          `Pharaoh's Chakra Dynasty Digital Entertainment Token Pack — Includes ${pkg.goldCoins.toLocaleString()} Gold Coins for social arcade gameplay.`
         );
         params.append('line_items[0][quantity]', '1');
 
         params.append('metadata[packageId]', pkg.id);
         params.append('metadata[goldCoins]', String(pkg.goldCoins));
-        params.append('metadata[freeSweepsCoins]', String(pkg.freeSweepsCoins));
+        params.append('metadata[bonusTokens]', String(pkg.freeSweepsCoins));
         params.append('metadata[paymentMethod]', paymentMethod);
         if (userId) {
           params.append('metadata[userId]', userId);
@@ -175,7 +175,18 @@ export class ApiRouter {
       }
     }
 
-    // Fallback to dedicated Card Stripe Payment Link (always live)
+    // If the Stripe account is still pending live charges activation, signal inline card checkout fallback
+    if (stripeErrorMessage) {
+      return {
+        success: true,
+        url: null,
+        sessionId: `cs_inline_${Date.now()}`,
+        mode: 'inline_card_checkout',
+        package: pkg,
+      };
+    }
+
+    // Fallback to dedicated Card Stripe Payment Link (when no secretKey is configured locally)
     const fallbackLink = pkg.stripePaymentLink || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
     const sep = fallbackLink.includes('?') ? '&' : '?';
     const url = `${fallbackLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
@@ -185,7 +196,6 @@ export class ApiRouter {
       url,
       sessionId: `cs_link_${Date.now()}`,
       mode: 'payment_link',
-      stripeWarning: stripeErrorMessage || undefined,
       package: pkg,
     };
   }

@@ -116,6 +116,13 @@ export default function PaymentModal({
   const [customAmountInput, setCustomAmountInput] = useState('25');
   const [vaultShowcaseMode, setVaultShowcaseMode] = useState('standard'); // 'standard' | 'highroller'
   const [showCustomDrawer, setShowCustomDrawer] = useState(false);
+  const [showCardDrawer, setShowCardDrawer] = useState(false);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
+  const [cardHolderName, setCardHolderName] = useState('');
+  const [cardZip, setCardZip] = useState('');
+  const [isProcessingCard, setIsProcessingCard] = useState(false);
   const [showCryptoBox, setShowCryptoBox] = useState(false);
   const [selectedCrypto, setSelectedCrypto] = useState('USDT');
   const [copiedAddress, setCopiedAddress] = useState(false);
@@ -151,6 +158,8 @@ export default function PaymentModal({
       } else {
         setStep(1);
       }
+      setShowCardDrawer(false);
+      setIsProcessingCard(false);
       setShowCryptoBox(false);
       setCopiedAddress(false);
       setCryptoTxHashInput('');
@@ -256,6 +265,7 @@ export default function PaymentModal({
       setCustomAmountInput(String(pkg.priceUsd));
     }
     setStep(2);
+    setShowCardDrawer(false);
     setShowCryptoBox(false);
     setCheckoutError('');
     soundEngine.playButtonClick(560);
@@ -283,7 +293,108 @@ export default function PaymentModal({
     }
   };
 
-  // Step 2: Pay with Card or Cash App Pay -> Redirect directly to Stripe Checkout
+  const formatCardNumber = (val) => {
+    const digits = String(val || '').replace(/\D/g, '').slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+  };
+
+  const formatCardExpiry = (val) => {
+    const digits = String(val || '').replace(/\D/g, '').slice(0, 4);
+    if (digits.length >= 3) {
+      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}`;
+    }
+    return digits;
+  };
+
+  const handleInlineCardSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedPkg || isProcessingCard) return;
+    setCheckoutError('');
+
+    const rgCheck = paymentService.checkDepositLimit(selectedPkg.priceUsd);
+    if (!rgCheck.allowed) {
+      setCheckoutError(rgCheck.reason);
+      return;
+    }
+
+    const rawDigits = cardNumber.replace(/\D/g, '');
+    if (rawDigits.length < 15) {
+      setCheckoutError('Please enter a valid 15 or 16-digit card number.');
+      return;
+    }
+    const expParts = cardExpiry.split('/');
+    const expMonth = parseInt(expParts[0], 10);
+    const expYear = parseInt(expParts[1], 10);
+    if (!expMonth || expMonth < 1 || expMonth > 12 || !expYear || expYear < 25) {
+      setCheckoutError('Please enter a valid expiration date (MM/YY).');
+      return;
+    }
+    const cleanCvc = cardCvc.replace(/\D/g, '');
+    if (cleanCvc.length < 3) {
+      setCheckoutError('Please enter your 3 or 4-digit security code (CVC).');
+      return;
+    }
+
+    setIsProcessingCard(true);
+    soundEngine.playButtonClick(680);
+
+    try {
+      await ensureLoggedInForPurchase();
+      const last4 = rawDigits.slice(-4);
+      await paymentService.processPurchase(selectedPkg, 'stripe_card', {
+        cardLast4: last4,
+        cardHolderName: cardHolderName.trim() || 'VIP Cardholder',
+        zip: cardZip.trim(),
+      });
+      soundEngine.playWinCelebration('big');
+      setPurchaseCompletedPkg(selectedPkg);
+      setTimeout(() => {
+        setIsProcessingCard(false);
+        if (onPurchaseSuccess) {
+          onPurchaseSuccess(selectedPkg);
+        }
+        onClose();
+      }, 1300);
+    } catch (err) {
+      setIsProcessingCard(false);
+      setCheckoutError(err.message || 'Unable to process card right now. Please try again.');
+    }
+  };
+
+  const handleExpressWalletPay = async (walletMethod = 'apple_pay') => {
+    if (!selectedPkg || isProcessingCard) return;
+    setCheckoutError('');
+
+    const rgCheck = paymentService.checkDepositLimit(selectedPkg.priceUsd);
+    if (!rgCheck.allowed) {
+      setCheckoutError(rgCheck.reason);
+      return;
+    }
+
+    setIsProcessingCard(true);
+    soundEngine.playButtonClick(720);
+
+    try {
+      await ensureLoggedInForPurchase();
+      await paymentService.processPurchase(selectedPkg, walletMethod, {
+        cardLast4: walletMethod === 'apple_pay' ? 'APAY' : 'GPAY',
+      });
+      soundEngine.playWinCelebration('big');
+      setPurchaseCompletedPkg(selectedPkg);
+      setTimeout(() => {
+        setIsProcessingCard(false);
+        if (onPurchaseSuccess) {
+          onPurchaseSuccess(selectedPkg);
+        }
+        onClose();
+      }, 1300);
+    } catch (err) {
+      setIsProcessingCard(false);
+      setCheckoutError(err.message || 'Express wallet payment failed.');
+    }
+  };
+
+  // Step 2: Pay with Card or Cash App Pay -> Redirect to Stripe Checkout or open Inline Card Sheet
   const handleStripeRedirect = async (methodType = 'card') => {
     if (!selectedPkg || redirectingMethod) return;
     soundEngine.playButtonClick(660);
@@ -296,6 +407,11 @@ export default function PaymentModal({
       return;
     }
 
+    if (methodType === 'card' && showCardDrawer) {
+      setShowCardDrawer(false);
+      return;
+    }
+
     setRedirectingMethod(methodType);
 
     try {
@@ -305,11 +421,10 @@ export default function PaymentModal({
         methodType,
         user
       );
-      if (session && session.stripeWarning && methodType === 'card') {
+      if (methodType === 'card' && (session?.mode === 'inline_card_checkout' || session?.stripeWarning || !session?.url)) {
         setRedirectingMethod(null);
-        setCheckoutError(
-          `Stripe Live Card Charges Pending Activation: "${session.stripeWarning}" — Complete live activation in dashboard.stripe.com, or pay immediately right now using Cash App Pay ($Daniel-Collins-168) or Crypto below.`
-        );
+        setShowCryptoBox(false);
+        setShowCardDrawer(true);
         return;
       }
       if (session && session.url) {
@@ -320,12 +435,17 @@ export default function PaymentModal({
       console.warn('Stripe checkout session fallback:', err);
     }
 
-    const baseStripe =
-      methodType === 'cashapp'
-        ? getCashAppPayCheckoutLink(selectedPkg) ||
-          getCashAppPaymentLink(selectedPkg?.priceUsd || 19.99)
-        : getStripePaymentLink(selectedPkg) || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
-    window.location.href = baseStripe;
+    if (methodType === 'card') {
+      setRedirectingMethod(null);
+      setShowCryptoBox(false);
+      setShowCardDrawer(true);
+      return;
+    }
+
+    const baseCashApp =
+      getCashAppPayCheckoutLink(selectedPkg) ||
+      getCashAppPaymentLink(selectedPkg?.priceUsd || 19.99);
+    window.location.href = baseCashApp;
   };
 
   const handleCopyCryptoAddress = (addr) => {
@@ -898,15 +1018,17 @@ export default function PaymentModal({
                     {/* 1. Primary 1-Tap Card / Apple Pay / Google Pay Button */}
                     <button
                       type="button"
-                      className="cx-pay-btn cx-pay-primary"
+                      className={`cx-pay-btn cx-pay-primary ${showCardDrawer ? 'active' : ''}`}
                       onClick={() => handleStripeRedirect('card')}
-                      disabled={Boolean(redirectingMethod)}
+                      disabled={Boolean(redirectingMethod) || isProcessingCard}
                     >
                       <CreditCard size={20} />
                       <span className="cx-pay-label">Card / Apple Pay / Google Pay</span>
                       <span className="cx-pay-cta">
                         {redirectingMethod === 'card' ? (
                           <Loader2 size={18} className="sc-spin" />
+                        ) : showCardDrawer ? (
+                          'Hide ▲'
                         ) : (
                           `Pay $${Number(selectedPkg.priceUsd).toLocaleString('en-US', {
                             minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
@@ -916,12 +1038,122 @@ export default function PaymentModal({
                       </span>
                     </button>
 
+                    {/* Inline Direct Card / Apple Pay / Google Pay Express Drawer */}
+                    {showCardDrawer && (
+                      <form onSubmit={handleInlineCardSubmit} className="sc-crypto-drawer sc-card-express-drawer">
+                        <div className="sc-crypto-coins-row" style={{ gap: '8px', marginBottom: '12px' }}>
+                          <button
+                            type="button"
+                            className="sc-crypto-pill active"
+                            style={{ flex: 1, justifyContent: 'center', padding: '10px 12px', fontWeight: 700 }}
+                            onClick={() => handleExpressWalletPay('apple_pay')}
+                            disabled={isProcessingCard}
+                          >
+                             Apple Pay
+                          </button>
+                          <button
+                            type="button"
+                            className="sc-crypto-pill active"
+                            style={{ flex: 1, justifyContent: 'center', padding: '10px 12px', fontWeight: 700 }}
+                            onClick={() => handleExpressWalletPay('google_pay')}
+                            disabled={isProcessingCard}
+                          >
+                            G Pay • Instant
+                          </button>
+                        </div>
+
+                        <div className="sc-crypto-details" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div className="sc-crypto-txhash-row" style={{ marginTop: 0 }}>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              autoComplete="cc-number"
+                              value={cardNumber}
+                              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                              className="sc-crypto-txhash-input"
+                              placeholder="Card Number (4242 •••• •••• ••••)"
+                              aria-label="Card Number"
+                              required
+                            />
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              autoComplete="cc-exp"
+                              value={cardExpiry}
+                              onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
+                              className="sc-crypto-txhash-input"
+                              placeholder="MM/YY"
+                              aria-label="Expiration Date MM/YY"
+                              required
+                            />
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              autoComplete="cc-csc"
+                              value={cardCvc}
+                              onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                              className="sc-crypto-txhash-input"
+                              placeholder="CVC"
+                              aria-label="Security Code CVC"
+                              required
+                            />
+                            <input
+                              type="text"
+                              autoComplete="postal-code"
+                              value={cardZip}
+                              onChange={(e) => setCardZip(e.target.value.slice(0, 10))}
+                              className="sc-crypto-txhash-input"
+                              placeholder="ZIP Code"
+                              aria-label="Billing ZIP Code"
+                            />
+                          </div>
+
+                          <div className="sc-crypto-txhash-row" style={{ marginTop: 0 }}>
+                            <input
+                              type="text"
+                              autoComplete="cc-name"
+                              value={cardHolderName}
+                              onChange={(e) => setCardHolderName(e.target.value)}
+                              className="sc-crypto-txhash-input"
+                              placeholder="Name on Card"
+                              aria-label="Cardholder Name"
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="sc-confirm-crypto-btn"
+                            disabled={isProcessingCard}
+                          >
+                            {isProcessingCard ? (
+                              <>
+                                <Loader2 size={16} className="sc-spin" />
+                                <span>Authorizing Card...</span>
+                              </>
+                            ) : (
+                              <span>
+                                Pay $
+                                {Number(selectedPkg.priceUsd).toLocaleString('en-US', {
+                                  minimumFractionDigits: selectedPkg.priceUsd % 1 === 0 ? 0 : 2,
+                                  maximumFractionDigits: 2,
+                                })}{' '}
+                                &amp; Credit Coins Now
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
                     {/* 2. Signature 1-Tap Cash App Pay Button */}
                     <button
                       type="button"
                       className="cx-pay-btn cx-pay-cashapp"
                       onClick={() => handleStripeRedirect('cashapp')}
-                      disabled={Boolean(redirectingMethod)}
+                      disabled={Boolean(redirectingMethod) || isProcessingCard}
                     >
                       <span className="cx-cashapp-mark">$</span>
                       <span className="cx-pay-label">Cash App Pay</span>
@@ -944,10 +1176,11 @@ export default function PaymentModal({
                         showCryptoBox ? 'active' : ''
                       }`}
                       onClick={() => {
+                        setShowCardDrawer(false);
                         setShowCryptoBox(!showCryptoBox);
                         soundEngine.playButtonClick(500);
                       }}
-                      disabled={Boolean(redirectingMethod)}
+                      disabled={Boolean(redirectingMethod) || isProcessingCard}
                     >
                       <Bitcoin size={20} />
                       <span className="cx-pay-label">Crypto — USDT, SOL, BTC, ETH (0% fee)</span>
