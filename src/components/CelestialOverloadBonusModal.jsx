@@ -19,8 +19,8 @@ export default function CelestialOverloadBonusModal({
 
   // 6 Celestial Altars
   const [altars, setAltars] = useState([]);
-  const [picksRemaining, setPicksRemaining] = useState(4);
-  const [totalPicksGranted, setTotalPicksGranted] = useState(4);
+  const [picksRemaining, setPicksRemaining] = useState(3);
+  const [totalPicksGranted, setTotalPicksGranted] = useState(3);
   const [totalWinCoins, setTotalWinCoins] = useState(0);
   const [activeMultiplier, setActiveMultiplier] = useState(1);
   const [activeStrikeEffect, setActiveStrikeEffect] = useState(null);
@@ -53,12 +53,12 @@ export default function CelestialOverloadBonusModal({
 
     const baseBet = Math.max(isSC ? 0.15 : 1, currentBet);
     const altarTemplates = [
-      { id: 0, name: 'Eye of Ra', element: 'solar', mult: 3, bonusMult: 1, icon: '🔥', title: 'Solar Flare Altar' },
-      { id: 1, name: 'Anubis Scepter', element: 'lightning', mult: 4, bonusMult: 1, icon: '⚡', title: 'Thunderbolt Altar' },
-      { id: 2, name: 'Scarab of Eternity', element: 'solar', mult: 6, bonusMult: 1, icon: '🌟', title: 'Sunfire Scarab Altar' },
-      { id: 3, name: 'Bastet Claws', element: 'lightning', mult: 5, bonusMult: 1, icon: '⚡', title: 'Plasma Claw Altar' },
-      { id: 4, name: 'Ankh of Horus', element: 'solar', mult: 8, bonusMult: 2, icon: '✨', title: 'Celestial Ankh Altar' },
-      { id: 5, name: 'Apex Zenith Orb', element: 'cosmic', mult: 12, bonusMult: 2, icon: '👑', title: 'Zenith Grand Altar' },
+      { id: 0, name: 'Eye of Ra', element: 'solar', mult: 1, bonusMult: 1, icon: '🔥', title: 'Solar Flare Altar' },
+      { id: 1, name: 'Anubis Scepter', element: 'lightning', mult: 1.5, bonusMult: 1, icon: '⚡', title: 'Thunderbolt Altar' },
+      { id: 2, name: 'Scarab of Eternity', element: 'solar', mult: 2, bonusMult: 1, icon: '🌟', title: 'Sunfire Scarab Altar' },
+      { id: 3, name: 'Bastet Claws', element: 'lightning', mult: 2.5, bonusMult: 1, icon: '⚡', title: 'Plasma Claw Altar' },
+      { id: 4, name: 'Ankh of Horus', element: 'solar', mult: 3, bonusMult: 1, icon: '✨', title: 'Celestial Ankh Altar' },
+      { id: 5, name: 'Apex Zenith Orb', element: 'cosmic', mult: 5, bonusMult: 2, icon: '👑', title: 'Zenith Grand Altar' },
     ];
 
     // Shuffle templates
@@ -71,8 +71,8 @@ export default function CelestialOverloadBonusModal({
     }));
 
     setAltars(shuffled);
-    setPicksRemaining(4);
-    setTotalPicksGranted(4);
+    setPicksRemaining(3);
+    setTotalPicksGranted(3);
     setTotalWinCoins(0);
     setActiveMultiplier(1);
     setIsCompleted(false);

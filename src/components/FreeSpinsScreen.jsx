@@ -221,16 +221,17 @@ export default function FreeSpinsScreen({
     spinsLeftRef.current -= 1;
     setSpinsRemaining(spinsLeftRef.current);
 
-    // Generate outcome (with Guaranteed Free Money Celebration floor on the final spin if totalWinRef is 0)
+    // Generate outcome (with modest consolation 3-of-a-kind floor on the final spin if totalWinRef is 0)
     const nextGrid = generateFreeSpinsGrid();
     if (spinsLeftRef.current === 0 && totalWinRef.current <= 0) {
-      const wildSym =
-        FREE_SPINS_CONFIG.symbols.find((s) => s.isWild) || FREE_SPINS_CONFIG.symbols[0];
-      if (wildSym) {
-        nextGrid[0][1] = wildSym;
-        nextGrid[1][1] = wildSym;
-        nextGrid[2][1] = wildSym;
-        nextGrid[3][1] = wildSym;
+      const consolationSym =
+        FREE_SPINS_CONFIG.symbols.find((s) => s.id === 'fs_royal_q') ||
+        FREE_SPINS_CONFIG.symbols.find((s) => s.isRoyal) ||
+        FREE_SPINS_CONFIG.symbols[FREE_SPINS_CONFIG.symbols.length - 1];
+      if (consolationSym) {
+        nextGrid[0][1] = consolationSym;
+        nextGrid[1][1] = consolationSym;
+        nextGrid[2][1] = consolationSym;
       }
     }
 
@@ -329,8 +330,8 @@ export default function FreeSpinsScreen({
         setSpinWinPop(null);
       }
 
-      // Retrigger Scatters handler (3+ Scatters) OR 3-Win Solar Frenzy Streak (+2 Extra Spins)
-      const streakBonusSpins = nextStreak > 0 && nextStreak % 3 === 0 ? 2 : 0;
+      // Retrigger Scatters handler (3+ Scatters) OR 5-Win Solar Frenzy Streak (+1 Extra Spin)
+      const streakBonusSpins = nextStreak > 0 && nextStreak % 5 === 0 ? 1 : 0;
       const totalExtraRequested = retriggeredSpins + streakBonusSpins;
       if (totalExtraRequested > 0) {
         const canAward = Math.min(

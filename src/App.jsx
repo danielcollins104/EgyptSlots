@@ -1053,9 +1053,11 @@ export default function App() {
     (currentGrid, cellsToExplode, expandedCols = [], activeCurrencyMode = currencyMode) => {
       const explodeSet = new Set((cellsToExplode || []).map(([c, r]) => `${c},${r}`));
       const regs = getRegularSymbols(activeCurrencyMode);
-      const wildSym = getWildSymbol(activeCurrencyMode);
       const topHigh = getTopHighSymbol(activeCurrencyMode);
-      const dropPool = [...regs, wildSym].filter((s) => s && !s.isExpanding && !s.isBonus);
+      // Exclude Wilds and Guardian Awakeners from cascade drop pool so cascades drop standard symbols
+      const dropPool = regs.filter(
+        (s) => s && !s.isExpanding && !s.isBonus && !s.isWild && !s.isGuardianAwakener
+      );
 
       const cascadedGrid = [];
       const rowDropFromByCol = [];
@@ -1351,9 +1353,8 @@ export default function App() {
     const shouldTriggerGuardianPowerUpSequence =
       bonusCount < 3 &&
       (isSelectCombination ||
-        illuminatedDuringSpin.length > 0 ||
-        gridAwakenerCells.length >= 2 ||
-        (totalCoinsWon > 0 && gridAwakenerCells.length > 0));
+        illuminatedDuringSpin.length >= 2 ||
+        gridAwakenerCells.length >= 2);
 
     if (totalCoinsWon > 0) {
       if (isSC) {
@@ -1578,6 +1579,19 @@ export default function App() {
         fastForwardGuardianSequenceRef.current = null;
 
         // Evaluate the new cascaded 5x3 board for a second-chance win!
+        // Only award incremental wins from paylines that were newly formed by the cascaded columns
+        // so paylines already paid on the initial spin are never double-paid.
+        const cascadedColsSet = new Set(cellsToZap.map(([c]) => c));
+        const initialPaidByLineId = new Map(
+          (wins || []).map((w) => [
+            w.line?.id,
+            {
+              lineWin: w.lineWin || 0,
+              symbolId: w.symbol?.id,
+              matchCount: w.matchCount,
+            },
+          ])
+        );
         const cascadeEval = evaluateGridWins(
           cascadedGrid,
           activeLevel,
@@ -1586,8 +1600,23 @@ export default function App() {
           lineBet
         );
 
-        if (cascadeEval.totalCoinsWon > 0) {
-          const extraWin = cascadeEval.totalCoinsWon;
+        const newCascadeWins = (cascadeEval.wins || []).filter((cw) => {
+          const prev = initialPaidByLineId.get(cw.line?.id);
+          const touchesCascadedCol = (cw.cells || []).some(([c]) => cascadedColsSet.has(c));
+          if (!touchesCascadedCol) return false;
+          if (!prev) return true;
+          return cw.symbol?.id !== prev.symbolId || cw.matchCount > prev.matchCount;
+        });
+
+        const rawExtraWin = newCascadeWins.reduce((sum, cw) => {
+          const prev = initialPaidByLineId.get(cw.line?.id);
+          // If same symbol extended from e.g. 3-of-a-kind to 4-of-a-kind, pay only the difference
+          const deduct = prev && prev.symbolId === cw.symbol?.id ? prev.lineWin : 0;
+          return sum + Math.max(0, (cw.lineWin || 0) - deduct);
+        }, 0);
+        const extraWin = isSC ? Number(rawExtraWin.toFixed(2)) : Math.round(rawExtraWin);
+
+        if (extraWin > 0) {
           const combinedWin = Number((finalWin + extraWin).toFixed(isSC ? 2 : 0));
 
           if (isSC) {
@@ -1605,9 +1634,14 @@ export default function App() {
             });
           }
 
+          const newWinCoordSet = new Set();
+          newCascadeWins.forEach((cw) => {
+            (cw.cells || []).forEach(([c, r]) => newWinCoordSet.add(`${c},${r}`));
+          });
+
           setLastWinCoins(combinedWin);
-          setWinningLines(cascadeEval.wins);
-          setWinningCells(cascadeEval.winCoordSet);
+          setWinningLines(newCascadeWins);
+          setWinningCells(newWinCoordSet);
           triggerCabinetImpact(combinedWin >= effectiveWinBaselineBet * 15 ? 'mega' : 'win');
           setFloatingWinText(
             isSC
@@ -1623,7 +1657,7 @@ export default function App() {
             setWinSplashAmount(extraWin);
           }
 
-          const firstCascadeWin = cascadeEval.wins[0];
+          const firstCascadeWin = newCascadeWins[0] || cascadeEval.wins[0];
           setStatusMessage(
             `💥 CANDY-CRUSH CASCADE WIN! NEW COMBINATION (${firstCascadeWin.matchCount}× ${
               firstCascadeWin.symbol.name
