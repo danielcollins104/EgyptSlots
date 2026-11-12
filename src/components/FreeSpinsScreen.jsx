@@ -409,21 +409,29 @@ export default function FreeSpinsScreen({
           totalWinRef.current = next;
           return next;
         });
+        // Step 1: Show the winning payline laser and highlighted winning tiles UNOBSTRUCTED first!
+        setSpinWinPop(null);
         setWinningLines(wins);
         setWinningCells(winCoordSet);
         setTotalCardPulse(true);
         triggerStageImpact();
 
-        const popId = Date.now();
-        setSpinWinPop({
-          id: popId,
-          amount: wonAmount,
-          linesHit: wins.length,
-          isBig: wonAmount >= betAmount * 5,
-        });
+        // Play initial win chime while winning line & tiles are highlighted
+        soundEngine.playWin(false);
 
-        // Play win celebration + explosive tile detonation sound
-        soundEngine.playWinCelebration(wonAmount >= betAmount * 5 ? 'big' : 'standard');
+        const popId = Date.now();
+        // Step 2: Reveal the center spin win sum plaque after the player has seen the winning line & tiles
+        const winPopRevealTm = setTimeout(() => {
+          if (isCompletedRef.current) return;
+          setSpinWinPop({
+            id: popId,
+            amount: wonAmount,
+            linesHit: wins.length,
+            isBig: wonAmount >= betAmount * 5,
+          });
+          soundEngine.playWinCelebration(wonAmount >= betAmount * 5 ? 'big' : 'standard');
+        }, isFast ? 320 : 480);
+        spinTimeoutsRef.current.push(winPopRevealTm);
 
         // Trigger Explosive Tile Detonation & Candy-Crush Cascade Animation on winning cells!
         const explodeTm = setTimeout(() => {
@@ -459,7 +467,7 @@ export default function FreeSpinsScreen({
         }, 850);
         setTimeout(() => {
           setSpinWinPop((curr) => (curr?.id === popId ? null : curr));
-        }, 1050);
+        }, isFast ? 1050 : 1250);
       } else {
         winStreakRef.current = 0;
         setWinStreak(0);
@@ -507,10 +515,10 @@ export default function FreeSpinsScreen({
         isSpinningRef.current = false;
         const nextSpinWait = isFast
           ? wonAmount > 0
-            ? 520
+            ? 740
             : 260
           : wonAmount > 0
-          ? 920
+          ? 1120
           : 440;
         autoLoopTimerRef.current = setTimeout(() => {
           if (!isCompletedRef.current && executeAutoSpinRef.current) {

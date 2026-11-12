@@ -505,11 +505,12 @@ export default function App() {
   const anubisMartialTimerRef = useRef(null);
   const bastetMartialTimerRef = useRef(null);
 
-  // Spin Lock & Fast-Forward State for Guardian Power-Up / Zap / Cascade Sequences
+  // Spin Lock & Fast-Forward State for Guardian Power-Up / Zap / Cascade / Win Line Highlight Sequences
   const [isGuardianSequenceActive, setIsGuardianSequenceActive] = useState(false);
   const isGuardianSequenceActiveRef = useRef(false);
   const spinIlluminatedCellsRef = useRef([]);
   const fastForwardGuardianSequenceRef = useRef(null);
+  const winRevealTimerRef = useRef(null);
 
   const guardianChargeLevel = Math.max(anubisCharge, bastetCharge);
   const guardianChargeLevelRef = useRef(0);
@@ -979,7 +980,7 @@ export default function App() {
   // Periodic Guardian eye blink is handled 100% in CSS (guardianEyeBlink /
   // guardianBlinkOverlay keyframes) so it costs zero React re-renders.
 
-  // Cycle highlighted winning payline
+  // Cycle highlighted winning payline briskly so multiple winning lines are clearly traced during the highlight window
   useEffect(() => {
     if (winningLines.length <= 1) {
       setActiveWinLineIdx(0);
@@ -987,7 +988,7 @@ export default function App() {
     }
     const timer = setInterval(() => {
       setActiveWinLineIdx((prev) => (prev + 1) % winningLines.length);
-    }, 1600);
+    }, 650);
     return () => clearInterval(timer);
   }, [winningLines]);
 
@@ -1435,6 +1436,24 @@ export default function App() {
         illuminatedDuringSpin.length >= 2 ||
         gridAwakenerCells.length >= 2);
 
+    // Helper to display the spin's total win plaque & floating text ONLY after
+    // the winning payline(s) and highlighted tiles have been shown unobstructed.
+    const revealSpinWinTotal = (amountToDisplay, isBigHit, customFloatingText = null) => {
+      if (!amountToDisplay || amountToDisplay <= 0) return;
+      setFloatingWinText(
+        customFloatingText ||
+          (isSC ? `+${formatCoinValue(amountToDisplay)} SC` : `+${amountToDisplay.toLocaleString()} GC`)
+      );
+      setFloatingWinKey((k) => k + 1);
+      if (isBigHit) {
+        setBigWinAmount(amountToDisplay);
+        setWinSplashAmount(0); // Big/Mega Win modal handles display and sound
+      } else {
+        setBigWinAmount(0);
+        setWinSplashAmount(amountToDisplay); // WinCelebrationSplash handles display and sound once
+      }
+    };
+
     if (totalCoinsWon > 0) {
       if (isSC) {
         paymentService.recordScWon(finalWin);
@@ -1454,18 +1473,13 @@ export default function App() {
       setWinningLines(wins);
       setWinningCells(winCoordSet);
 
-      // Trigger tactile cabinet recoil and floating win text
+      // Step 1: Show the winning payline(s) and highlighted winning tiles UNOBSTRUCTED first!
+      // Do NOT block the center of the reels with the win celebration plaque until the player sees the winning line & tiles.
+      setWinSplashAmount(0);
+      setBigWinAmount(0);
+      setFloatingWinText(null);
       triggerCabinetImpact(isBig ? 'mega' : 'win');
-      setFloatingWinText(isSC ? `+${formatCoinValue(finalWin)} SC` : `+${finalWin.toLocaleString()} GC`);
-      setFloatingWinKey((k) => k + 1);
-
-      if (isBig) {
-        setBigWinAmount(finalWin);
-        setWinSplashAmount(0); // Big/Mega Win modal handles display and sound
-      } else {
-        setBigWinAmount(0);
-        setWinSplashAmount(finalWin); // WinCelebrationSplash handles display and sound once
-      }
+      soundEngine.playWin(false);
 
       if (bonusCount >= 3) {
         // =========================================================================
@@ -1500,12 +1514,20 @@ export default function App() {
           `⚡ GRAND CELESTIAL STRIKE UNLEASHED! ${bonusCount} SCATTERS TRIGGER CELESTIAL SOLAR FREE SPINS!`
         );
 
+        // Show winning tiles & scatter strike unobstructed first, then reveal win sum before bonus opens
+        if (winRevealTimerRef.current) clearTimeout(winRevealTimerRef.current);
+        winRevealTimerRef.current = setTimeout(() => {
+          winRevealTimerRef.current = null;
+          revealSpinWinTotal(finalWin, isBig);
+        }, 700);
+
         setTimeout(() => {
           setGuardianAction(false);
         }, 1600);
       } else if (!shouldTriggerGuardianPowerUpSequence) {
         // =========================================================================
-        // REGULAR LOW WIN (3 Royal Symbols): GUARDIANS REMAIN CALM & DIGNIFIED
+        // REGULAR WIN: Highlight winning line(s) & tiles unobstructed first, then
+        // display the sum of that spin's winnings. Pressing Spin fast-forwards immediately!
         // =========================================================================
         setGuardianAction(false);
         const firstWin = wins[0];
@@ -1514,6 +1536,47 @@ export default function App() {
             isSC ? `${formatCoinValue(finalWin)} SC ($${formatCoinValue(finalWin)} USD)` : `${finalWin.toLocaleString()} GC`
           }!`
         );
+
+        isGuardianSequenceActiveRef.current = true;
+        setIsGuardianSequenceActive(true);
+        let winRevealDone = false;
+        const lineHighlightDelayMs = turboFlow ? 800 : wins.length > 1 ? 1350 : 1150;
+
+        const finishWinHighlightAndShowSum = () => {
+          if (winRevealDone) return;
+          winRevealDone = true;
+          if (winRevealTimerRef.current) {
+            clearTimeout(winRevealTimerRef.current);
+            winRevealTimerRef.current = null;
+          }
+          fastForwardGuardianSequenceRef.current = null;
+          isGuardianSequenceActiveRef.current = false;
+          setIsGuardianSequenceActive(false);
+
+          revealSpinWinTotal(finalWin, isBig);
+
+          if (
+            isHoldingSpinRef.current &&
+            bonusCount < 3 &&
+            !meterTriggeredBonus &&
+            !freeSpinsOpen &&
+            !bonusSession
+          ) {
+            setTimeout(() => {
+              if (
+                isHoldingSpinRef.current &&
+                !isSpinningRef.current &&
+                !isGuardianSequenceActiveRef.current
+              ) {
+                triggerSpinRef.current?.();
+              }
+            }, turboFlow ? 140 : 260);
+          }
+        };
+
+        fastForwardGuardianSequenceRef.current = finishWinHighlightAndShowSum;
+        if (winRevealTimerRef.current) clearTimeout(winRevealTimerRef.current);
+        winRevealTimerRef.current = setTimeout(finishWinHighlightAndShowSum, lineHighlightDelayMs);
       }
     } else if (!shouldTriggerGuardianPowerUpSequence) {
       // Losses without Guardian Zap: Bet subtracted at spin start
@@ -1532,8 +1595,9 @@ export default function App() {
     //  2. Pressing SPIN during the sequence fast-forwards immediately to the end!
     //  3. Advances Anubis or Bastet's state (Stage 0 -> 1 -> 2 -> 3 -> 4) visibly.
     //  4. Pauses while the board gets zapped, explodes the lit-up tiles, drops
-    //     surviving & new tiles down into the empty spaces, and evaluates a
-    //     second-chance win from the new combination!
+    //     surviving & new tiles down into the empty spaces, evaluates a
+    //     second-chance win from the new combination, highlights the winning line
+    //     & tiles unobstructed, and THEN displays the spin's total win plaque!
     // =========================================================================
     if (shouldTriggerGuardianPowerUpSequence) {
       isGuardianSequenceActiveRef.current = true;
@@ -1652,10 +1716,12 @@ export default function App() {
       );
 
       let sequenceCompleted = false;
-      const finishGuardianCascadeSequence = () => {
+      const finishGuardianCascadeSequence = (wasSkipped = false) => {
         if (sequenceCompleted) return;
         sequenceCompleted = true;
         fastForwardGuardianSequenceRef.current = null;
+        setGuardianAction(false);
+        setGuardianStrikeEvent(null);
 
         // Evaluate the new cascaded 5x3 board for a second-chance win!
         // Only award incremental wins from paylines that were newly formed by the cascaded columns
@@ -1695,6 +1761,40 @@ export default function App() {
         }, 0);
         const extraWin = isSC ? Number(rawExtraWin.toFixed(2)) : Math.round(rawExtraWin);
 
+        const concludeCascadeAndShowTotal = (totalToDisplay, isTotalBig, customText = null) => {
+          if (winRevealTimerRef.current) {
+            clearTimeout(winRevealTimerRef.current);
+            winRevealTimerRef.current = null;
+          }
+          fastForwardGuardianSequenceRef.current = null;
+          isGuardianSequenceActiveRef.current = false;
+          setIsGuardianSequenceActive(false);
+
+          if (totalToDisplay > 0) {
+            revealSpinWinTotal(totalToDisplay, isTotalBig, customText);
+          }
+
+          if (wasClimaxStrike) {
+            setGuardianBonusCelebrationOpen(true);
+          } else if (
+            isHoldingSpinRef.current &&
+            bonusCount < 3 &&
+            !meterTriggeredBonus &&
+            !freeSpinsOpen &&
+            !bonusSession
+          ) {
+            setTimeout(() => {
+              if (
+                isHoldingSpinRef.current &&
+                !isSpinningRef.current &&
+                !isGuardianSequenceActiveRef.current
+              ) {
+                triggerSpinRef.current?.();
+              }
+            }, turboFlow ? 140 : 260);
+          }
+        };
+
         if (extraWin > 0) {
           const combinedWin = Number((finalWin + extraWin).toFixed(isSC ? 2 : 0));
 
@@ -1718,23 +1818,12 @@ export default function App() {
             (cw.cells || []).forEach(([c, r]) => newWinCoordSet.add(`${c},${r}`));
           });
 
+          const isCombinedBig = isBig || combinedWin >= effectiveWinBaselineBet * 15;
           setLastWinCoins(combinedWin);
           setWinningLines(newCascadeWins);
           setWinningCells(newWinCoordSet);
-          triggerCabinetImpact(combinedWin >= effectiveWinBaselineBet * 15 ? 'mega' : 'win');
-          setFloatingWinText(
-            isSC
-              ? `💥 CASCADE +${formatCoinValue(extraWin)} SC!`
-              : `💥 CASCADE +${extraWin.toLocaleString()} GC!`
-          );
-          setFloatingWinKey((k) => k + 1);
-
-          if (combinedWin >= effectiveWinBaselineBet * 15) {
-            setBigWinAmount(combinedWin);
-            setWinSplashAmount(0);
-          } else {
-            setWinSplashAmount(extraWin);
-          }
+          triggerCabinetImpact(isCombinedBig ? 'mega' : 'win');
+          soundEngine.playWin(false);
 
           const firstCascadeWin = newCascadeWins[0] || cascadeEval.wins[0];
           setStatusMessage(
@@ -1746,6 +1835,29 @@ export default function App() {
               isSC ? `${formatCoinValue(combinedWin)} SC` : `${combinedWin.toLocaleString()} GC`
             })!`
           );
+
+          const cascadeFloatText = isSC
+            ? `💥 TOTAL +${formatCoinValue(combinedWin)} SC!`
+            : `💥 TOTAL +${combinedWin.toLocaleString()} GC!`;
+
+          // If the user already pressed Spin to fast-forward, show the total immediately;
+          // otherwise let them see the newly cascaded winning line & highlighted tiles first!
+          if (wasSkipped) {
+            concludeCascadeAndShowTotal(combinedWin, isCombinedBig, cascadeFloatText);
+          } else {
+            let cascadeRevealDone = false;
+            const finishCascadeHighlight = () => {
+              if (cascadeRevealDone) return;
+              cascadeRevealDone = true;
+              concludeCascadeAndShowTotal(combinedWin, isCombinedBig, cascadeFloatText);
+            };
+            fastForwardGuardianSequenceRef.current = finishCascadeHighlight;
+            if (winRevealTimerRef.current) clearTimeout(winRevealTimerRef.current);
+            winRevealTimerRef.current = setTimeout(
+              finishCascadeHighlight,
+              turboFlow ? 750 : 1100
+            );
+          }
         } else if (finalWin > 0) {
           const firstWin = wins[0];
           setStatusMessage(
@@ -1753,35 +1865,12 @@ export default function App() {
               isSC ? `${formatCoinValue(finalWin)} SC` : `${finalWin.toLocaleString()} GC`
             } (${firstWin.matchCount}× ${firstWin.symbol.name})!`
           );
+          concludeCascadeAndShowTotal(finalWin, isBig);
         } else {
           setStatusMessage(
             `${statusPrefix} TILES DETONATED & CASCADED — READY FOR NEXT SPIN!`
           );
-        }
-
-        setGuardianAction(false);
-        setGuardianStrikeEvent(null);
-        isGuardianSequenceActiveRef.current = false;
-        setIsGuardianSequenceActive(false);
-
-        if (wasClimaxStrike) {
-          setGuardianBonusCelebrationOpen(true);
-        } else if (
-          isHoldingSpinRef.current &&
-          bonusCount < 3 &&
-          !meterTriggeredBonus &&
-          !freeSpinsOpen &&
-          !bonusSession
-        ) {
-          setTimeout(() => {
-            if (
-              isHoldingSpinRef.current &&
-              !isSpinningRef.current &&
-              !isGuardianSequenceActiveRef.current
-            ) {
-              triggerSpinRef.current?.();
-            }
-          }, turboFlow ? 140 : 260);
+          concludeCascadeAndShowTotal(0, false);
         }
       };
 
@@ -1811,13 +1900,9 @@ export default function App() {
         triggerCabinetImpact('slam');
 
         if (phaserEngineRef.current?.fastForwardCascade) {
-          const didFastForward = phaserEngineRef.current.fastForwardCascade();
-          if (!didFastForward) {
-            finishGuardianCascadeSequence();
-          }
-        } else {
-          finishGuardianCascadeSequence();
+          phaserEngineRef.current.fastForwardCascade();
         }
+        finishGuardianCascadeSequence(true);
       };
 
       // Launch the 3-phase Zap Pause -> Explode -> Gravity Cascade on the Phaser 5x3 board
@@ -1826,10 +1911,10 @@ export default function App() {
           cellsToZap,
           cascadedGrid,
           rowDropFromByCol,
-          finishGuardianCascadeSequence
+          () => finishGuardianCascadeSequence(false)
         );
       } else {
-        setTimeout(finishGuardianCascadeSequence, 1100);
+        setTimeout(() => finishGuardianCascadeSequence(false), 1100);
       }
     }
 
@@ -2547,6 +2632,10 @@ export default function App() {
         });
       }
 
+      if (winRevealTimerRef.current) {
+        clearTimeout(winRevealTimerRef.current);
+        winRevealTimerRef.current = null;
+      }
       setLastWinCoins(0);
       setWinSplashAmount(0);
       setFloatingWinText(null);
