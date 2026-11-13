@@ -1,13 +1,13 @@
 // ============================================================================
 // HIGH-EFFICIENCY ASSET PRELOADER & TELEMETRY ENGINE
 // ============================================================================
-// Preloads all critical textures, 3D symbols, reel frames, guardian artwork,
-// and audio metadata before the player can spin the reels.
-// Guarantees zero pop-in, zero texture stutter, and provides live 0-100%
-// progress tracking for both mobile and desktop connections.
+// Preloads & GPU-decodes all critical textures, 3D symbols, reel frames,
+// guardian artwork, and pre-warms off-thread chroma-keyed Blob URLs so Spin #1
+// and Guardian stage transitions run with zero texture upload or CPU stutter.
 // ============================================================================
 
 import { THEME_ASSETS, GUARDIANS } from '../config/slotConfig';
+import { prewarmKeyedTextures } from '../plugins/smoothPerformancePlugin';
 
 export const CRITICAL_ASSET_MANIFEST = [
   // 1. Stage Environment & High-DPI Frame
@@ -100,6 +100,10 @@ class AssetPreloader {
     });
   }
 
+  getCachedImage(src) {
+    return src ? this.cache.get(src) || null : null;
+  }
+
   loadImage(item) {
     if (!item.src) {
       this._onAssetDone(item.id);
@@ -113,13 +117,22 @@ class AssetPreloader {
 
     return new Promise((resolve) => {
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.decoding = 'async';
       img.onload = () => {
-        this.cache.set(item.src, img);
-        if (item.id === 'bg_lowres') this.lowResLoaded = true;
-        if (item.id === 'bg_main') this.highResLoaded = true;
-        this._onAssetDone(item.id);
-        resolve(img);
+        const finalize = () => {
+          this.cache.set(item.src, img);
+          if (item.id === 'bg_lowres') this.lowResLoaded = true;
+          if (item.id === 'bg_main') this.highResLoaded = true;
+          this._onAssetDone(item.id);
+          resolve(img);
+        };
+        // Pre-decode reel & symbol textures off-thread so first spin never stutters on GPU upload
+        if (item.category === 'symbol' && typeof img.decode === 'function') {
+          img.decode().then(finalize, finalize);
+        } else {
+          finalize();
+        }
       };
       img.onerror = () => {
         console.warn(`[AssetPreloader] Warning: could not load ${item.src}, continuing.`);
@@ -195,6 +208,19 @@ class AssetPreloader {
 
       this.isComplete = true;
       this._notify();
+
+      // 5. Quietly pre-warm chroma-keyed Guardian & Arch Logo Blob URLs off-thread
+      // so Stage 0 -> 1 -> 2 -> 3 -> 4 transitions are 0ms swaps during gameplay!
+      prewarmKeyedTextures([
+        { src: '/assets/neon/dc_enterprises_wide_logo.webp', threshold: 26, feather: 42 },
+        { src: GUARDIANS.left.bodyImage, threshold: 26, feather: 44 },
+        { src: GUARDIANS.right.bodyImage, threshold: 26, feather: 44 },
+        { src: GUARDIANS.left.chargedBodyImage, threshold: 26, feather: 44 },
+        { src: GUARDIANS.right.chargedBodyImage, threshold: 26, feather: 44 },
+        { src: GUARDIANS.left.apexBodyImage, threshold: 26, feather: 44 },
+        { src: GUARDIANS.right.apexBodyImage, threshold: 26, feather: 44 },
+      ]);
+
       resolve(true);
     });
 
@@ -203,6 +229,7 @@ class AssetPreloader {
 }
 
 export const assetPreloader = new AssetPreloader();
+export const getCachedImage = (src) => assetPreloader.getCachedImage(src);
 
 // Automatically begin preloading immediately on browser execution
 if (typeof window !== 'undefined') {

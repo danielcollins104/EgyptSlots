@@ -1,7 +1,14 @@
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef, memo } from 'react';
 import gsap from 'gsap';
 import { SYMBOLS, THEME_ASSETS, GUARDIANS, PAYLINES } from '../config/slotConfig';
 import { soundEngine } from '../audio/soundEngine';
+import {
+  smoothPerformance,
+  yieldToMain,
+  yieldAfterFrame,
+  keyImageToCanvasAsync,
+} from '../plugins/smoothPerformancePlugin';
+import { getCachedImage } from '../services/assetPreloader';
 
 // Native internal resolution (exact 5:3 aspect ratio matching 1315x789 PSD reel_net)
 const GAME_W = 850;
@@ -12,78 +19,16 @@ const COL_W = GAME_W / COLS; // 170
 const ROW_H = GAME_H / ROWS; // 170
 const STRIP_SIZE = 7;
 
-/**
- * Removes solid black (#000000) outer backgrounds from AI-generated neon JPGs
- * ONCE at startup via edge BFS flood-fill.
- */
-function createNeonKeyedCanvas(img, threshold = 28, feather = 44) {
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0);
+// Precomputed zero-allocation cell coordinate lookup tables (eliminates per-frame string GC in 60/120Hz loop)
+const CELL_DASH_KEYS = Array.from({ length: COLS }, (_, c) =>
+  Array.from({ length: ROWS }, (__, r) => `${c}-${r}`)
+);
+const CELL_COMMA_KEYS = Array.from({ length: COLS }, (_, c) =>
+  Array.from({ length: ROWS }, (__, r) => `${c},${r}`)
+);
 
-  const imgData = ctx.getImageData(0, 0, w, h);
-  const data = imgData.data;
-  const visited = new Uint8Array(w * h);
-  const queue = new Int32Array(w * h);
-  let head = 0;
-  let tail = 0;
-
-  const pushIfBg = (x, y) => {
-    const idx = y * w + x;
-    if (visited[idx]) return;
-    const p = idx * 4;
-    const maxC = Math.max(data[p], data[p + 1], data[p + 2]);
-    if (maxC <= threshold + feather) {
-      visited[idx] = 1;
-      queue[tail++] = idx;
-    }
-  };
-
-  for (let x = 0; x < w; x++) {
-    pushIfBg(x, 0);
-    pushIfBg(x, h - 1);
-  }
-  for (let y = 0; y < h; y++) {
-    pushIfBg(0, y);
-    pushIfBg(w - 1, y);
-  }
-
-  while (head < tail) {
-    const curr = queue[head++];
-    const p = curr * 4;
-    const r = data[p];
-    const g = data[p + 1];
-    const b = data[p + 2];
-    const maxC = Math.max(r, g, b);
-
-    if (maxC <= threshold) {
-      data[p + 3] = 0;
-    } else {
-      const alpha = Math.min(255, Math.round(((maxC - threshold) / feather) * 255));
-      data[p + 3] = alpha;
-      if (alpha > 0 && alpha < 255) {
-        const boost = 255 / Math.max(alpha, 48);
-        data[p] = Math.min(255, Math.round(r * boost));
-        data[p + 1] = Math.min(255, Math.round(g * boost));
-        data[p + 2] = Math.min(255, Math.round(b * boost));
-      }
-    }
-
-    const cx = curr % w;
-    const cy = (curr / w) | 0;
-    if (cx > 0) pushIfBg(cx - 1, cy);
-    if (cx + 1 < w) pushIfBg(cx + 1, cy);
-    if (cy > 0) pushIfBg(cx, cy - 1);
-    if (cy + 1 < h) pushIfBg(cx, cy + 1);
-  }
-
-  ctx.putImageData(imgData, 0, 0);
-  return canvas;
-}
+// Module-level baked sprite cache so remounts or posture transitions cost 0ms
+const GLOBAL_SPRITE_CACHE = {};
 
 /**
  * Draws a glossy 3D cabochon gemstone at (cx, cy) with gold bezel setting.
@@ -144,10 +89,18 @@ function create3DPopOutRoyalSprites(sym, size) {
   const radius = Math.round(tileSize * 0.16);
 
   // Outer drop shadow of the tile itself
+  const isLiteRoyal = smoothPerformance.getTier() === 'lite';
   fCtx.save();
-  fCtx.shadowColor = 'rgba(0, 0, 0, 0.75)';
-  fCtx.shadowBlur = 10;
-  fCtx.shadowOffsetY = 5;
+  if (!isLiteRoyal) {
+    fCtx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+    fCtx.shadowBlur = 10;
+    fCtx.shadowOffsetY = 5;
+  } else {
+    fCtx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    fCtx.beginPath();
+    fCtx.roundRect(tileX, tileY + 4, tileSize, tileSize, radius);
+    fCtx.fill();
+  }
 
   // Brushed 24k Gold Bezel Rim
   const rimGrad = fCtx.createLinearGradient(tileX, tileY, tileX + tileSize, tileY + tileSize);
@@ -224,10 +177,12 @@ function create3DPopOutRoyalSprites(sym, size) {
   // Cast deep 3D shadow onto the tile underneath so the letter floats above the frame!
   aCtx.save();
   aCtx.fillStyle = 'rgba(0, 0, 0, 0.72)';
-  aCtx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-  aCtx.shadowBlur = 12;
-  aCtx.shadowOffsetX = 6;
-  aCtx.shadowOffsetY = 12;
+  if (!isLiteRoyal) {
+    aCtx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    aCtx.shadowBlur = 12;
+    aCtx.shadowOffsetX = 6;
+    aCtx.shadowOffsetY = 12;
+  }
   aCtx.fillText(sym.letter, 4, 10);
   aCtx.restore();
 
@@ -325,10 +280,18 @@ function create3DPopOutBonusSprites(sym, size, scarabNoFrameImg) {
   const radius = Math.round(tileSize * 0.16);
 
   // Outer drop shadow of the tile
+  const isLiteBonus = smoothPerformance.getTier() === 'lite';
   fCtx.save();
-  fCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  fCtx.shadowBlur = 11;
-  fCtx.shadowOffsetY = 5;
+  if (!isLiteBonus) {
+    fCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    fCtx.shadowBlur = 11;
+    fCtx.shadowOffsetY = 5;
+  } else {
+    fCtx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    fCtx.beginPath();
+    fCtx.roundRect(tileX, tileY + 4, tileSize, tileSize, radius);
+    fCtx.fill();
+  }
 
   const rimGrad = fCtx.createLinearGradient(tileX, tileY, tileX + tileSize, tileY + tileSize);
   rimGrad.addColorStop(0, '#fffbeb');
@@ -387,9 +350,11 @@ function create3DPopOutBonusSprites(sym, size, scarabNoFrameImg) {
   const chestY = -chestH / 2 + 2;
 
   aCtx.save();
-  aCtx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-  aCtx.shadowBlur = 14;
-  aCtx.shadowOffsetY = 9;
+  if (!isLiteBonus) {
+    aCtx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    aCtx.shadowBlur = 14;
+    aCtx.shadowOffsetY = 9;
+  }
 
   const chestGrad = aCtx.createLinearGradient(chestX, chestY, chestX + chestW, chestY + chestH);
   chestGrad.addColorStop(0, '#fde047');
@@ -485,16 +450,34 @@ function create3DPopOutBonusSprites(sym, size, scarabNoFrameImg) {
  * with a baked-in neon glow halo so the 60fps loop NEVER uses ctx.shadowBlur!
  */
 function createBakedSprite(sourceImgOrCanvas, targetW, targetH, filterStr = '', glowColor = '') {
-  const pad = glowColor ? 18 : 0;
+  const tier = smoothPerformance.getTier();
+  const isHigh = tier === 'high';
+  const pad = glowColor ? (isHigh ? 18 : 12) : 0;
+  const cw = Math.round(targetW + pad * 2);
+  const ch = Math.round(targetH + pad * 2);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(targetW + pad * 2);
-  canvas.height = Math.round(targetH + pad * 2);
+  canvas.width = cw;
+  canvas.height = ch;
   const ctx = canvas.getContext('2d');
 
-  if (filterStr) {
+  // On balanced/lite tiers, use a 0.1ms radial gradient halo instead of 25ms CPU Gaussian shadowBlur!
+  if (glowColor && !isHigh) {
+    ctx.save();
+    ctx.globalAlpha = 0.42;
+    const r = Math.max(cw, ch) * 0.5;
+    const grad = ctx.createRadialGradient(cw * 0.5, ch * 0.5, r * 0.25, cw * 0.5, ch * 0.5, r);
+    grad.addColorStop(0, glowColor);
+    grad.addColorStop(0.65, glowColor);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.restore();
+  }
+
+  if (filterStr && tier !== 'lite') {
     ctx.filter = filterStr;
   }
-  if (glowColor) {
+  if (glowColor && isHigh) {
     ctx.shadowColor = glowColor;
     ctx.shadowBlur = 14;
   }
@@ -574,16 +557,20 @@ function createBakedTallColumnSprite(bgImg, charImg, fireImg, isRightGuardian, b
 }
 
 function loadImage(src) {
+  if (!src) return Promise.resolve(null);
+  const preloaded = getCachedImage(src);
+  if (preloaded) return Promise.resolve(preloaded);
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    img.decoding = 'async';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = src;
   });
 }
 
-const PhaserReelEngine = forwardRef(function PhaserReelEngine({
+const PhaserReelEngine = memo(forwardRef(function PhaserReelEngine({
   initialGrid,
   initialExpandedCols,
   spinTrigger,
@@ -655,7 +642,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: true });
+    // Opaque 2D context (`alpha: false`) eliminates per-frame 433,500-pixel alpha premultiplication/blending on GPU
+    const ctx = canvas.getContext('2d', { alpha: false }) || canvas.getContext('2d');
 
     const nonExpandingSymbols = SYMBOLS.filter((s) => !s.isExpanding);
     const randomSymbol = () =>
@@ -698,12 +686,16 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
     let plannedRareCellsByCol = [null, null, null, null, null];
     let totalPlannedRareCount = 0;
     let activeCascade = null;
-    const sprites = {};
+    const sprites = GLOBAL_SPRITE_CACHE;
     let isDisposed = false;
 
     const spawnParticles = (x, y, count = 18, colorHex = '#ffd700') => {
+      const maxPerBurst = smoothPerformance.getProfile().maxParticles || 18;
+      const cappedCount = Math.min(count, maxPerBurst);
+      const hardPoolCap = maxPerBurst * 3;
       const palette = [colorHex, '#ffd700', '#00e5ff', '#10b981', '#f43f5e', '#c084fc'];
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < cappedCount; i++) {
+        if (particles.length >= hardPoolCap) break;
         const angle = Math.random() * Math.PI * 2;
         const speed = 90 + Math.random() * 230;
         particles.push({
@@ -851,110 +843,64 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       sprites.staticShade = shadeCan;
     };
 
-    buildStaticBackdrop(null);
+    if (!sprites.staticBg) {
+      buildStaticBackdrop(null);
+    }
 
     // Ultra-smooth 60/120 FPS Render Loop with Delta Smoothing & Intelligent Idle Throttling
     let lastTime = performance.now();
+    let lastIdlePulseDraw = 0;
     let isDirty = true;
-    const markDirty = () => { isDirty = true; };
-
-    // Load & pre-bake all 3D Pop-Out Sprites ONCE from `THEME_ASSETS` & `GUARDIANS`
-    (async () => {
-      const [
-        netImg,
-        wildGlowImg,
-        tallBgImg,
-        leftHandFxImg,
-        rightHandFxImg,
-        rawLeftTallImg,
-        rawRightTallImg,
-        rawTileAuraImg,
-        rawSupernovaImg,
-      ] = await Promise.all([
-        loadImage(THEME_ASSETS.reelNetImage),
-        loadImage(THEME_ASSETS.wildGlowImage1),
-        loadImage(THEME_ASSETS.tallColumnBgImage),
-        GUARDIANS.left.handFxImage ? loadImage(GUARDIANS.left.handFxImage) : Promise.resolve(null),
-        GUARDIANS.right.handFxImage ? loadImage(GUARDIANS.right.handFxImage) : Promise.resolve(null),
-        loadImage(GUARDIANS.left.tallColumnImage),
-        loadImage(GUARDIANS.right.tallColumnImage),
-        THEME_ASSETS.tileElectricFireAuraImage
-          ? loadImage(THEME_ASSETS.tileElectricFireAuraImage)
-          : Promise.resolve(null),
-        THEME_ASSETS.bonusSupernovaBurstImage
-          ? loadImage(THEME_ASSETS.bonusSupernovaBurstImage)
-          : Promise.resolve(null),
-      ]);
-
-      if (isDisposed) return;
-
-      if (rawTileAuraImg) {
-        sprites.tileElectricFireAura = createNeonKeyedCanvas(rawTileAuraImg, 22, 42);
-      }
-      if (rawSupernovaImg) {
-        sprites.bonusSupernovaBurst = createNeonKeyedCanvas(rawSupernovaImg, 22, 42);
-      }
-
-      if (netImg) {
-        buildStaticBackdrop(netImg);
-        isDirty = true;
-      }
-
-      const preparedLeftGuardian = rawLeftTallImg
-        ? GUARDIANS.left.keyedBackground
-          ? createNeonKeyedCanvas(rawLeftTallImg, 26, 44)
-          : createBakedSprite(
-              rawLeftTallImg,
-              rawLeftTallImg.width,
-              rawLeftTallImg.height,
-              'saturate(1.22) brightness(1.06) contrast(1.06)'
-            )
-        : null;
-
-      const preparedRightGuardian = rawRightTallImg
-        ? GUARDIANS.right.keyedBackground
-          ? createNeonKeyedCanvas(rawRightTallImg, 26, 44)
-          : createBakedSprite(
-              rawRightTallImg,
-              rawRightTallImg.width,
-              rawRightTallImg.height,
-              'saturate(1.22) brightness(1.06) contrast(1.06)'
-            )
-        : null;
-
-      sprites.tallAnubisCol = createBakedTallColumnSprite(
-        tallBgImg,
-        preparedLeftGuardian,
-        leftHandFxImg,
-        false,
-        GUARDIANS.left.tallBannerText
-      );
-      sprites.tallBastetCol = createBakedTallColumnSprite(
-        tallBgImg,
-        preparedRightGuardian,
-        rightHandFxImg,
-        true,
-        GUARDIANS.right.tallBannerText
-      );
+    let forceImmediateRedraw = true;
+    const markDirty = () => {
       isDirty = true;
+      forceImmediateRedraw = true;
+    };
 
-      // Render 3D Pop-Out Royal Symbols, 3D Bonus Symbol, & High-Tier Two-Layer Symbols
-      const bonusCrestOverlay = await loadImage(THEME_ASSETS.bonusCrestOverlayImage);
+    // Cooperative Time-Sliced Sprite Baker (yields after paint frames so ZERO >50ms Long Tasks ever occur!)
+    if (!sprites.__ready) {
+      (async () => {
+        let sliceStart = performance.now();
+        const yieldIfNeeded = async (forceFrame = false) => {
+          const spinningNow = reels.some((r) => r.state !== 'IDLE');
+          if (forceFrame || spinningNow || performance.now() - sliceStart >= 3.5) {
+            if (spinningNow || forceFrame) {
+              await yieldAfterFrame();
+            } else {
+              await yieldToMain();
+            }
+            sliceStart = performance.now();
+          }
+        };
 
-      // Ensure webfonts are 100% loaded before rasterizing typography to avoid any font fallback blur
-      try {
-        if (typeof document !== 'undefined' && document.fonts) {
-          await document.fonts.ready;
-        }
-      } catch (_) {}
+        // Ensure webfonts are ready (with fast 350ms non-blocking fallback)
+        try {
+          if (typeof document !== 'undefined' && document.fonts) {
+            await Promise.race([
+              document.fonts.ready,
+              new Promise((r) => setTimeout(r, 350)),
+            ]);
+          }
+        } catch (_) {}
+        sliceStart = performance.now();
 
-      await Promise.all(
-        SYMBOLS.map(async (sym) => {
+        const [wildGlowImg, bonusCrestOverlay] = await Promise.all([
+          loadImage(THEME_ASSETS.wildGlowImage1),
+          loadImage(THEME_ASSETS.bonusCrestOverlayImage),
+        ]);
+        if (isDisposed) return;
+        await yieldIfNeeded();
+
+        // PRIORITY 1: Bake visible 5x3 reel symbols first so Spin #1 is immediately sharp & lag-free
+        for (const sym of SYMBOLS) {
+          if (isDisposed) return;
+
           if (sym.is3DBonus) {
             const bonusSize = Math.round(ROW_H * 0.98);
             const customOverlay = sym.noFrameImage
               ? await loadImage(sym.noFrameImage)
               : bonusCrestOverlay;
+            sliceStart = performance.now();
             const { normalCan, frameCan, artCan } = create3DPopOutBonusSprites(
               sym,
               bonusSize,
@@ -964,7 +910,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             sprites[`frame_${sym.id}`] = frameCan;
             sprites[`pop_${sym.id}`] = artCan;
             isDirty = true;
-            return;
+            await yieldIfNeeded();
+            continue;
           }
 
           if (sym.is3DRoyal) {
@@ -974,11 +921,13 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             sprites[`frame_${sym.id}`] = frameCan;
             sprites[`pop_${sym.id}`] = artCan;
             isDirty = true;
-            return;
+            await yieldIfNeeded();
+            continue;
           }
 
           const rawImg = await loadImage(sym.image);
-          if (!rawImg || isDisposed) return;
+          sliceStart = performance.now();
+          if (!rawImg || isDisposed) continue;
 
           const baseSize = Math.round(ROW_H * 0.96);
 
@@ -988,9 +937,12 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             comp.height = baseSize;
             const cCtx = comp.getContext('2d');
             cCtx.drawImage(wildGlowImg, 0, 0, baseSize, baseSize);
-            if (sym.neonFilter) cCtx.filter = sym.neonFilter;
+            if (sym.neonFilter && smoothPerformance.getTier() !== 'lite') {
+              cCtx.filter = sym.neonFilter;
+            }
             cCtx.drawImage(rawImg, 0, 0, baseSize, baseSize);
             sprites[`sym_${sym.id}`] = comp;
+            await yieldIfNeeded();
             sprites[`win_${sym.id}`] = createBakedSprite(
               comp,
               baseSize,
@@ -1007,6 +959,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
               ''
             );
             sprites[`sym_${sym.id}`] = normalSprite;
+            await yieldIfNeeded();
             sprites[`win_${sym.id}`] = createBakedSprite(
               normalSprite,
               baseSize,
@@ -1016,13 +969,35 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             );
           }
           isDirty = true;
+          await yieldIfNeeded();
+        }
 
-          // Load separate Frame + No-Frame 3D Pop-Out layers for winning animations!
+        // Wait until active spins settle before running secondary background sprite bakes
+        const waitWhileSpinning = async () => {
+          while (!isDisposed && reels.some((r) => r.state !== 'IDLE')) {
+            await yieldAfterFrame();
+          }
+          sliceStart = performance.now();
+        };
+
+        // PRIORITY 2: Upgrade static stone backdrop with reel net overlay + bake 3D win pop-out layers
+        const netImg = await loadImage(THEME_ASSETS.reelNetImage);
+        await waitWhileSpinning();
+        if (isDisposed) return;
+        if (netImg) {
+          buildStaticBackdrop(netImg);
+          isDirty = true;
+          await yieldIfNeeded();
+        }
+
+        for (const sym of SYMBOLS) {
+          if (isDisposed) return;
           if (sym.frameImage && sym.noFrameImage && sym.noFrameImage !== sym.image) {
             const [fImg, nfImg] = await Promise.all([
               loadImage(sym.frameImage),
               loadImage(sym.noFrameImage),
             ]);
+            await waitWhileSpinning();
             if (fImg && nfImg && !isDisposed) {
               const frameSz = Math.round(ROW_H * 0.90);
               const popSz = Math.round(ROW_H * 1.18);
@@ -1033,6 +1008,7 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 sym.neonFilter || '',
                 sym.accentColor || '#ffd700'
               );
+              await yieldIfNeeded();
               sprites[`pop_${sym.id}`] = createBakedSprite(
                 nfImg,
                 popSz,
@@ -1041,12 +1017,101 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
                 '#ffd700'
               );
               isDirty = true;
+              await yieldIfNeeded();
             }
           }
-        })
-      );
-      isDirty = true;
-    })();
+        }
+
+        // PRIORITY 3: Bake Tall Expanding Guardian Columns & Electric/Supernova FX off-thread in Worker!
+        const [
+          tallBgImg,
+          leftHandFxImg,
+          rightHandFxImg,
+          rawLeftTallImg,
+          rawRightTallImg,
+          rawTileAuraImg,
+          rawSupernovaImg,
+        ] = await Promise.all([
+          loadImage(THEME_ASSETS.tallColumnBgImage),
+          GUARDIANS.left.handFxImage ? loadImage(GUARDIANS.left.handFxImage) : Promise.resolve(null),
+          GUARDIANS.right.handFxImage ? loadImage(GUARDIANS.right.handFxImage) : Promise.resolve(null),
+          loadImage(GUARDIANS.left.tallColumnImage),
+          loadImage(GUARDIANS.right.tallColumnImage),
+          THEME_ASSETS.tileElectricFireAuraImage
+            ? loadImage(THEME_ASSETS.tileElectricFireAuraImage)
+            : Promise.resolve(null),
+          THEME_ASSETS.bonusSupernovaBurstImage
+            ? loadImage(THEME_ASSETS.bonusSupernovaBurstImage)
+            : Promise.resolve(null),
+        ]);
+        if (isDisposed) return;
+
+        const isLiteBake = smoothPerformance.getTier() === 'lite';
+        const fxMaxDim = isLiteBake ? 170 : 260;
+        const tallMaxDim = isLiteBake ? 260 : 400;
+
+        const leftNeedsKey =
+          GUARDIANS.left.keyedBackground && !/\.png(\?|$)/i.test(GUARDIANS.left.tallColumnImage || '');
+        const preparedLeftGuardian = rawLeftTallImg
+          ? leftNeedsKey
+            ? await keyImageToCanvasAsync(rawLeftTallImg, 26, 44, tallMaxDim)
+            : createBakedSprite(
+                rawLeftTallImg,
+                Math.min(rawLeftTallImg.width, 300),
+                Math.min(rawLeftTallImg.height, 510),
+                'saturate(1.22) brightness(1.06) contrast(1.06)'
+              )
+          : null;
+        await yieldIfNeeded(true);
+
+        const rightNeedsKey =
+          GUARDIANS.right.keyedBackground && !/\.png(\?|$)/i.test(GUARDIANS.right.tallColumnImage || '');
+        const preparedRightGuardian = rawRightTallImg
+          ? rightNeedsKey
+            ? await keyImageToCanvasAsync(rawRightTallImg, 26, 44, tallMaxDim)
+            : createBakedSprite(
+                rawRightTallImg,
+                Math.min(rawRightTallImg.width, 300),
+                Math.min(rawRightTallImg.height, 510),
+                'saturate(1.22) brightness(1.06) contrast(1.06)'
+              )
+          : null;
+        await yieldIfNeeded(true);
+
+        if (isDisposed) return;
+        sprites.tallAnubisCol = createBakedTallColumnSprite(
+          tallBgImg,
+          preparedLeftGuardian,
+          leftHandFxImg,
+          false,
+          GUARDIANS.left.tallBannerText
+        );
+        await yieldIfNeeded();
+
+        sprites.tallBastetCol = createBakedTallColumnSprite(
+          tallBgImg,
+          preparedRightGuardian,
+          rightHandFxImg,
+          true,
+          GUARDIANS.right.tallBannerText
+        );
+        isDirty = true;
+        await yieldIfNeeded(true);
+
+        if (rawTileAuraImg && !isDisposed) {
+          await waitWhileSpinning();
+          sprites.tileElectricFireAura = await keyImageToCanvasAsync(rawTileAuraImg, 22, 42, fxMaxDim);
+          await yieldIfNeeded(true);
+        }
+        if (rawSupernovaImg && !isDisposed) {
+          await waitWhileSpinning();
+          sprites.bonusSupernovaBurst = await keyImageToCanvasAsync(rawSupernovaImg, 22, 42, fxMaxDim);
+          await yieldIfNeeded(true);
+        }
+        sprites.__ready = true;
+        isDirty = true;
+      })();
+    }
 
     // Spin Controller with Turbo Flow Mode & 3-Tile Guardian Illumination Suspense support
     const startSpin = (targetGrid, targetExpanded, isTurbo = false) => {
@@ -1616,6 +1681,11 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         hasIlluminated ||
         Boolean(activeCascade);
 
+      // Feed Live Frame-Time Watchdog during active spins so choppy devices auto-adapt immediately
+      if (anySpinning) {
+        smoothPerformance.recordFrameDelta(rawDt * 1000, true);
+      }
+
       // Intelligent Idle Throttling: If no reels are spinning and no animations/wins/particles are active,
       // draw the resting grid once and suspend drawing to yield 0% GPU load and eliminate thermal heat
       if (!isActivelyAnimating) {
@@ -1623,14 +1693,26 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
           return;
         }
         isDirty = false;
+        forceImmediateRedraw = false;
       } else {
+        // Post-spin idle win-line pulsing throttle on balanced/lite tiers (keeps spins/bounces/cascades at 60/120Hz!)
+        if (!anySpinning && !hasTransitions && !activeCascade && !hasParticles) {
+          const perfTier = smoothPerformance.getTier();
+          const minIdleFrameMs = perfTier === 'lite' ? 32 : perfTier === 'balanced' ? 22 : 0;
+          if (minIdleFrameMs > 0 && !forceImmediateRedraw && now - lastIdlePulseDraw < minIdleFrameMs) {
+            return;
+          }
+          lastIdlePulseDraw = now;
+        }
         isDirty = true;
+        forceImmediateRedraw = false;
       }
-
-      ctx.clearRect(0, 0, GAME_W, GAME_H);
 
       if (sprites.staticBg) {
         ctx.drawImage(sprites.staticBg, 0, 0);
+      } else {
+        ctx.fillStyle = '#060710';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
       }
 
       // Independent 3D pop-out scale for winning artifacts vs their recessed tile frame!
@@ -1712,10 +1794,14 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
 
             if (centerY < -ROW_H || centerY > GAME_H + ROW_H) continue;
 
+            const cellCommaKey =
+              visibleRow >= 0 && visibleRow < ROWS ? CELL_COMMA_KEYS[c][visibleRow] : null;
+            const cellDashKey =
+              visibleRow >= 0 && visibleRow < ROWS ? CELL_DASH_KEYS[c][visibleRow] : null;
+
             const isCascadeTargetCell =
-              visibleRow >= 0 &&
-              visibleRow < ROWS &&
-              Boolean(activeCascade?.explodedSet?.has(`${c},${visibleRow}`));
+              cellCommaKey !== null &&
+              Boolean(activeCascade?.explodedSet?.has(cellCommaKey));
 
             // During EXPLODING phase, zapped tiles burst outward and vanish into empty space!
             if (isCascadeTargetCell && activeCascade?.phase === 'EXPLODING') {
@@ -1766,8 +1852,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
             const isWinningCell =
               !anySpinning &&
               !activeCascade &&
-              visibleRow >= 0 &&
-              winSet.has(`${c}-${visibleRow}`);
+              cellDashKey !== null &&
+              (winSet.has(cellDashKey) || winSet.has(cellCommaKey));
 
             const frameSprite = sprites[`frame_${sym.id}`];
             const popSprite = sprites[`pop_${sym.id}`];
@@ -2270,7 +2356,8 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
         p.alpha -= p.decay * dt;
 
         if (p.alpha <= 0) {
-          particles.splice(i, 1);
+          particles[i] = particles[particles.length - 1];
+          particles.pop();
           continue;
         }
 
@@ -2330,6 +2417,6 @@ const PhaserReelEngine = forwardRef(function PhaserReelEngine({
       />
     </div>
   );
-});
+}));
 
 export default PhaserReelEngine;

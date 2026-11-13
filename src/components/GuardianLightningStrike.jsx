@@ -1,17 +1,104 @@
-import React, { useEffect, useRef } from 'react';
+import React, { memo, useEffect, useRef } from 'react';
+import { smoothPerformance } from '../plugins/smoothPerformancePlugin';
+
+// Pre-rendered offscreen plasma/fireball textures so strike animations never allocate per-frame radial gradients!
+let cachedSprites = null;
+function getStrikeSprites() {
+  if (cachedSprites || typeof document === 'undefined') return cachedSprites;
+
+  const makeRadial = (size, stops) => {
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext('2d');
+    const half = size / 2;
+    const grad = ctx.createRadialGradient(half, half, 1, half, half, half);
+    stops.forEach(([pos, col]) => grad.addColorStop(pos, col));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(half, half, half, 0, Math.PI * 2);
+    ctx.fill();
+    return c;
+  };
+
+  cachedSprites = {
+    fireTrail: makeRadial(64, [
+      [0, '#fffbeb'],
+      [0.35, '#fbbf24'],
+      [0.75, '#ef4444'],
+      [1, 'rgba(0,0,0,0)'],
+    ]),
+    fireHead: makeRadial(80, [
+      [0, '#ffffff'],
+      [0.3, '#fde047'],
+      [0.75, '#ea580c'],
+      [1, 'rgba(239, 68, 68, 0)'],
+    ]),
+    lightningImpact: makeRadial(96, [
+      [0, '#ffffff'],
+      [0.32, '#00f0ff'],
+      [0.7, 'rgba(29, 78, 216, 0.45)'],
+      [1, 'rgba(0,0,0,0)'],
+    ]),
+  };
+  return cachedSprites;
+}
 
 /**
  * 2026 Guardian Dynamic Lightning & Fire Projectile Strike Engine:
- * Renders high-voltage electric plasma arcs from Anubis (left) and
- * sacred blazing solar firebolts from Queen Bastet (right) directly
- * targeting winning symbol cells, scatter relics, and expanding wilds!
+ * Caches DOM geometry on resize (zero synchronous reflows on reel slam!) and uses
+ * pre-baked radial plasma sprites for silky 60fps projectile arcs on every phone.
  */
-export default function GuardianLightningStrike({ strikeEvent = null, onComplete }) {
+const GuardianLightningStrike = memo(function GuardianLightningStrike({
+  strikeEvent = null,
+  onComplete,
+}) {
   const canvasRef = useRef(null);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const activeStrikesRef = useRef([]);
   const rafIdRef = useRef(null);
+  const layoutCacheRef = useRef({ vp: null, leftCol: null, rightCol: null, w: 0, h: 0 });
+
+  useEffect(() => {
+    const refreshBounds = () => {
+      if (typeof window === 'undefined' || typeof document === 'undefined') return;
+      const vp =
+        document.querySelector('.reel-window-viewport')?.getBoundingClientRect() ||
+        document.querySelector('.reel-cabinet-box')?.getBoundingClientRect() ||
+        null;
+      const leftCol =
+        document
+          .querySelector(
+            '.anubis-guardian-column.left-col .guardian-power-orb, .anubis-guardian-column.left-col, .mpg-anubis'
+          )
+          ?.getBoundingClientRect() || null;
+      const rightCol =
+        document
+          .querySelector(
+            '.anubis-guardian-column.right-col .guardian-power-orb, .anubis-guardian-column.right-col, .mpg-bastet'
+          )
+          ?.getBoundingClientRect() || null;
+      layoutCacheRef.current = {
+        vp,
+        leftCol,
+        rightCol,
+        w: window.innerWidth,
+        h: window.innerHeight,
+      };
+    };
+
+    const initTimer = setTimeout(refreshBounds, 350);
+    window.addEventListener('resize', refreshBounds, { passive: true });
+    return () => {
+      clearTimeout(initTimer);
+      window.removeEventListener('resize', refreshBounds);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!strikeEvent) return;
@@ -20,33 +107,32 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Cap DPR at 1.25 for ultra-fast, zero-lag full-viewport additive plasma rendering
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const sprites = getStrikeSprites();
+    const isLite = smoothPerformance.getTier() === 'lite';
+    const dpr = Math.min(window.devicePixelRatio || 1, isLite ? 1.0 : 1.25);
+
+    let { vp, leftCol, rightCol, w, h } = layoutCacheRef.current;
+    if (!vp || vp.width === 0 || !w) {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      vp =
+        document.querySelector('.reel-window-viewport')?.getBoundingClientRect() ||
+        document.querySelector('.reel-cabinet-box')?.getBoundingClientRect() ||
+        null;
+      layoutCacheRef.current.vp = vp;
+      layoutCacheRef.current.w = w;
+      layoutCacheRef.current.h = h;
+    }
+
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Resolve strike items: single strike or multi-strike array
     const rawStrikes = Array.isArray(strikeEvent.strikes)
       ? strikeEvent.strikes
       : [strikeEvent];
-
-    // Compute screen coordinates
-    const vp =
-      document.querySelector('.reel-window-viewport')?.getBoundingClientRect() ||
-      document.querySelector('.reel-cabinet-box')?.getBoundingClientRect();
-
-    const leftCol = document.querySelector(
-      '.anubis-guardian-column.left-col .guardian-power-orb, .anubis-guardian-column.left-col .guardian-hand-flame, .anubis-guardian-column.left-col, .mpg-anubis'
-    )?.getBoundingClientRect();
-
-    const rightCol = document.querySelector(
-      '.anubis-guardian-column.right-col .guardian-power-orb, .anubis-guardian-column.right-col, .mpg-bastet'
-    )?.getBoundingClientRect();
 
     const nowInit = performance.now();
 
@@ -55,7 +141,8 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
       const isLeft = from === 'left';
       const isFire = raw.type === 'fire' || (!raw.type && !isLeft);
 
-      let startX, startY;
+      let startX;
+      let startY;
       if (isLeft) {
         if (leftCol && leftCol.width > 0) {
           startX = leftCol.right - 10;
@@ -64,14 +151,12 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
           startX = 30;
           startY = vp ? vp.top + vp.height * 0.5 : h * 0.45;
         }
+      } else if (rightCol && rightCol.width > 0) {
+        startX = rightCol.left + 10;
+        startY = rightCol.top + rightCol.height * 0.35;
       } else {
-        if (rightCol && rightCol.width > 0) {
-          startX = rightCol.left + 10;
-          startY = rightCol.top + rightCol.height * 0.35;
-        } else {
-          startX = w - 30;
-          startY = vp ? vp.top + vp.height * 0.5 : h * 0.45;
-        }
+        startX = w - 30;
+        startY = vp ? vp.top + vp.height * 0.5 : h * 0.45;
       }
 
       if (Array.isArray(raw.targetCells) && raw.targetCells.length > 0 && vp) {
@@ -94,8 +179,7 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
           });
         });
       } else {
-        const tx =
-          raw.targetX || (vp ? vp.left + vp.width * (isLeft ? 0.38 : 0.62) : w * 0.5);
+        const tx = raw.targetX || (vp ? vp.left + vp.width * (isLeft ? 0.38 : 0.62) : w * 0.5);
         const ty = raw.targetY || (vp ? vp.top + vp.height * 0.5 : h * 0.45);
         activeStrikesRef.current.push({
           isFire,
@@ -115,11 +199,11 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
       return;
     }
 
-    // Fast non-allocating midpoint displacement bolt generator (3 iterations = 8 segments)
     const generateBolt = (x1, y1, x2, y2, displacement) => {
       let segments = [{ x1, y1, x2, y2 }];
       let disp = displacement;
-      for (let i = 0; i < 3; i++) {
+      const iterations = isLite ? 2 : 3;
+      for (let i = 0; i < iterations; i++) {
         const nextSegs = [];
         for (let j = 0; j < segments.length; j++) {
           const seg = segments[j];
@@ -140,7 +224,7 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
       return segments;
     };
 
-    if (rafIdRef.current) return; // Already running RAF loop for queued strikes
+    if (rafIdRef.current) return;
 
     const render = (now) => {
       ctx.clearRect(0, 0, w, h);
@@ -172,8 +256,7 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
         const currentY = st.startY + (st.endY - st.startY) * travelRatio;
 
         if (st.isFire) {
-          // ================= Queen Bastet Solar Fireball & Plasma Beam (Zero shadowBlur) =================
-          const stepCount = 5;
+          const stepCount = isLite ? 3 : 5;
           for (let s = 0; s < stepCount; s++) {
             const trailRatio = s / stepCount;
             const trailX =
@@ -184,57 +267,34 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
               st.startY +
               (currentY - st.startY) * (1 - trailRatio * 0.42) +
               (Math.random() - 0.5) * (trailRatio * 14);
-            const radius = (1 - trailRatio) * 16 + 4;
-
-            const grad = ctx.createRadialGradient(trailX, trailY, 1, trailX, trailY, radius);
-            grad.addColorStop(0, '#fffbeb');
-            grad.addColorStop(0.35, '#fbbf24');
-            grad.addColorStop(0.75, '#ef4444');
-            grad.addColorStop(1, 'rgba(0,0,0,0)');
-
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(trailX, trailY, radius, 0, Math.PI * 2);
-            ctx.fill();
+            const sz = ((1 - trailRatio) * 16 + 4) * 2;
+            if (sprites?.fireTrail) {
+              ctx.drawImage(sprites.fireTrail, trailX - sz / 2, trailY - sz / 2, sz, sz);
+            }
           }
 
-          // Head of the solar projectile
-          const headGrad = ctx.createRadialGradient(currentX, currentY, 2, currentX, currentY, 28);
-          headGrad.addColorStop(0, '#ffffff');
-          headGrad.addColorStop(0.3, '#fde047');
-          headGrad.addColorStop(0.75, '#ea580c');
-          headGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
-          ctx.fillStyle = headGrad;
-          ctx.beginPath();
-          ctx.arc(currentX, currentY, 28, 0, Math.PI * 2);
-          ctx.fill();
+          if (sprites?.fireHead) {
+            ctx.drawImage(sprites.fireHead, currentX - 28, currentY - 28, 56, 56);
+          }
 
-          if (progress > 0.52) {
+          if (progress > 0.52 && sprites?.fireHead) {
             const impactProgress = (progress - 0.52) / 0.48;
             const impactR = 22 + impactProgress * 62;
-            const expGrad = ctx.createRadialGradient(st.endX, st.endY, 2, st.endX, st.endY, impactR);
-            expGrad.addColorStop(0, '#ffffff');
-            expGrad.addColorStop(0.28, '#fde047');
-            expGrad.addColorStop(0.65, '#ea580c');
-            expGrad.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = expGrad;
-            ctx.beginPath();
-            ctx.arc(st.endX, st.endY, impactR, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.strokeStyle = `rgba(253, 224, 71, ${(1 - impactProgress).toFixed(2)})`;
-            ctx.lineWidth = 3.5 * (1 - impactProgress);
-            ctx.beginPath();
-            ctx.arc(st.endX, st.endY, impactR * 0.88, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.globalAlpha = Math.max(0, 1 - impactProgress * 0.65);
+            ctx.drawImage(
+              sprites.fireHead,
+              st.endX - impactR,
+              st.endY - impactR,
+              impactR * 2,
+              impactR * 2
+            );
+            ctx.globalAlpha = 1;
           }
         } else {
-          // ================= Anubis High-Voltage Lightning Bolt (Zero shadowBlur) =================
-          const branches = progress < 0.72 ? 2 : 1;
+          const branches = !isLite && progress < 0.72 ? 2 : 1;
           for (let b = 0; b < branches; b++) {
             const segments = generateBolt(st.startX, st.startY, currentX, currentY, 46);
 
-            // Wide translucent electric aura (replaces slow ctx.shadowBlur!)
             ctx.strokeStyle = 'rgba(59, 130, 246, 0.38)';
             ctx.lineWidth = 18;
             ctx.beginPath();
@@ -245,7 +305,6 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
             }
             ctx.stroke();
 
-            // Intense cyan laser filament
             ctx.strokeStyle = '#00f0ff';
             ctx.lineWidth = 6;
             ctx.beginPath();
@@ -256,7 +315,6 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
             }
             ctx.stroke();
 
-            // Pure white hot core
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2.2;
             ctx.beginPath();
@@ -268,18 +326,18 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
             ctx.stroke();
           }
 
-          if (progress > 0.45) {
+          if (progress > 0.45 && sprites?.lightningImpact) {
             const impactProgress = (progress - 0.45) / 0.55;
             const impactR = 18 + impactProgress * 58;
-            const impGrad = ctx.createRadialGradient(st.endX, st.endY, 2, st.endX, st.endY, impactR);
-            impGrad.addColorStop(0, '#ffffff');
-            impGrad.addColorStop(0.32, '#00f0ff');
-            impGrad.addColorStop(0.7, 'rgba(29, 78, 216, 0.45)');
-            impGrad.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = impGrad;
-            ctx.beginPath();
-            ctx.arc(st.endX, st.endY, impactR, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.globalAlpha = Math.max(0, 1 - impactProgress * 0.6);
+            ctx.drawImage(
+              sprites.lightningImpact,
+              st.endX - impactR,
+              st.endY - impactR,
+              impactR * 2,
+              impactR * 2
+            );
+            ctx.globalAlpha = 1;
           }
         }
       }
@@ -299,15 +357,6 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
     rafIdRef.current = requestAnimationFrame(render);
   }, [strikeEvent]);
 
-  useEffect(() => {
-    return () => {
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-    };
-  }, []);
-
   return (
     <canvas
       ref={canvasRef}
@@ -324,4 +373,6 @@ export default function GuardianLightningStrike({ strikeEvent = null, onComplete
       }}
     />
   );
-}
+});
+
+export default GuardianLightningStrike;

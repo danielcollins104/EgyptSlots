@@ -172,7 +172,7 @@ async function runMemoryLeakAudit() {
       returnByValue: true,
     });
     console.log(`Splash dismissal action: ${enterRes.result.value}`);
-    await sleep(3000);
+    await sleep(4500);
 
     // Warm-up cycle: Trigger initial spin and paytable modal toggle to ensure one-time
     // module imports, AudioContext graphs, and React portals settle before establishing baseline.
@@ -180,58 +180,91 @@ async function runMemoryLeakAudit() {
     await cdp.send('Runtime.evaluate', {
       expression: `
         (() => {
-          const btn = document.querySelector('.psd-spin-btn-graphic') ||
+          document.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+          const btn = document.querySelector('.psd-spin-button') ||
+                      document.querySelector('.psd-spin-btn-graphic') ||
                       document.querySelector('.mobile-dock-spin-btn') ||
                       document.querySelector('button[aria-label*="Spin"]');
           if (btn) btn.click();
-          const pBtn = document.querySelector('button[aria-label*="Paytable"]') ||
+          const pBtn = document.querySelector('button[aria-label*="paytable" i]') ||
                        document.querySelector('.paytable-btn');
           if (pBtn) pBtn.click();
           setTimeout(() => {
             const closeBtn = document.querySelector('.modal-close-btn') ||
                              document.querySelector('button[aria-label*="Close"]');
             if (closeBtn) closeBtn.click();
-          }, 200);
+          }, 500);
         })()
       `,
     });
-    await sleep(1500);
+    await sleep(2600);
+    await cdp.send('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const splash = document.querySelector('.win-splash-overlay');
+          if (splash) splash.click();
+          const bigWin = document.querySelector('.bigwin-collect-btn') || document.querySelector('.bigwin-modal-root');
+          if (bigWin) bigWin.click();
+          document.querySelectorAll('.modal-close-btn, .bonus-close-btn, button[aria-label*="Close"]').forEach((b) => b.click());
+        })()
+      `,
+    });
+    await sleep(600);
 
     // Force GC to establish clean baseline
     console.log('\n--- 1. ESTABLISHING CLEAN GC BASELINE ---');
     await cdp.send('HeapProfiler.collectGarbage');
     await sleep(500);
 
-    // Instrument addEventListener right after baseline to pinpoint any listener leak
+    // Instrument addEventListener right after baseline using WeakRefs so the probe itself
+    // never pins short-lived unmounted React <img> elements across V8 garbage collection.
     await cdp.send('Runtime.evaluate', {
       expression: `
         (() => {
-          window.__trackedAdds = [];
           const origAdd = EventTarget.prototype.addEventListener;
           const origRem = EventTarget.prototype.removeEventListener;
-          const registry = new Map();
-          
+          const tracked = [];
+
           EventTarget.prototype.addEventListener = function(type, fn, opts) {
-            const stack = new Error().stack;
-            const targetName = this === window ? 'window' : (this === document ? 'document' : (this.tagName || this.constructor?.name || 'unknown'));
-            const key = { target: this, type, fn };
-            registry.set(fn, { targetName, type, stack });
+            if (fn && (typeof fn === 'function' || typeof fn === 'object')) {
+              const stack = new Error().stack || '';
+              const targetName = this === window ? 'window' : (this === document ? 'document' : (this.tagName || this.constructor?.name || 'unknown'));
+              tracked.push({
+                targetRef: new WeakRef(this),
+                fnRef: new WeakRef(fn),
+                type,
+                targetName,
+                stack,
+                removed: false,
+              });
+            }
             return origAdd.call(this, type, fn, opts);
           };
 
           EventTarget.prototype.removeEventListener = function(type, fn, opts) {
-            registry.delete(fn);
+            for (let i = tracked.length - 1; i >= 0; i--) {
+              const entry = tracked[i];
+              if (!entry.removed && entry.type === type && entry.targetRef.deref() === this && entry.fnRef.deref() === fn) {
+                entry.removed = true;
+                break;
+              }
+            }
             return origRem.call(this, type, fn, opts);
           };
 
           window.__getLeakedListeners = () => {
             const list = [];
-            for (const [fn, val] of registry.entries()) {
-              list.push({
-                target: val.targetName,
-                type: val.type,
-                stackTop: val.stack.split('\\n').slice(1, 4).join(' -> ')
-              });
+            for (const entry of tracked) {
+              if (entry.removed) continue;
+              const liveTarget = entry.targetRef.deref();
+              const liveFn = entry.fnRef.deref();
+              if (liveTarget && liveFn) {
+                list.push({
+                  target: entry.targetName,
+                  type: entry.type,
+                  stackTop: entry.stack.split('\\n').slice(1, 4).join(' -> ')
+                });
+              }
             }
             return list;
           };
@@ -273,14 +306,14 @@ async function runMemoryLeakAudit() {
       await cdp.send('Runtime.evaluate', {
         expression: `
           (() => {
-            const pBtn = document.querySelector('button[aria-label*="Paytable"]') ||
+            const pBtn = document.querySelector('button[aria-label*="paytable" i]') ||
                          document.querySelector('.paytable-btn');
             if (pBtn) pBtn.click();
             setTimeout(() => {
               const closeBtn = document.querySelector('.modal-close-btn') ||
                                document.querySelector('button[aria-label*="Close"]');
               if (closeBtn) closeBtn.click();
-            }, 100);
+            }, 180);
           })()
         `,
       });
@@ -289,9 +322,10 @@ async function runMemoryLeakAudit() {
       process.stdout.write(`Done.\n`);
     }
 
-    // Allow background audio, win animations, and celebration splash to settle
+    // Allow Cycle #10 spin + post-spin win-line highlight delay to finish before dismissing overlays
     console.log('\n--- 3. SETTLING & FORCING V8 GARBAGE COLLECTION ---');
-    // Dismiss any active celebration overlays
+    await sleep(2800);
+    // Dismiss any active celebration or lazy modal overlays so steady-state retention is measured cleanly
     await cdp.send('Runtime.evaluate', {
       expression: `
         (() => {
@@ -299,10 +333,13 @@ async function runMemoryLeakAudit() {
           if (splash) splash.click();
           const bigWin = document.querySelector('.bigwin-collect-btn') || document.querySelector('.bigwin-modal-root');
           if (bigWin) bigWin.click();
+          const closeBtns = document.querySelectorAll('.modal-close-btn, .bonus-close-btn, button[aria-label*="Close"]');
+          closeBtns.forEach((b) => b.click());
+          window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }));
         })()
       `,
     });
-    await sleep(3500);
+    await sleep(1600);
     await cdp.send('HeapProfiler.collectGarbage');
     await sleep(600);
     await cdp.send('HeapProfiler.collectGarbage');

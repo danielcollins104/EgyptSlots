@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, memo } from 'react';
 import PsdGoldNumber from './PsdGoldNumber';
 import { soundEngine } from '../audio/soundEngine';
+import { smoothPerformance } from '../plugins/smoothPerformancePlugin';
 import { Sparkles, Trophy, Gem, Crown, Flame, Zap, Award } from 'lucide-react';
 
-export default function WinCelebrationSplash({
+const WinCelebrationSplash = memo(function WinCelebrationSplash({
   winAmount = 0,
   currencyMode = 'GC',
   betAmount = 1,
@@ -76,6 +77,8 @@ export default function WinCelebrationSplash({
       tier === 'mini' ? 450 : 280;
 
     let lastRendered = -1;
+    let lastCommitTime = 0;
+    const minCommitInterval = smoothPerformance.getTier() === 'lite' ? 34 : 16;
     let animId;
 
     const animateRoll = (now) => {
@@ -86,8 +89,9 @@ export default function WinCelebrationSplash({
         ? Number((winAmount * eased).toFixed(2))
         : Math.round(winAmount * eased);
 
-      if (current !== lastRendered) {
+      if (current !== lastRendered && (progress >= 1 || now - lastCommitTime >= minCommitInterval)) {
         lastRendered = current;
+        lastCommitTime = now;
         setDisplayAmount(current);
         soundEngine.playCoinTick(progress);
       }
@@ -124,12 +128,19 @@ export default function WinCelebrationSplash({
 
   if (!visible || !winAmount || winAmount <= 0) return null;
 
-  const coinCount =
+  const baseCoinCount =
     tier === 'ultra' ? 16 :
     tier === 'mega' ? 12 :
     tier === 'big' ? 10 :
     tier === 'super' ? 8 :
     tier === 'mini' ? 6 : 4;
+  const perfTier = smoothPerformance.getTier();
+  const coinCount =
+    perfTier === 'lite'
+      ? Math.min(4, baseCoinCount)
+      : perfTier === 'balanced'
+      ? Math.min(8, baseCoinCount)
+      : baseCoinCount;
 
   return (
     <div
@@ -224,4 +235,6 @@ export default function WinCelebrationSplash({
       </div>
     </div>
   );
-}
+});
+
+export default WinCelebrationSplash;

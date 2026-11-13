@@ -80,9 +80,11 @@ class SoundEngine {
     this.ambientOscs = [];
     this.ambientStarted = true; // Prevent synthetic continuous drone
     this.lastTickMs = 0;
+    this.lastResumeAttemptMs = 0;
 
     // Anti-clash cooldown registry (prevents overlapping sound walls on desktop/mobile)
     this.cooldowns = {};
+    this.sfxPool = new Map();
 
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', () => {
@@ -107,7 +109,11 @@ class SoundEngine {
       this._setupMasterBus();
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (nowMs - this.lastResumeAttemptMs > 400) {
+        this.lastResumeAttemptMs = nowMs;
+        this.ctx.resume().catch(() => {});
+      }
     }
   }
 
@@ -179,18 +185,22 @@ class SoundEngine {
         clearTimeout(fallbackTimer);
         fallbackTimer = null;
       }
-      nodes.forEach((n) => {
+      for (let i = 0; i < nodes.length; i++) {
         try {
-          if (n && typeof n.disconnect === 'function') n.disconnect();
+          const n = nodes[i];
+          if (!n) continue;
+          if ('onended' in n) n.onended = null;
+          if (typeof n.disconnect === 'function') n.disconnect();
         } catch (_) {}
-      });
+      }
     };
     const osc = nodes.find((n) => n && typeof n.stop === 'function');
-    if (osc) {
+    if (osc && 'onended' in osc && this.ctx.state === 'running') {
       osc.onended = disconnectAll;
+    } else {
+      const fallbackMs = Math.max(60, Math.ceil(durationSeconds * 1000) + 100);
+      fallbackTimer = setTimeout(disconnectAll, fallbackMs);
     }
-    const fallbackMs = Math.max(60, Math.ceil(durationSeconds * 1000) + 100);
-    fallbackTimer = setTimeout(disconnectAll, fallbackMs);
   }
 
   // Helper to synthesize a warm, consonant marimba / harp / celesta note with soft attack
@@ -204,15 +214,20 @@ class SoundEngine {
     filterCutoff = 2200,
     attackSec = 0.01,
   }) {
-    if (!this.ctx) return;
+    if (!this.ctx || this.ctx.state === 'closed') return;
+    // Skip piling up WebAudio nodes if context is still suspended outside an active unlock gesture
+    if (this.ctx.state === 'suspended') {
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (nowMs - this.lastResumeAttemptMs > 80) return;
+    }
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
+    const effectiveType = type === 'sawtooth' || type === 'square' ? 'triangle' : type;
+    const maxFreq = endFreq && endFreq > freq ? endFreq : freq;
+    // Pure sine waves have zero harmonics above their fundamental, so a lowpass filter >1.4x fundamental is a mathematical no-op
+    const needsFilter = effectiveType !== 'sine' || filterCutoff < maxFreq * 1.4;
 
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(filterCutoff, startTime);
-
-    osc.type = type === 'sawtooth' || type === 'square' ? 'triangle' : type;
+    osc.type = effectiveType;
     osc.frequency.setValueAtTime(freq, startTime);
     if (endFreq && endFreq > 20) {
       osc.frequency.exponentialRampToValueAtTime(endFreq, startTime + duration * 0.85);
@@ -223,9 +238,17 @@ class SoundEngine {
     gain.gain.linearRampToValueAtTime(peakGain, startTime + Math.min(attackSec, duration * 0.25));
     gain.gain.exponentialRampToValueAtTime(0.0005, startTime + duration);
 
-    osc.connect(filter);
-    filter.connect(gain);
-    this.playVoice([osc, filter, gain], (startTime - this.ctx.currentTime) + duration + 0.03);
+    if (needsFilter) {
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(filterCutoff, startTime);
+      osc.connect(filter);
+      filter.connect(gain);
+      this.playVoice([osc, filter, gain], (startTime - this.ctx.currentTime) + duration + 0.03);
+    } else {
+      osc.connect(gain);
+      this.playVoice([osc, gain], (startTime - this.ctx.currentTime) + duration + 0.03);
+    }
 
     osc.start(startTime);
     osc.stop(startTime + duration + 0.01);
@@ -1161,11 +1184,24 @@ class SoundEngine {
     });
   }
 
-  // Audio sample playback with gentle volume ceiling for Golden Hustle bonus cues
+  // Audio sample playback with pooled HTMLAudioElements (eliminates per-hit DOM & decode lag)
   playSfxSample(name, volume = 0.45) {
     if (this.muted || typeof Audio === 'undefined') return;
     try {
-      const audio = new Audio(`/assets/audio/sfx/${name}.ogg`);
+      let audio = this.sfxPool.get(name);
+      if (!audio) {
+        if (this.sfxPool.size >= 16) {
+          const oldestKey = this.sfxPool.keys().next().value;
+          this.sfxPool.delete(oldestKey);
+        }
+        audio = new Audio(`/assets/audio/sfx/${name}.ogg`);
+        audio.preload = 'auto';
+        this.sfxPool.set(name, audio);
+      } else {
+        try {
+          audio.currentTime = 0;
+        } catch (_) {}
+      }
       audio.volume = Math.min(0.55, Math.max(0, volume * 0.65));
       audio.play().catch(() => {});
     } catch (_) {}

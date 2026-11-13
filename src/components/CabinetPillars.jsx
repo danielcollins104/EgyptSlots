@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
+import { smoothPerformance } from '../plugins/smoothPerformancePlugin';
 
 /**
  * 2026 Next-Gen Architectural Egyptian Temple Pillars:
@@ -13,7 +14,7 @@ import React, { useEffect, useRef } from 'react';
  * - Dynamic breathing emissive runes that pulse with energy during active spins and wins
  * - Fluted vertical architectural ribs with carved lotus capital and stone plinth base
  */
-export default function CabinetPillars({ isSpinning = false, hasWin = false, side = 'both' }) {
+const CabinetPillars = memo(function CabinetPillars({ isSpinning = false, hasWin = false, side = 'both' }) {
   const leftCanvasRef = useRef(null);
   const rightCanvasRef = useRef(null);
 
@@ -21,7 +22,9 @@ export default function CabinetPillars({ isSpinning = false, hasWin = false, sid
     const drawPillar = (canvas, isRight = false) => {
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const profile = smoothPerformance.getProfile();
+      const isLite = smoothPerformance.getTier() === 'lite';
+      const dpr = Math.min(window.devicePixelRatio || 1, profile.maxCanvasDpr || 2);
       const w = canvas.clientWidth || 180;
       const h = canvas.clientHeight || 700;
 
@@ -144,7 +147,7 @@ export default function CabinetPillars({ isSpinning = false, hasWin = false, sid
 
           // 24K Gold foil body
           ctx.save();
-          if (glow) {
+          if (glow && !isLite) {
             ctx.shadowColor = isSpinning ? '#38bdf8' : (hasWin ? '#fde047' : '#f59e0b');
             ctx.shadowBlur = 8;
           }
@@ -376,13 +379,19 @@ export default function CabinetPillars({ isSpinning = false, hasWin = false, sid
     drawPillar(leftCanvasRef.current, false);
     drawPillar(rightCanvasRef.current, true);
 
+    let resizeRaf = 0;
     const handleResize = () => {
-      drawPillar(leftCanvasRef.current, false);
-      drawPillar(rightCanvasRef.current, true);
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        drawPillar(leftCanvasRef.current, false);
+        drawPillar(rightCanvasRef.current, true);
+      });
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
     return () => {
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
@@ -405,4 +414,6 @@ export default function CabinetPillars({ isSpinning = false, hasWin = false, sid
       )}
     </>
   );
-}
+});
+
+export default CabinetPillars;

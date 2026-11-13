@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { securityApiPlugin } from './server/vitePluginSecurity.js';
+import { smoothPerformancePlugin } from './server/vitePluginSmoothPerformance.js';
 
 function nonBlockingCssPlugin() {
   return {
@@ -16,7 +17,7 @@ function nonBlockingCssPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), securityApiPlugin(), nonBlockingCssPlugin()],
+  plugins: [react(), securityApiPlugin(), smoothPerformancePlugin(), nonBlockingCssPlugin()],
   build: {
     target: 'es2020',
     minify: 'esbuild',
@@ -24,10 +25,16 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-icons': ['lucide-react'],
-          'vendor-graphics': ['pixi.js', 'gsap']
+        manualChunks(id) {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-icons';
+          }
+          if (id.includes('node_modules/gsap')) {
+            return 'vendor-gsap';
+          }
         }
       }
     }

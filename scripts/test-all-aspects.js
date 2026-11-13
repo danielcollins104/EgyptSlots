@@ -775,6 +775,53 @@ assert(
 );
 
 // ----------------------------------------------------------------------------
+// 17. SMOOTH PERFORMANCE & ADAPTIVE FRAME-PACING PLUGIN VERIFICATION
+// ----------------------------------------------------------------------------
+console.log('\n--- 17. Testing Smooth Performance & Adaptive Frame-Pacing Plugin ---');
+const { smoothPerformance } = await import('../src/plugins/smoothPerformancePlugin.js');
+const { smoothPerformancePlugin } = await import('../server/vitePluginSmoothPerformance.js');
+
+const vitePerfPlugin = smoothPerformancePlugin();
+const injectedHtml = vitePerfPlugin.transformIndexHtml('<html><head><title>Test</title></head><body></body></html>');
+assert(
+  injectedHtml.includes('id="dc-smooth-perf-boot"') && injectedHtml.includes('data-perf-tier'),
+  'Vite Smooth Performance Plugin injects Frame-0 hardware tier classifier before first paint'
+);
+
+smoothPerformance.setMode('lite');
+assert(
+  smoothPerformance.getTier() === 'lite' && smoothPerformance.getProfile().enableAmbientCanvas === false,
+  'SmoothPerformance Lite mode disables background atmosphere canvas and lowers GPU particle budget'
+);
+
+smoothPerformance.setMode('high');
+assert(
+  smoothPerformance.getTier() === 'high' && smoothPerformance.getProfile().maxCanvasDpr === 2.0,
+  'SmoothPerformance High mode restores full 2.0 DPR and 120Hz visual fidelity'
+);
+
+// Simulate auto mode + sustained 32ms slow spin frames -> verify automatic step-down
+smoothPerformance.hardwareTier = 'high';
+smoothPerformance.setMode('auto');
+smoothPerformance.lastDowngradeAt = -9999;
+for (let f = 0; f < 24; f++) {
+  smoothPerformance.recordFrameDelta(32, true);
+}
+assert(
+  smoothPerformance.getTier() === 'balanced',
+  'Live Frame-Time Watchdog automatically downgrades High -> Balanced when spin FPS dips below 48 FPS'
+);
+smoothPerformance.lastDowngradeAt = -9999;
+for (let f = 0; f < 24; f++) {
+  smoothPerformance.recordFrameDelta(34, true);
+}
+assert(
+  smoothPerformance.getTier() === 'lite',
+  'Live Frame-Time Watchdog automatically downgrades Balanced -> Lite on budget/throttled hardware'
+);
+smoothPerformance.setMode('auto');
+
+// ----------------------------------------------------------------------------
 // SUMMARY REPORT
 // ----------------------------------------------------------------------------
 console.log('\n======================================================');

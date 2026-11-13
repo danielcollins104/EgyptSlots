@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 
 /**
  * 2026 Cabinet Glass & Edge Light Overlay:
@@ -6,7 +6,7 @@ import React from 'react';
  * - Addressable LED perimeter chase lighting around the reel cabinet
  * - 4x Precision 24K Gold Egyptian Filigree Corner Brackets (Scarab & Lotus)
  */
-export default function CabinetGlassOverlay({ isSpinning = false, hasWin = false }) {
+const CabinetGlassOverlay = memo(function CabinetGlassOverlay({ isSpinning = false, hasWin = false }) {
   return (
     <div className={`cabinet-glass-overlay ${isSpinning ? 'spinning' : ''} ${hasWin ? 'winning' : ''}`} style={{ pointerEvents: 'none' }}>
       {/* 1. Curved OLED Glass Glare & Chandelier Reflex */}
@@ -58,4 +58,6 @@ export default function CabinetGlassOverlay({ isSpinning = false, hasWin = false
       </div>
     </div>
   );
-}
+});
+
+export default CabinetGlassOverlay;

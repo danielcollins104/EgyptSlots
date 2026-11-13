@@ -440,15 +440,16 @@ body {
 }
 
 .ad-enter-casino-btn.ready-pulse {
+  box-shadow: 0 0 34px rgba(255, 215, 0, 0.9), 0 8px 30px rgba(0, 0, 0, 0.8);
   animation: readyPulse 2s infinite ease-in-out;
 }
 
 @keyframes readyPulse {
   0%, 100% {
-    box-shadow: 0 0 28px rgba(255, 215, 0, 0.8), 0 8px 30px rgba(0, 0, 0, 0.8);
+    transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 45px rgba(255, 215, 0, 1), 0 0 20px rgba(0, 229, 255, 0.8), 0 8px 30px rgba(0, 0, 0, 0.8);
+    transform: scale(1.025);
   }
 }
 
@@ -950,7 +951,7 @@ body {
 .cta-shimmer-layer {
   position: absolute;
   top: 0;
-  left: -120%;
+  left: 0;
   width: 65%;
   height: 100%;
   background: linear-gradient(
@@ -959,17 +960,19 @@ body {
     rgba(255, 255, 255, 0.38) 50%,
     transparent 100%
   );
+  transform: translate3d(-180%, 0, 0);
+  will-change: transform;
   animation: ctaShimmerSweep 2.6s ease-in-out infinite;
   pointer-events: none;
 }
 
 @keyframes ctaShimmerSweep {
   0% {
-    left: -120%;
+    transform: translate3d(-180%, 0, 0);
   }
   65%,
   100% {
-    left: 160%;
+    transform: translate3d(280%, 0, 0);
   }
 }
 
@@ -1438,8 +1441,10 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  isolation: isolate;
+  contain: layout style;
   transform: translateZ(0);
-  transition: transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28), filter 0.35s ease;
+  transition: transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
   z-index: 12;
 }
 
@@ -1512,13 +1517,13 @@ body {
 .anubis-guardian-column.left-col.guardian-charge-stage-2 .guardian-body-img,
 .anubis-guardian-column.left-col.guardian-charge-eyes-lit .guardian-body-img {
   animation: none !important;
-  filter: drop-shadow(0 0 22px rgba(0, 240, 255, 0.9)) drop-shadow(0 0 44px rgba(56, 189, 248, 0.6)) brightness(1.14) contrast(1.12) saturate(1.3) !important;
+  filter: drop-shadow(0 0 18px rgba(0, 240, 255, 0.88)) brightness(1.12) contrast(1.1) saturate(1.28) !important;
 }
 
 .anubis-guardian-column.right-col.guardian-charge-stage-2 .guardian-body-img,
 .anubis-guardian-column.right-col.guardian-charge-eyes-lit .guardian-body-img {
   animation: none !important;
-  filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.92)) drop-shadow(0 0 44px rgba(239, 68, 68, 0.6)) brightness(1.14) contrast(1.12) saturate(1.35) !important;
+  filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.9)) brightness(1.12) contrast(1.1) saturate(1.32) !important;
 }
 
 .guardian-charge-stage-2 .guardian-floor-runes,
@@ -1535,13 +1540,13 @@ body {
 .anubis-guardian-column.left-col.guardian-charge-stage-3 .guardian-body-img,
 .anubis-guardian-column.left-col.guardian-charge-orbs-manifest .guardian-body-img {
   animation: none !important;
-  filter: drop-shadow(0 0 34px rgba(0, 240, 255, 0.98)) drop-shadow(0 0 64px rgba(56, 189, 248, 0.78)) brightness(1.2) saturate(1.35) !important;
+  filter: drop-shadow(0 0 24px rgba(0, 240, 255, 0.95)) brightness(1.18) saturate(1.32) !important;
 }
 
 .anubis-guardian-column.right-col.guardian-charge-stage-3 .guardian-body-img,
 .anubis-guardian-column.right-col.guardian-charge-orbs-manifest .guardian-body-img {
   animation: none !important;
-  filter: drop-shadow(0 0 36px rgba(251, 191, 36, 0.98)) drop-shadow(0 0 66px rgba(245, 158, 11, 0.8)) brightness(1.2) saturate(1.38) !important;
+  filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.96)) brightness(1.18) saturate(1.35) !important;
 }
 
 .guardian-charge-stage-3 .guardian-power-orb,
@@ -1564,13 +1569,13 @@ body {
 .anubis-guardian-column.left-col.guardian-charge-stage-4 .guardian-body-img,
 .anubis-guardian-column.left-col.guardian-charge-overcharged .guardian-body-img {
   animation: none !important;
-  filter: drop-shadow(0 0 54px rgba(0, 240, 255, 1)) drop-shadow(0 0 92px rgba(56, 189, 248, 0.98)) drop-shadow(0 0 140px rgba(255, 255, 255, 0.75)) brightness(1.28) saturate(1.45) !important;
+  filter: drop-shadow(0 0 28px rgba(0, 240, 255, 1)) brightness(1.24) saturate(1.4) !important;
 }
 
 .anubis-guardian-column.right-col.guardian-charge-stage-4 .guardian-body-img,
 .anubis-guardian-column.right-col.guardian-charge-overcharged .guardian-body-img {
   animation: none !important;
-  filter: drop-shadow(0 0 54px rgba(251, 191, 36, 1)) drop-shadow(0 0 92px rgba(239, 68, 68, 0.98)) drop-shadow(0 0 140px rgba(255, 255, 255, 0.75)) brightness(1.28) saturate(1.45) !important;
+  filter: drop-shadow(0 0 28px rgba(251, 191, 36, 1)) brightness(1.24) saturate(1.4) !important;
 }
 
 /* Stage 2+ Spinning Sacred Chakra Halo Ring & Stage 4+ Crown Halo */
@@ -1657,8 +1662,8 @@ body {
 }
 
 @keyframes apexPipPulse {
-  0% { filter: brightness(1); transform: scaleY(1.2); }
-  100% { filter: brightness(1.45); transform: scaleY(1.5) scaleX(1.08); }
+  0% { opacity: 0.82; transform: scaleY(1.2); }
+  100% { opacity: 1; transform: scaleY(1.5) scaleX(1.08); }
 }
 
 .mpg-pips {
@@ -1852,85 +1857,76 @@ body {
   }
 }
 
-/* Legacy charge classes for backwards compatibility */
+/* Legacy charge classes for backwards compatibility (GPU-composited transform/opacity only) */
 .anubis-guardian-column.guardian-charge-alert {
-  filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.65)) drop-shadow(0 0 35px rgba(56, 189, 248, 0.4));
   transform: scale(1.06) translateY(-8px) translateZ(0);
-}
-
-.anubis-guardian-column.right-col.guardian-charge-alert {
-  filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.75)) drop-shadow(0 0 35px rgba(245, 158, 11, 0.45));
 }
 
 .anubis-guardian-column.guardian-charge-perched {
   transform: scale(1.14) translateY(-16px) translateZ(0);
-  filter: drop-shadow(0 0 35px rgba(0, 240, 255, 0.95)) drop-shadow(0 0 60px rgba(56, 189, 248, 0.7));
   animation: guardianPerchedCombat 0.85s ease-in-out infinite alternate;
 }
 
 .anubis-guardian-column.right-col.guardian-charge-perched {
-  filter: drop-shadow(0 0 38px rgba(251, 191, 36, 1)) drop-shadow(0 0 65px rgba(239, 68, 68, 0.75));
   animation: bastetPerchedCombat 0.85s ease-in-out infinite alternate;
 }
 
 @keyframes guardianApexOverchargeLeft {
   0% {
     transform: scale(1.22) translateY(-20px) rotate(-0.5deg);
-    filter: drop-shadow(0 0 45px rgba(0, 240, 255, 0.9)) drop-shadow(0 0 80px rgba(56, 189, 248, 0.85));
+    opacity: 0.96;
   }
   100% {
     transform: scale(1.26) translateY(-26px) rotate(0.8deg);
-    filter: drop-shadow(0 0 65px rgba(255, 255, 255, 1)) drop-shadow(0 0 110px rgba(0, 240, 255, 1));
+    opacity: 1;
   }
 }
 
 @keyframes guardianApexOverchargeRight {
   0% {
     transform: scale(1.22) translateY(-20px) rotate(0.5deg);
-    filter: drop-shadow(0 0 45px rgba(251, 191, 36, 0.9)) drop-shadow(0 0 80px rgba(239, 68, 68, 0.85));
+    opacity: 0.96;
   }
   100% {
     transform: scale(1.26) translateY(-26px) rotate(-0.8deg);
-    filter: drop-shadow(0 0 65px rgba(255, 255, 255, 1)) drop-shadow(0 0 110px rgba(251, 191, 36, 1));
+    opacity: 1;
   }
 }
 
 .guardian-apex-overcharged {
-  filter: brightness(1.25) contrast(1.15) saturate(1.4);
+  filter: brightness(1.22) contrast(1.12) saturate(1.36);
 }
 
 .anubis-guardian-column.guardian-charge-strike {
   transform: scale(1.18) translateY(-14px) translateZ(0);
-  filter: drop-shadow(0 0 60px rgba(255, 255, 255, 1)) drop-shadow(0 0 95px rgba(0, 240, 255, 1));
-  transition: transform 0.12s cubic-bezier(0.18, 0.89, 0.32, 1.28), filter 0.12s ease;
+  transition: transform 0.12s cubic-bezier(0.18, 0.89, 0.32, 1.28);
   z-index: 15;
 }
 
 .anubis-guardian-column.right-col.guardian-charge-strike {
   transform: scale(1.18) translateY(-14px) translateZ(0);
-  filter: drop-shadow(0 0 60px rgba(255, 255, 255, 1)) drop-shadow(0 0 95px rgba(251, 191, 36, 1));
   z-index: 15;
 }
 
 @keyframes guardianPerchedCombat {
   0% {
     transform: scale(1.12) translateY(-14px);
-    filter: drop-shadow(0 0 26px rgba(0, 240, 255, 0.85)) drop-shadow(0 0 45px rgba(56, 189, 248, 0.5));
+    opacity: 0.95;
   }
   100% {
     transform: scale(1.16) translateY(-20px);
-    filter: drop-shadow(0 0 44px rgba(0, 240, 255, 1)) drop-shadow(0 0 75px rgba(129, 140, 248, 0.9));
+    opacity: 1;
   }
 }
 
 @keyframes bastetPerchedCombat {
   0% {
     transform: scale(1.12) translateY(-14px);
-    filter: drop-shadow(0 0 28px rgba(251, 191, 36, 0.85)) drop-shadow(0 0 50px rgba(245, 158, 11, 0.55));
+    opacity: 0.95;
   }
   100% {
     transform: scale(1.16) translateY(-20px);
-    filter: drop-shadow(0 0 48px rgba(251, 191, 36, 1)) drop-shadow(0 0 80px rgba(239, 68, 68, 0.95));
+    opacity: 1;
   }
 }
 
@@ -1974,17 +1970,17 @@ body {
 }
 
 @keyframes martialIronAwakenLeft {
-  0% { transform: scale(1) translateY(0); filter: brightness(0.6) contrast(0.9); }
-  25% { transform: scale(0.96) translateY(-12px) rotate(-1.5deg); filter: brightness(1.4) drop-shadow(0 0 35px #00f0ff); }
-  55% { transform: scale(1.14) translateY(10px) rotate(1deg); filter: brightness(1.2) drop-shadow(0 0 50px #00f0ff); }
+  0% { transform: scale(1) translateY(0); opacity: 0.85; }
+  25% { transform: scale(0.96) translateY(-12px) rotate(-1.5deg); opacity: 1; }
+  55% { transform: scale(1.14) translateY(10px) rotate(1deg); opacity: 1; }
   75% { transform: scale(1.08) translateY(2px) rotate(0deg); }
   100% { transform: scale(1.05) translateY(-4px); }
 }
 
 @keyframes martialIronAwakenRight {
-  0% { transform: scale(1) translateY(0); filter: brightness(0.6) contrast(0.9); }
-  25% { transform: scale(0.96) translateY(-12px) rotate(1.5deg); filter: brightness(1.4) drop-shadow(0 0 35px #fbbf24); }
-  55% { transform: scale(1.14) translateY(10px) rotate(-1deg); filter: brightness(1.2) drop-shadow(0 0 50px #fbbf24); }
+  0% { transform: scale(1) translateY(0); opacity: 0.85; }
+  25% { transform: scale(0.96) translateY(-12px) rotate(1.5deg); opacity: 1; }
+  55% { transform: scale(1.14) translateY(10px) rotate(-1deg); opacity: 1; }
   75% { transform: scale(1.08) translateY(2px) rotate(0deg); }
   100% { transform: scale(1.05) translateY(-4px); }
 }
@@ -1999,16 +1995,16 @@ body {
 
 @keyframes martialDragonPalmLeft {
   0% { transform: scale(1.05) translateY(-4px); }
-  30% { transform: scale(0.98) translateX(-18px) translateY(-6px) rotate(-3deg); filter: drop-shadow(0 0 25px #00f0ff); }
-  55% { transform: scale(1.18) translateX(24px) translateY(-14px) rotate(2deg); filter: drop-shadow(0 0 60px #00f0ff) drop-shadow(0 0 90px #ffffff); }
+  30% { transform: scale(0.98) translateX(-18px) translateY(-6px) rotate(-3deg); }
+  55% { transform: scale(1.18) translateX(24px) translateY(-14px) rotate(2deg); }
   80% { transform: scale(1.12) translateX(12px) translateY(-10px) rotate(0.5deg); }
   100% { transform: scale(1.1) translateX(0) translateY(-8px); }
 }
 
 @keyframes martialDragonPalmRight {
   0% { transform: scale(1.05) translateY(-4px); }
-  30% { transform: scale(0.98) translateX(18px) translateY(-6px) rotate(3deg); filter: drop-shadow(0 0 25px #fbbf24); }
-  55% { transform: scale(1.18) translateX(-24px) translateY(-14px) rotate(-2deg); filter: drop-shadow(0 0 60px #fbbf24) drop-shadow(0 0 90px #ffffff); }
+  30% { transform: scale(0.98) translateX(18px) translateY(-6px) rotate(3deg); }
+  55% { transform: scale(1.18) translateX(-24px) translateY(-14px) rotate(-2deg); }
   80% { transform: scale(1.12) translateX(-12px) translateY(-10px) rotate(-0.5deg); }
   100% { transform: scale(1.1) translateX(0) translateY(-8px); }
 }
@@ -2023,17 +2019,17 @@ body {
 
 @keyframes martialShaolinFlourishLeft {
   0% { transform: scale(1.1) translateY(-8px) rotate(0deg); }
-  25% { transform: scale(1.22) translateY(-26px) rotate(-14deg); filter: drop-shadow(0 0 50px #00f0ff); }
-  50% { transform: scale(1.16) translateY(-18px) rotate(12deg); filter: drop-shadow(0 0 70px #38bdf8); }
-  75% { transform: scale(1.2) translateY(8px) rotate(-2deg); filter: drop-shadow(0 0 85px #00f0ff); }
+  25% { transform: scale(1.22) translateY(-26px) rotate(-14deg); }
+  50% { transform: scale(1.16) translateY(-18px) rotate(12deg); }
+  75% { transform: scale(1.2) translateY(8px) rotate(-2deg); }
   100% { transform: scale(1.16) translateY(-16px) rotate(0deg); }
 }
 
 @keyframes martialShaolinFlourishRight {
   0% { transform: scale(1.1) translateY(-8px) rotate(0deg); }
-  25% { transform: scale(1.22) translateY(-26px) rotate(14deg); filter: drop-shadow(0 0 50px #fbbf24); }
-  50% { transform: scale(1.16) translateY(-18px) rotate(-12deg); filter: drop-shadow(0 0 70px #ef4444); }
-  75% { transform: scale(1.2) translateY(8px) rotate(2deg); filter: drop-shadow(0 0 85px #fbbf24); }
+  25% { transform: scale(1.22) translateY(-26px) rotate(14deg); }
+  50% { transform: scale(1.16) translateY(-18px) rotate(-12deg); }
+  75% { transform: scale(1.2) translateY(8px) rotate(2deg); }
   100% { transform: scale(1.16) translateY(-16px) rotate(0deg); }
 }
 
@@ -2047,18 +2043,18 @@ body {
 
 @keyframes martialApexKaiLeft {
   0% { transform: scale(1.16) translateY(-16px); }
-  20% { transform: scale(1.05) translateY(12px) rotate(2deg); filter: drop-shadow(0 0 30px #00f0ff); }
-  45% { transform: scale(1.32) translateY(-32px) rotate(-2deg); filter: drop-shadow(0 0 95px #00f0ff) drop-shadow(0 0 140px #ffffff); }
-  65% { transform: scale(1.28) translateY(-24px) rotate(1deg); filter: drop-shadow(0 0 110px #38bdf8); }
+  20% { transform: scale(1.05) translateY(12px) rotate(2deg); }
+  45% { transform: scale(1.32) translateY(-32px) rotate(-2deg); }
+  65% { transform: scale(1.28) translateY(-24px) rotate(1deg); }
   85% { transform: scale(1.25) translateY(-20px) rotate(-0.5deg); }
   100% { transform: scale(1.24) translateY(-22px) rotate(0deg); }
 }
 
 @keyframes martialApexKaiRight {
   0% { transform: scale(1.16) translateY(-16px); }
-  20% { transform: scale(1.05) translateY(12px) rotate(-2deg); filter: drop-shadow(0 0 30px #fbbf24); }
-  45% { transform: scale(1.32) translateY(-32px) rotate(2deg); filter: drop-shadow(0 0 95px #fbbf24) drop-shadow(0 0 140px #ffffff); }
-  65% { transform: scale(1.28) translateY(-24px) rotate(-1deg); filter: drop-shadow(0 0 110px #ef4444); }
+  20% { transform: scale(1.05) translateY(12px) rotate(-2deg); }
+  45% { transform: scale(1.32) translateY(-32px) rotate(2deg); }
+  65% { transform: scale(1.28) translateY(-24px) rotate(-1deg); }
   85% { transform: scale(1.25) translateY(-20px) rotate(0.5deg); }
   100% { transform: scale(1.24) translateY(-22px) rotate(0deg); }
 }
@@ -2202,80 +2198,59 @@ body {
   }
 }
 
-/* Hypnotic Auric Luminescence Pulse: Rhythmic glowing wave through deity bodies at Stage 1 */
+/* Hypnotic Auric Luminescence Pulse: Compositor-only breathing motion (zero per-frame drop-shadow re-rasterization!) */
 .left-col .guardian-body-img {
-  will-change: filter;
+  will-change: transform;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.88)) drop-shadow(0 0 14px rgba(0, 229, 255, 0.38));
 }
 
 .right-col .guardian-body-img {
-  will-change: filter;
+  will-change: transform;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.88)) drop-shadow(0 0 14px rgba(251, 191, 36, 0.42));
 }
 
 @keyframes hypnoticLuminescenceAnubis {
-  0% {
-    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85))
-            drop-shadow(0 0 12px rgba(0, 229, 255, 0.28))
-            brightness(1.0)
-            contrast(1.05);
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.97;
   }
   50% {
-    filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.95))
-            drop-shadow(0 0 28px rgba(0, 229, 255, 0.72))
-            drop-shadow(0 0 52px rgba(37, 99, 235, 0.45))
-            brightness(1.14)
-            contrast(1.15);
-  }
-  100% {
-    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85))
-            drop-shadow(0 0 12px rgba(0, 229, 255, 0.28))
-            brightness(1.0)
-            contrast(1.05);
+    transform: translate3d(0, -3px, 0) scale(1.015);
+    opacity: 1;
   }
 }
 
 @keyframes hypnoticLuminescenceBastet {
-  0% {
-    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85))
-            drop-shadow(0 0 12px rgba(245, 158, 11, 0.32))
-            brightness(1.04)
-            saturate(1.18);
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.97;
   }
   50% {
-    filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.95))
-            drop-shadow(0 0 30px rgba(251, 191, 36, 0.78))
-            drop-shadow(0 0 54px rgba(239, 68, 68, 0.42))
-            brightness(1.18)
-            saturate(1.32);
-  }
-  100% {
-    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85))
-            drop-shadow(0 0 12px rgba(245, 158, 11, 0.32))
-            brightness(1.04)
-            saturate(1.18);
+    transform: translate3d(0, -3px, 0) scale(1.015);
+    opacity: 1;
   }
 }
 
-/* Living Ambient Auric Corona (Hypnotic Swelling Corona Behind Each Deity) */
+/* Living Ambient Auric Corona (Soft Radial Gradient — Zero Gaussian Blur Pass!) */
 .guardian-living-aura {
   position: absolute;
-  inset: -14%;
+  inset: -18%;
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
   mix-blend-mode: screen;
-  filter: blur(18px);
-  opacity: 0.55;
+  opacity: 0.58;
   will-change: transform, opacity;
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 .anubis-living-aura {
-  background: radial-gradient(circle, rgba(0, 240, 255, 0.45) 8%, rgba(59, 130, 246, 0.22) 48%, transparent 75%);
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.42) 0%, rgba(59, 130, 246, 0.2) 42%, rgba(59, 130, 246, 0.06) 62%, transparent 76%);
   animation: hypnoticAuraAnubis 4.5s ease-in-out infinite, auraCoronaSpin 16s linear infinite;
 }
 
 .bastet-living-aura {
-  background: radial-gradient(circle, rgba(251, 191, 36, 0.50) 8%, rgba(239, 68, 68, 0.25) 48%, transparent 75%);
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.46) 0%, rgba(239, 68, 68, 0.22) 42%, rgba(239, 68, 68, 0.06) 62%, transparent 76%);
   animation: hypnoticAuraBastet 4.9s ease-in-out infinite, auraCoronaSpin 18s linear infinite reverse;
   animation-delay: 1.1s, 0s;
 }
@@ -2300,13 +2275,11 @@ body {
 
 .guardian-charge-alert .guardian-living-aura {
   opacity: 0.9;
-  filter: blur(18px);
   transform: scale(1.12);
 }
 
 .guardian-charge-perched .guardian-living-aura {
   opacity: 1;
-  filter: blur(24px);
   transform: scale(1.28);
 }
 
@@ -2379,9 +2352,9 @@ body {
 }
 
 @keyframes eyeGlowPulse {
-  0% { opacity: 0.75; filter: brightness(1); }
-  50% { opacity: 1; filter: brightness(1.35); }
-  100% { opacity: 0.85; filter: brightness(1.1); }
+  0% { opacity: 0.74; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0.84; transform: scale(1); }
 }
 
 /* Mystical Swirling Hand Power Orbs */
@@ -3612,8 +3585,8 @@ body {
 }
 
 @keyframes ultraCrestPulse {
-  0% { transform: scale(1); filter: drop-shadow(0 0 22px #a855f7) drop-shadow(0 0 32px #00e5ff) brightness(1.12); }
-  100% { transform: scale(1.055); filter: drop-shadow(0 0 36px #e879f9) drop-shadow(0 0 48px #38bdf8) brightness(1.32); }
+  0% { transform: scale(1); opacity: 0.94; }
+  100% { transform: scale(1.055); opacity: 1; }
 }
 
 .bigwin-neon-mega-img.crest-mega {
@@ -3837,12 +3810,12 @@ body {
 
 @keyframes smoothGoldenPulse {
   0% {
-    transform: translate3d(0, 0, 0) scale(0.97);
-    filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.78));
+    transform: translate3d(0, 0, 0) scale(0.98);
+    opacity: 0.94;
   }
   100% {
-    transform: translate3d(0, 0, 0) scale(1.04);
-    filter: drop-shadow(0 0 34px rgba(251, 191, 36, 0.98)) drop-shadow(0 0 16px rgba(0, 229, 255, 0.65));
+    transform: translate3d(0, 0, 0) scale(1.03);
+    opacity: 1;
   }
 }
 
@@ -4441,13 +4414,11 @@ body {
 @keyframes meterFullGlowPulse {
   0% {
     transform: scale(1);
-    border-color: #f59e0b;
-    box-shadow: 0 0 18px rgba(245, 158, 11, 0.6), 0 0 30px rgba(16, 185, 129, 0.4);
+    opacity: 0.92;
   }
   100% {
     transform: scale(1.025);
-    border-color: #fef08a;
-    box-shadow: 0 0 32px rgba(254, 240, 138, 0.95), 0 0 55px rgba(16, 185, 129, 0.85);
+    opacity: 1;
   }
 }
 
@@ -4601,7 +4572,7 @@ body {
 
 @keyframes haloBreathe {
   0% { transform: scale(0.92); opacity: 0.7; }
-  100% { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 16px #10b981); }
+  100% { transform: scale(1.18); opacity: 1; }
 }
 
 .collector-laser-ring {
@@ -5707,10 +5678,10 @@ body {
 
 @keyframes subtleStorePulse {
   0%, 100% {
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+    transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 22px rgba(251, 191, 36, 0.75), 0 0 6px #fff;
+    transform: scale(1.025);
   }
 }
 
@@ -7856,12 +7827,12 @@ body {
 
 @keyframes pulseWinSparks {
   0% {
-    transform: scale(0.9);
-    filter: brightness(1) drop-shadow(0 0 10px #fbbf24);
+    transform: scale(0.92);
+    opacity: 0.72;
   }
   100% {
-    transform: scale(1.1);
-    filter: brightness(1.3) drop-shadow(0 0 24px #f59e0b);
+    transform: scale(1.08);
+    opacity: 1;
   }
 }
 
@@ -7875,8 +7846,9 @@ body {
 
 .splash-coin {
   position: absolute;
+  bottom: -24px;
   font-size: 1.5rem;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+  will-change: transform, opacity;
   animation: floatUpCoin 2.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
 }
 
@@ -7891,21 +7863,19 @@ body {
 
 @keyframes floatUpCoin {
   0% {
-    bottom: -30px;
     opacity: 0;
-    transform: scale(0.6) rotate(0deg);
+    transform: translate3d(0, 0, 0) scale(0.6) rotate(0deg);
   }
   20% {
     opacity: 1;
-    transform: scale(1.1) rotate(45deg);
+    transform: translate3d(0, -84px, 0) scale(1.1) rotate(45deg);
   }
   80% {
     opacity: 0.9;
   }
   100% {
-    bottom: 110%;
     opacity: 0;
-    transform: scale(0.8) rotate(360deg);
+    transform: translate3d(0, -420px, 0) scale(0.8) rotate(360deg);
   }
 }
 
@@ -7956,8 +7926,8 @@ body {
 }
 
 @keyframes ultraPlaquePulse {
-  0% { transform: scale(1); filter: brightness(1); }
-  100% { transform: scale(1.025); filter: brightness(1.2); }
+  0% { transform: scale(1); opacity: 0.95; }
+  100% { transform: scale(1.025); opacity: 1; }
 }
 
 .tier-mega .win-splash-plaque {
@@ -8236,11 +8206,13 @@ body {
 
 .fs-ember {
   position: absolute;
+  bottom: -10px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #f59e0b;
-  box-shadow: 0 0 10px #fbbf24, 0 0 20px #ef4444;
+  box-shadow: 0 0 10px #fbbf24;
+  will-change: transform, opacity;
   animation: floatEmber 3.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
 }
 
@@ -8259,22 +8231,20 @@ body {
 
 @keyframes floatEmber {
   0% {
-    bottom: -10px;
     opacity: 0;
-    transform: scale(0.4) translateX(0);
+    transform: translate3d(0, 0, 0) scale(0.4);
   }
   25% {
     opacity: 1;
-    transform: scale(1.2) translateX(15px);
+    transform: translate3d(15px, -25vh, 0) scale(1.2);
   }
   75% {
     opacity: 0.8;
-    transform: scale(0.9) translateX(-15px);
+    transform: translate3d(-15px, -70vh, 0) scale(0.9);
   }
   100% {
-    bottom: 105%;
     opacity: 0;
-    transform: scale(0.4) translateX(25px);
+    transform: translate3d(25px, -98vh, 0) scale(0.4);
   }
 }
 
@@ -8303,8 +8273,8 @@ body {
 }
 
 @keyframes pulseFlame {
-  0% { transform: scale(0.9); }
-  100% { transform: scale(1.25); filter: drop-shadow(0 0 18px #ef4444); }
+  0% { transform: scale(0.92); opacity: 0.85; }
+  100% { transform: scale(1.22); opacity: 1; }
 }
 
 .fs-title-group {
@@ -8421,7 +8391,7 @@ body {
 
 @keyframes pulseMultBadge {
   0% { transform: scale(0.97); }
-  100% { transform: scale(1.05); box-shadow: 0 0 30px rgba(251, 191, 36, 0.9); }
+  100% { transform: scale(1.05); }
 }
 
 .zap-icon {
@@ -11972,17 +11942,19 @@ body {
   border-color: #ffd700 !important;
 }
 
-/* Cabinet Flow Momentum Aura (Radiates when rhythmic cadence >= 3 spins) */
-.reel-cabinet-box.flow-momentum-active {
+/* Cabinet Flow Momentum Aura (GPU-composited on backdrop glow — NEVER puts drop-shadow on .reel-cabinet-box!) */
+.reel-cabinet-box.flow-momentum-active .psd-reel-glow {
   animation: cabinetFlowAuraPulse 2.2s ease-in-out infinite alternate;
 }
 
 @keyframes cabinetFlowAuraPulse {
   0% {
-    filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.35)) drop-shadow(0 0 35px rgba(255, 215, 0, 0.25));
+    opacity: 0.76;
+    transform: scale(1);
   }
   100% {
-    filter: drop-shadow(0 0 28px rgba(0, 229, 255, 0.6)) drop-shadow(0 0 50px rgba(255, 215, 0, 0.45));
+    opacity: 1;
+    transform: scale(1.03);
   }
 }
 
@@ -12610,15 +12582,14 @@ body {
 .dc-pay-btn.urgent-refill-pulse {
   animation: urgentRefillGlow 1.6s infinite ease-in-out;
   border-color: #ffd700 !important;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.7), inset 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
 @keyframes urgentRefillGlow {
   0%, 100% {
-    box-shadow: 0 0 12px rgba(255, 215, 0, 0.4), inset 0 0 8px rgba(255, 215, 0, 0.2);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 24px rgba(255, 215, 0, 0.9), inset 0 0 14px rgba(255, 215, 0, 0.4);
     transform: scale(1.03);
   }
 }
@@ -13695,8 +13666,7 @@ body {
   right: 0;
   height: 4px;
   background: linear-gradient(90deg, #00f0ff, #b026ff, #ffd700, #00f0ff);
-  background-size: 200% 100%;
-  animation: ctaShimmerSweep 3s linear infinite;
+  animation: ledChase 3s ease-in-out infinite;
 }
 
 .auth-modal-header {
@@ -14477,13 +14447,13 @@ body {
 }
 
 @keyframes pillarRunicBreathe {
-  0% { opacity: 0.35; filter: brightness(0.9); }
-  100% { opacity: 0.85; filter: brightness(1.25); }
+  0% { opacity: 0.34; }
+  100% { opacity: 0.88; }
 }
 
 @keyframes pillarWinBurst {
-  0% { opacity: 0.6; filter: brightness(1.1); }
-  100% { opacity: 1.0; filter: brightness(1.5); }
+  0% { opacity: 0.62; }
+  100% { opacity: 1.0; }
 }
 
 /* 3. 2026 Progressive Jackpot Display Marquee Strip */
@@ -14672,7 +14642,7 @@ body {
   background-size: 300% 100%;
   animation: ledChase 4s linear infinite;
   opacity: 0.65;
-  will-change: background-position;
+  will-change: opacity;
 }
 
 .cabinet-glass-overlay.spinning .led-segment {
@@ -14693,14 +14663,13 @@ body {
 .led-right { top: 0; bottom: 0; right: 0; width: 2px; background: linear-gradient(180deg, #38bdf8, #fbbf24, #ec4899, #38bdf8); background-size: 100% 300%; }
 
 @keyframes ledChase {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 300% 0%; }
+  0%, 100% { opacity: 0.48; }
+  50% { opacity: 0.92; }
 }
 
 @keyframes ledWinStrobe {
-  0% { background-position: 0% 0%; filter: brightness(1.2) drop-shadow(0 0 6px #ffd700); }
-  50% { background-position: 150% 0%; filter: brightness(1.8) drop-shadow(0 0 14px #ff00ff); }
-  100% { background-position: 300% 0%; filter: brightness(1.2) drop-shadow(0 0 6px #ffd700); }
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
 }
 
 /* 24K Gold Egyptian Filigree Corner Brackets */
@@ -19152,7 +19121,7 @@ body {
 .sc-promo-hero-shimmer {
   position: absolute;
   top: 0;
-  left: -120%;
+  left: 0;
   width: 65%;
   height: 100%;
   background: linear-gradient(
@@ -19161,14 +19130,15 @@ body {
     rgba(254, 240, 138, 0.16) 50%,
     transparent 100%
   );
-  transform: skewX(-24deg);
+  transform: translate3d(-180%, 0, 0) skewX(-24deg);
+  will-change: transform;
   animation: storeHeroSweep 5.5s ease-in-out infinite;
   pointer-events: none;
 }
 
 @keyframes storeHeroSweep {
-  0% { left: -120%; }
-  45%, 100% { left: 160%; }
+  0% { transform: translate3d(-180%, 0, 0) skewX(-24deg); }
+  45%, 100% { transform: translate3d(280%, 0, 0) skewX(-24deg); }
 }
 
 .sc-promo-hero-top-row {
@@ -19976,10 +19946,10 @@ body {
 
 @keyframes autoPlayPulseGlow {
   0%, 100% {
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.45), 0 0 22px rgba(250, 204, 21, 0.25);
+    transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.8), 0 0 32px rgba(250, 204, 21, 0.5);
+    transform: scale(1.03);
   }
 }
 
@@ -22594,42 +22564,41 @@ button:disabled,
 @keyframes fsTileExplodeSupernova {
   0% {
     transform: scale(1.06);
-    filter: brightness(1.3);
+    opacity: 1;
   }
   45% {
     transform: scale(1.28) rotate(4deg);
-    filter: brightness(2.4) saturate(1.8) drop-shadow(0 0 24px #ffd700);
+    opacity: 1;
   }
   100% {
     transform: scale(0.18) rotate(-12deg);
-    opacity: 0.15;
-    filter: brightness(3);
+    opacity: 0.12;
   }
 }
 
 .fs-symbol-tile.fs-tile-exploding {
   z-index: 14;
+  will-change: transform, opacity;
   animation: fsTileExplodeSupernova 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
 }
 
 @keyframes fsTileCascadeDropIn {
   0% {
-    transform: translateY(-65%) scale(0.88);
+    transform: translate3d(0, -65%, 0) scale(0.88);
     opacity: 0.25;
-    filter: brightness(1.8);
   }
   70% {
-    transform: translateY(6%) scale(1.04);
+    transform: translate3d(0, 6%, 0) scale(1.04);
     opacity: 1;
   }
   100% {
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
     opacity: 1;
-    filter: brightness(1.1);
   }
 }
 
 .fs-symbol-tile.fs-tile-cascaded-in {
+  will-change: transform, opacity;
   animation: fsTileCascadeDropIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
@@ -22685,11 +22654,9 @@ button:disabled,
 @keyframes fsSubBonusPulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 22px rgba(255, 215, 0, 0.75), 0 0 44px rgba(244, 63, 94, 0.5);
   }
   50% {
     transform: scale(1.03);
-    box-shadow: 0 0 34px rgba(0, 229, 255, 0.95), 0 0 64px rgba(255, 215, 0, 0.85);
   }
 }
 
@@ -22703,6 +22670,7 @@ button:disabled,
   border-radius: 999px;
   background: linear-gradient(90deg, #7f1d1d 0%, #b45309 50%, #4c1d95 100%);
   border: 2px solid #fde047;
+  box-shadow: 0 0 28px rgba(255, 215, 0, 0.82), 0 0 48px rgba(244, 63, 94, 0.55);
   color: #ffffff;
   animation: fsSubBonusPulse 0.9s ease-in-out infinite;
   z-index: 25;
@@ -22738,4 +22706,198 @@ button:disabled,
   border-color: #fef08a !important;
   box-shadow: 0 0 22px rgba(251, 191, 36, 0.85) !important;
 }
+
+/* ============================================================================
+   SMOOTH PERFORMANCE & ADAPTIVE GPU COMPOSITOR CONTAINMENT ENGINE
+   Ensures locked 60/120 FPS across budget phones, tablets, foldables & desktops
+   ============================================================================ */
+
+/* 1. Layout & Style Containment: Isolates HUD updates from triggering full-page reflows */
+.dc-casino-topbar,
+.casino-jackpots-strip,
+.cabinet-bonus-and-win-bar,
+.cabinet-status-pediment,
+.psd-bottom-control-bar,
+.mobile-floating-control-dock,
+.mpg-companions-strip {
+  contain: layout style;
+}
+
+.phaser-reel-canvas-host {
+  contain: strict;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.jackpot-amount,
+.mobile-bal-number,
+.mobile-dock-val,
+.mobile-dock-win-val,
+.topbar-balance-val {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Promote continuously animated inline SVGs to GPU layers so Blink never runs main-thread RecalcStyle per frame */
+.music-disc-icon.spinning,
+.spin-btn-icon,
+.dock-spin-animated,
+.flow-badge-zap,
+.flame-icon,
+.gift-bounce-icon,
+.jp-crown-spin {
+  will-change: transform;
+}
+
+/* 2. Spin-Priority GPU Guard: Pauses peripheral non-essential CSS loops while reels spin */
+html.is-reel-spinning .pillar-specular-sweep,
+html.is-reel-spinning .pillar-neon-inlay-pulse,
+html.is-reel-spinning .jackpot-shimmer-sweep,
+html.is-reel-spinning .anubis-guardian-figure,
+html.is-reel-spinning .guardian-body-img,
+html.is-reel-spinning .guardian-living-aura,
+html.is-reel-spinning .anubis-living-aura,
+html.is-reel-spinning .bastet-living-aura,
+html.is-reel-spinning .guardian-divine-eyes,
+html.is-reel-spinning .anubis-divine-eyes,
+html.is-reel-spinning .bastet-divine-eyes,
+html.is-reel-spinning .guardian-power-orb,
+html.is-reel-spinning .anubis-power-orb,
+html.is-reel-spinning .bastet-power-orb,
+html.is-reel-spinning .guardian-blue-aura,
+html.is-reel-spinning .guardian-blink-overlay,
+html.is-reel-spinning .guardian-hand-flame,
+html.is-reel-spinning .guardian-charged-crackling-aura,
+html.is-reel-spinning .guardian-floor-runes,
+html.is-reel-spinning .guardian-stage-2-halo-ring,
+html.is-reel-spinning .guardian-stage-4-crown-halo,
+html.is-reel-spinning .guardian-stage-pip,
+html.is-reel-spinning .led-segment,
+html.is-reel-spinning .ambient-sparks,
+html.is-reel-spinning .psd-spin-button::before,
+html.is-reel-spinning .psd-spin-button::after,
+html.is-reel-spinning .spin-btn-glow,
+html.is-reel-spinning .music-disc-icon.spinning,
+html.is-reel-spinning .flame-icon,
+html.is-reel-spinning .gift-bounce-icon,
+html.is-reel-spinning .flow-badge-zap,
+html.is-reel-spinning .jp-crown-spin,
+html.is-reel-spinning .sc-live-dot,
+html.is-reel-spinning .status-dot-pulse,
+html.is-reel-spinning .dc-pay-btn.buy-gc-btn,
+html.is-reel-spinning .dc-pay-btn.urgent-refill-pulse,
+html.is-reel-spinning .vip-flash-deal-btn,
+html.is-reel-spinning .scarab-collector-meter.full-celebration {
+  animation-play-state: paused !important;
+}
+
+/* 3. Balanced Tier (Standard Mobile / Laptops): Trims heavy full-viewport blend & blur layers */
+html[data-perf-tier="balanced"] .ambient-sparks {
+  display: none !important;
+}
+
+html[data-perf-tier="balanced"] .psd-reel-glow {
+  opacity: 0.65;
+  animation: none !important;
+}
+
+html[data-perf-tier="balanced"] .anubis-guardian-column .guardian-body-img,
+html[data-perf-tier="balanced"] .anubis-guardian-column[class*="guardian-charge-"] .guardian-body-img {
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.85)) !important;
+}
+
+/* 4. Lite Tier (Budget Android / Older iPhones / Software Rasterizer / Auto-Downgrade Guard):
+      Eliminates costly backdrop-filter blurs, CSS filters, blend modes & continuous peripheral loops */
+html[data-perf-tier="lite"] .ambient-sparks,
+html[data-perf-tier="lite"] .ambient-atmosphere-canvas,
+html[data-perf-tier="lite"] .pillar-specular-sweep,
+html[data-perf-tier="lite"] .jackpot-shimmer-sweep,
+html[data-perf-tier="lite"] .cabinet-oled-glare,
+html[data-perf-tier="lite"] .cabinet-glass-glare,
+html[data-perf-tier="lite"] .psd-reel-glow,
+html[data-perf-tier="lite"] .guardian-living-aura,
+html[data-perf-tier="lite"] .anubis-living-aura,
+html[data-perf-tier="lite"] .bastet-living-aura,
+html[data-perf-tier="lite"] .guardian-charged-crackling-aura,
+html[data-perf-tier="lite"] .guardian-blue-aura {
+  display: none !important;
+}
+
+html[data-perf-tier="lite"] .dc-casino-topbar,
+html[data-perf-tier="lite"] .mobile-floating-control-dock,
+html[data-perf-tier="lite"] .mobile-menu-drawer,
+html[data-perf-tier="lite"] .jackpot-tier-pill,
+html[data-perf-tier="lite"] .mpg-companion-pill,
+html[data-perf-tier="lite"] .paytable-overlay,
+html[data-perf-tier="lite"] .dc-auth-overlay,
+html[data-perf-tier="lite"] .payment-modal-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-perf-tier="lite"] .anubis-guardian-figure,
+html[data-perf-tier="lite"] .anubis-guardian-column .guardian-body-img,
+html[data-perf-tier="lite"] .anubis-guardian-column[class*="guardian-charge-"] .guardian-body-img,
+html[data-perf-tier="lite"] .guardian-divine-eyes,
+html[data-perf-tier="lite"] .anubis-divine-eyes,
+html[data-perf-tier="lite"] .bastet-divine-eyes,
+html[data-perf-tier="lite"] .guardian-power-orb,
+html[data-perf-tier="lite"] .anubis-power-orb,
+html[data-perf-tier="lite"] .bastet-power-orb,
+html[data-perf-tier="lite"] .guardian-blink-overlay,
+html[data-perf-tier="lite"] .guardian-hand-flame,
+html[data-perf-tier="lite"] .guardian-floor-runes,
+html[data-perf-tier="lite"] .guardian-stage-2-halo-ring,
+html[data-perf-tier="lite"] .guardian-stage-4-crown-halo,
+html[data-perf-tier="lite"] .guardian-stage-pip,
+html[data-perf-tier="lite"] .pillar-neon-inlay-pulse,
+html[data-perf-tier="lite"] .led-strip,
+html[data-perf-tier="lite"] .led-segment,
+html[data-perf-tier="lite"] .psd-spin-button::before,
+html[data-perf-tier="lite"] .psd-spin-button::after,
+html[data-perf-tier="lite"] .spin-btn-glow,
+html[data-perf-tier="lite"] .music-disc-icon.spinning,
+html[data-perf-tier="lite"] .flame-icon,
+html[data-perf-tier="lite"] .gift-bounce-icon,
+html[data-perf-tier="lite"] .flow-badge-zap,
+html[data-perf-tier="lite"] .jp-crown-spin,
+html[data-perf-tier="lite"] .sc-live-dot,
+html[data-perf-tier="lite"] .status-dot-pulse,
+html[data-perf-tier="lite"] .dc-pay-btn.buy-gc-btn,
+html[data-perf-tier="lite"] .dc-pay-btn.urgent-refill-pulse,
+html[data-perf-tier="lite"] .vip-flash-deal-btn,
+html[data-perf-tier="lite"] .scarab-collector-meter.full-celebration {
+  animation: none !important;
+}
+
+html[data-perf-tier="lite"] .anubis-guardian-column .guardian-body-img,
+html[data-perf-tier="lite"] .anubis-guardian-column[class*="guardian-charge-"] .guardian-body-img,
+html[data-perf-tier="lite"] .psd-reel-frame-img,
+html[data-perf-tier="lite"] .neon-temple-bg,
+html[data-perf-tier="lite"] .neon-cabinet-filter,
+html[data-perf-tier="lite"] .neon-frame-filter,
+html[data-perf-tier="lite"] .neon-char-filter,
+html[data-perf-tier="lite"] .neon-fx-shift,
+html[data-perf-tier="lite"] .neon-ui-filter,
+html[data-perf-tier="lite"] .neon-spin-filter,
+html[data-perf-tier="lite"] .neon-label-glow,
+html[data-perf-tier="lite"] .neon-psd-digits,
+html[data-perf-tier="lite"] .neon-psd-digits img,
+html[data-perf-tier="lite"] .cabinet-corner-bracket {
+  filter: none !important;
+  will-change: auto !important;
+}
+
+html[data-perf-tier="lite"] .guardian-divine-eyes,
+html[data-perf-tier="lite"] .anubis-divine-eyes,
+html[data-perf-tier="lite"] .bastet-divine-eyes,
+html[data-perf-tier="lite"] .guardian-power-orb,
+html[data-perf-tier="lite"] .anubis-power-orb,
+html[data-perf-tier="lite"] .bastet-power-orb,
+html[data-perf-tier="lite"] .guardian-blink-overlay,
+html[data-perf-tier="lite"] .guardian-hand-flame,
+html[data-perf-tier="lite"] .guardian-floor-runes,
+html[data-perf-tier="lite"] .pillar-neon-inlay-pulse {
+  mix-blend-mode: normal !important;
+}
+
 
