@@ -22754,3 +22754,59 @@ html[data-perf-tier="lite"] .pillar-neon-inlay-pulse {
 }
 
 
+
+
+/* ==========================================================================
+   LEGAL & COMPLIANCE FOOTER — Sweepstakes Rules (AMOE) one tap away
+   ========================================================================== */
+.dc-legal-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background: rgba(8, 6, 18, 0.88);
+  border-top: 1px solid rgba(139, 92, 246, 0.25);
+  backdrop-filter: blur(6px);
+  font-size: 0.68rem;
+  color: #a5b4fc;
+}
+.dc-legal-brand { opacity: 0.75; letter-spacing: 0.04em; }
+.dc-legal-links { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.dc-legal-links button {
+  background: transparent;
+  border: none;
+  color: #c7d2fe;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.dc-legal-links button:hover { background: rgba(139, 92, 246, 0.18); color: #ffffff; }
+.dc-legal-amoe {
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+/* Mobile: collapse to a single-row, tighter strip above the dock */
+@media (max-width: 768px) {
+  .dc-legal-footer {
+    gap: 6px;
+    padding: 4px 8px;
+    bottom: 64px; /* sit above the mobile dock nav */
+    font-size: 0.6rem;
+  }
+  .dc-legal-brand { display: none; }
+  .dc-legal-links button { padding: 2px 5px; }
+  .dc-legal-amoe { font-size: 0.58rem; }
+}

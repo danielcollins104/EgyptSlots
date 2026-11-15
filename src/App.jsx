@@ -85,6 +85,7 @@ const AdminPayoutCenter = lazy(() => import('./components/AdminPayoutCenter'));
 const LowBalanceOfferModal = lazy(() => import('./components/LowBalanceOfferModal'));
 const VipPromoAdModal = lazy(() => import('./components/VipPromoAdModal'));
 const ResponsibleGamingModal = lazy(() => import('./components/ResponsibleGamingModal'));
+const PrivacyTermsModal = lazy(() => import('./components/PrivacyTermsModal'));
 const BigWinPopup = lazy(() => import('./components/BigWinPopup'));
 const PaytableModal = lazy(loadPaytableModal);
 const BonusGameModal = lazy(() => import('./components/BonusGameModal'));
@@ -827,6 +828,13 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [responsibleGamingOpen, setResponsibleGamingOpen] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalInitialSection, setLegalInitialSection] = useState('sweeps'); // 'sweeps' | 'privacy' | 'terms' | 'liquidity'
+  const openLegalSection = useCallback((section) => {
+    setLegalInitialSection(section);
+    setLegalModalOpen(true);
+    soundEngine.playButtonClick(600);
+  }, []);
   const [paytableInitialTab, setPaytableInitialTab] = useState('symbols');
 
   const isAnyModalOrBonusActive = Boolean(
@@ -5582,6 +5590,15 @@ export default function App() {
           />
         )}
 
+        {/* Legal & Compliance: Sweepstakes Rules (AMOE), Privacy, Terms — footer-linked */}
+        {legalModalOpen && (
+          <PrivacyTermsModal
+            isOpen={legalModalOpen}
+            onClose={() => setLegalModalOpen(false)}
+            initialSection={legalInitialSection}
+          />
+        )}
+
         {/* Non-Disruptive Smart Low Balance Offer / Rescue Modal */}
         {lowBalanceOfferOpen && (
           <LowBalanceOfferModal
@@ -5950,6 +5967,28 @@ export default function App() {
           </div>
         </div>
       </nav>
+
+      {/* Legal & Compliance Footer — Sweepstakes Rules (AMOE / No Purchase Necessary) always one tap away */}
+      <footer className="dc-legal-footer" aria-label="Legal and compliance links">
+        <span className="dc-legal-brand">&copy; {new Date().getFullYear()} DC Enterprises</span>
+        <nav className="dc-legal-links">
+          <button type="button" onClick={() => openLegalSection('sweeps')}>Sweepstakes Rules</button>
+          <button type="button" onClick={() => openLegalSection('privacy')}>Privacy Policy</button>
+          <button type="button" onClick={() => openLegalSection('terms')}>Terms of Service</button>
+          <button type="button" onClick={() => setResponsibleGamingOpen(true)}>Responsible Gaming</button>
+          <button
+            type="button"
+            onClick={() => {
+              setPaytableInitialTab('fairness');
+              setPaytableOpen(true);
+              soundEngine.playButtonClick(600);
+            }}
+          >
+            Provably Fair
+          </button>
+        </nav>
+        <span className="dc-legal-amoe">No Purchase Necessary &bull; Free AMOE Entry &bull; 21+</span>
+      </footer>
     </div>
   );
 }

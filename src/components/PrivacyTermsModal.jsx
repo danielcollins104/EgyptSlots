@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Scale, FileText, AlertTriangle, CheckCircle, Lock, Coins, Gem, ChevronRight } from 'lucide-react';
 import { CASINO_BRAND } from '../config/slotConfig';
 import { SWEEPSTAKES_CONFIG } from '../config/sweepstakesConfig';
 
-export default function PrivacyTermsModal({ isOpen, onClose, onAccept }) {
-  const [activeSection, setActiveSection] = useState('liquidity'); // 'liquidity' | 'privacy' | 'terms' | 'sweeps'
+export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSection = 'liquidity' }) {
+  const [activeSection, setActiveSection] = useState(initialSection); // 'liquidity' | 'privacy' | 'terms' | 'sweeps'
+
+  useEffect(() => {
+    if (isOpen) setActiveSection(initialSection);
+  }, [isOpen, initialSection]);
 
   if (!isOpen) return null;
 
