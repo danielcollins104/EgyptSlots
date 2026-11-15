@@ -6786,12 +6786,6 @@ body {
   color: #6ee7b7;
 }
 
-.channel-alert-banner.stripe-banner {
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #7dd3fc;
-}
-
 .channel-alert-banner.crypto-banner {
   background: rgba(245, 158, 11, 0.15);
   border: 1px solid rgba(245, 158, 11, 0.4);
@@ -6918,13 +6912,6 @@ body {
 .sheet-confirm-sent-btn.cashapp:hover {
   background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
   transform: translateY(-1px);
-}
-
-.sheet-confirm-sent-btn.stripe {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  border: 1px solid #818cf8;
-  color: #ffffff;
-  box-shadow: 0 0 14px rgba(99, 102, 241, 0.4);
 }
 
 .sheet-confirm-sent-btn.crypto {
@@ -8910,59 +8897,7 @@ body {
 }
 
 /* ============================================================================
-   OFFICIAL STRIPE HOSTED CHECKOUT BUTTONS & BADGES
    ============================================================================ */
-.stripe-official-box {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.stripe-hosted-checkout-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 14px 18px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
-  border: 1.5px solid #a5b4fc;
-  color: #ffffff;
-  text-decoration: none;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
-  transition: all 0.22s ease;
-}
-
-.stripe-hosted-checkout-btn:hover {
-  transform: translateY(-2px);
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #4338ca 100%);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.7);
-  color: #ffffff;
-}
-
-.stripe-btn-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-royal);
-  font-size: 0.88rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-align: center;
-}
-
-.stripe-supported-badges {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #c7d2fe;
-}
-
 .checkout-alt-divider {
   display: flex;
   align-items: center;
@@ -9721,56 +9656,6 @@ body {
   border: 1px solid #ef4444;
 }
 
-.stripe-cta-cluster {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.stripe-master-pay-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 9px 20px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
-  border: 1.5px solid #c7d2fe;
-  color: #ffffff;
-  text-decoration: none;
-  cursor: pointer;
-  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.55);
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.stripe-master-pay-btn:hover {
-  transform: translateY(-2px);
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #4338ca 100%);
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.8);
-  color: #ffffff;
-}
-
-.stripe-btn-main {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-royal);
-  font-size: 0.88rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-}
-
-.stripe-mini-badges {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: #e0e7ff;
-}
-
 .instant-sandbox-btn {
   padding: 9px 14px;
   border-radius: 10px;
@@ -9790,31 +9675,6 @@ body {
   border-color: #fbbf24;
   background: rgba(245, 158, 11, 0.15);
   transform: translateY(-1px);
-}
-
-.stripe-return-claim-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
-  border: 1.5px solid #a7f3d0;
-  color: #ffffff;
-  font-family: var(--font-royal);
-  font-size: 0.82rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.55);
-  animation: pulseClaimGlow 1.8s ease-in-out infinite alternate;
-  transition: all 0.2s ease;
-}
-
-.stripe-return-claim-btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.8);
 }
 
 @keyframes pulseClaimGlow {
@@ -12930,7 +12790,6 @@ body {
   opacity: 0.85;
 }
 
-/* Instant Stripe Checkout Button */
 .instant-checkout-btn {
   display: inline-flex;
   align-items: center;
@@ -17227,12 +17086,6 @@ body {
   padding: 2px 7px;
   border-radius: 999px;
   letter-spacing: 0.05em;
-}
-
-.stripe-tag {
-  background: rgba(99, 102, 241, 0.25);
-  color: #a5b4fc;
-  border: 1px solid rgba(129, 140, 248, 0.4);
 }
 
 .cashapp-tag {

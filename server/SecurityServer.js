@@ -29,7 +29,7 @@ export class SecurityServer {
       adminSecret: options.adminSecret,
     });
 
-    // Idempotency cache for payment webhooks (Stripe / Chime)
+    // Idempotency cache for payment confirmations (processor callbacks / operator actions)
     this.processedPaymentEvents = new Set();
   }
 
@@ -115,19 +115,23 @@ export class SecurityServer {
   // =========================================================================
 
   /**
-   * Secure Stripe Webhook Handler with Idempotency & Cryptographic Signature Protection
+   * Processor-agnostic payment confirmation with idempotency & optional HMAC
+   * signature verification. Used for manual/operator confirmations now and
+   * ready for Skrill-style server-to-server status callbacks later.
+   *
+   * @param {object} payload - { eventId, paymentRef, userId, goldCoins, freeSweepsCoins,
+   *                              packageId, signatureHeader, webhookSecret, rawBody, signatureScheme }
    */
-  async handleStripeWebhook(payload = {}) {
-    const eventId = payload.eventId || payload.id;
-    const eventType = payload.eventType || payload.type;
-    const dataObject = payload.dataObject || payload.data?.object || {};
-    const { signatureHeader, webhookSecret, rawBody } = payload;
-    // 1. Prevent Replay Attacks: Idempotency verification
+  async handlePaymentConfirmation(payload = {}) {
+    const eventId = payload.eventId || `evt_${Date.now()}`;
+    const { paymentRef = '', signatureHeader, webhookSecret, rawBody, signatureScheme = 'generic' } = payload;
+
+    // 1. Prevent replay attacks: idempotency
     if (this.processedPaymentEvents.has(eventId)) {
       return { status: 'ignored', message: `Event ${eventId} has already been processed.` };
     }
 
-    // 2. Cryptographic HMAC-SHA256 signature verification (when webhookSecret provided)
+    // 2. Optional HMAC-SHA256 verification ("t=...,v1=..." scheme, timing-safe)
     if (webhookSecret && signatureHeader) {
       const parts = signatureHeader.split(',').map((p) => p.trim());
       const tPart = parts.find((p) => p.startsWith('t='));
@@ -135,9 +139,8 @@ export class SecurityServer {
       const timestamp = tPart?.slice(2);
       const expectedSigs = v1Parts.map((p) => p.slice(3)).filter(Boolean);
       if (!timestamp || expectedSigs.length === 0) {
-        throw new Error('Invalid Stripe signature header structure');
+        throw new Error(`Invalid ${signatureScheme} signature header structure`);
       }
-
       if (typeof rawBody === 'string' && rawBody.length > 0) {
         const signedPayload = `${timestamp}.${rawBody}`;
         const computedSig = crypto
@@ -154,51 +157,30 @@ export class SecurityServer {
           }
         });
         if (!matched) {
-          throw new Error('Webhook signature verification failed');
+          throw new Error('Payment callback signature verification failed');
         }
       }
     }
 
-    if (eventType === 'checkout.session.completed' || eventType === 'payment_intent.succeeded') {
-      const metadata = dataObject.metadata || {};
-      const allPackages = [
-        ...(SWEEPSTAKES_CONFIG.storePackages || []),
-        ...(SWEEPSTAKES_CONFIG.featuredRoyalPackage ? [SWEEPSTAKES_CONFIG.featuredRoyalPackage] : []),
-        ...(SWEEPSTAKES_CONFIG.highRollerPackages || []),
-        ...(SWEEPSTAKES_CONFIG.rescuePackages || []),
-      ];
-      const packageId = metadata.packageId || dataObject.client_reference_id || 'custom';
-      const matchedPkg = allPackages.find((p) => p.id === packageId);
-
-      const userId =
-        metadata.userId ||
-        dataObject.customer_details?.email ||
-        dataObject.customer_email ||
-        (matchedPkg ? 'usr_stripe_checkout' : null);
-      const goldCoins = parseInt(metadata.goldCoins || (matchedPkg ? String(matchedPkg.goldCoins) : '0'), 10);
-      const freeSweepsCoins = parseFloat(
-        metadata.freeSweepsCoins ||
-          metadata.bonusTokens ||
-          (matchedPkg ? String(matchedPkg.freeSweepsCoins) : '0')
-      );
-
-      if (!userId || goldCoins <= 0) {
-        throw new Error('Malformed payment event: missing userId or positive goldCoins');
-      }
-
-      const creditResult = await this.wallet.processPurchaseCredit(userId, {
-        goldCoinsToAdd: goldCoins,
-        freeSweepsCoinsToAdd: freeSweepsCoins,
-        packageId,
-        paymentRef: eventId,
-      });
-
-      this.processedPaymentEvents.add(eventId);
-      return { status: 'processed', creditResult };
+    // 3. Credit the purchase (idempotent per event)
+    const userId = payload.userId;
+    const goldCoins = parseInt(payload.goldCoins, 10);
+    const freeSweepsCoins = parseFloat(payload.freeSweepsCoins);
+    if (!userId || !(goldCoins > 0)) {
+      throw new Error('Malformed payment confirmation: missing userId or positive goldCoins');
     }
 
-    return { status: 'ignored', message: `Unhandled event type: ${eventType}` };
+    const creditResult = await this.wallet.processPurchaseCredit(userId, {
+      goldCoinsToAdd: goldCoins,
+      freeSweepsCoinsToAdd: freeSweepsCoins || 0,
+      packageId: payload.packageId || 'custom',
+      paymentRef: paymentRef || eventId,
+    });
+
+    this.processedPaymentEvents.add(eventId);
+    return { status: 'credited', eventId, userId, creditResult };
   }
+
 
   // =========================================================================
   // 4. TRANSACTION LEDGER & CRYPTOGRAPHIC AUDIT ENDPOINTS

@@ -2412,125 +2412,27 @@ export default function App() {
     );
   };
 
-  // Automatic Game Return Listener for Cash App Pay and Stripe Checkout (?payment_success=true&pkg=...)
+  // Clean legacy payment-return query params (?payment_success=...) on load.
+  // SECURITY: purchases are NEVER auto-credited from URL params — Cash App orders credit
+  // via the in-modal claim flow (order reference + operator reconciliation) and crypto
+  // credits via on-chain verification. This prevents self-credit abuse via crafted URLs.
   useEffect(() => {
     try {
       if (typeof window === 'undefined') return;
       const params = new URLSearchParams(window.location.search);
-      const isSuccess = params.get('payment_success') === 'true' || params.get('success') === 'true';
-      const pkgId =
-        params.get('pkg') ||
-        params.get('client_reference_id') ||
-        localStorage.getItem('dc_pending_purchase_pkg');
-
-      if (isSuccess) {
-        // Security & Replay Guard: Require either an un-claimed checkout session_id OR a recent pending purchase timestamp (< 2 hours)
-        const sessionIdParam = String(params.get('session_id') || params.get('checkout_id') || '').trim();
-        const pendingTimeRaw = localStorage.getItem('dc_pending_purchase_time');
-        const pendingTimeMs = pendingTimeRaw ? parseInt(pendingTimeRaw, 10) : 0;
-        const hasValidPendingMarker =
-          pendingTimeMs > 0 && Date.now() - pendingTimeMs <= 2 * 60 * 60 * 1000;
-
-        let claimedSessions = [];
-        try {
-          const rawClaimed = localStorage.getItem('dc_claimed_checkout_sessions_v1');
-          claimedSessions = rawClaimed ? JSON.parse(rawClaimed) : [];
-        } catch {}
-
-        const isSessionAlreadyClaimed = Boolean(
-          sessionIdParam && claimedSessions.includes(sessionIdParam)
-        );
-
-        if (isSessionAlreadyClaimed || (!hasValidPendingMarker && !sessionIdParam)) {
-          try {
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-          } catch {}
-          return;
-        }
-
-        if (sessionIdParam) {
-          try {
-            claimedSessions.unshift(sessionIdParam);
-            localStorage.setItem(
-              'dc_claimed_checkout_sessions_v1',
-              JSON.stringify(claimedSessions.slice(0, 100))
-            );
-          } catch {}
-        }
-
-        let matchedPkg = null;
-        try {
-          const savedPendingRaw = localStorage.getItem('dc_pending_purchase_custom_pkg');
-          if (savedPendingRaw) {
-            const parsedPending = JSON.parse(savedPendingRaw);
-            if (
-              parsedPending &&
-              parsedPending.priceUsd > 0 &&
-              parsedPending.goldCoins > 0 &&
-              (!pkgId || parsedPending.id === pkgId)
-            ) {
-              matchedPkg = parsedPending;
-            }
-          }
-        } catch {}
-
-        if (!matchedPkg && pkgId) {
-          matchedPkg =
-            SWEEPSTAKES_CONFIG.storePackages.find((p) => p.id === pkgId) ||
-            (SWEEPSTAKES_CONFIG.featuredRoyalPackage?.id === pkgId
-              ? SWEEPSTAKES_CONFIG.featuredRoyalPackage
-              : null) ||
-            SWEEPSTAKES_CONFIG.highRollerPackages.find((p) => p.id === pkgId) ||
-            SWEEPSTAKES_CONFIG.rescuePackages.find((p) => p.id === pkgId);
-        }
-
-        // Check for custom amount purchase via URL query params (capped to canonical calculateCustomPackage + 5% rail bonus)
-        if (!matchedPkg) {
-          const urlAmount = parseFloat(params.get('amount') || '0');
-          if (urlAmount >= 1 && urlAmount <= 2500) {
-            const calc = calculateCustomPackage(urlAmount);
-            const maxAllowedGC = Math.round(calc.goldCoins * 1.1);
-            const maxAllowedSC = Number((calc.freeSweepsCoins * 1.05).toFixed(2));
-            const urlGC = parseInt(params.get('gc') || '0', 10);
-            const urlSC = parseFloat(params.get('sc') || '0');
-            matchedPkg = {
-              ...calc,
-              id: pkgId || calc.id,
-              priceUsd: urlAmount,
-              goldCoins: urlGC > 0 ? Math.min(urlGC, maxAllowedGC) : calc.goldCoins,
-              freeSweepsCoins: urlSC > 0 ? Math.min(urlSC, maxAllowedSC) : calc.freeSweepsCoins,
-            };
-          }
-        }
-
-        if (matchedPkg) {
-          setShowSplash(false);
-          paymentService.recordPurchase({
-            packageId: matchedPkg.id,
-            amountUsd: matchedPkg.priceUsd,
-            goldCoins: matchedPkg.goldCoins,
-            sweepsCoins: matchedPkg.freeSweepsCoins,
-            method: 'stripe_checkout',
-            status: 'completed',
-            sessionId: sessionIdParam || `chk_${Date.now()}`,
-          });
-          handlePurchaseSuccess(matchedPkg);
-          soundEngine.playWinCelebration('big');
-        }
-
-        // Clean query params and consume pending purchase markers so refresh cannot trigger duplicate credit
-        try {
-          const cleanUrl = window.location.origin + window.location.pathname;
-          window.history.replaceState({}, document.title, cleanUrl);
-          localStorage.removeItem('dc_pending_purchase_pkg');
-          localStorage.removeItem('dc_pending_purchase_custom_pkg');
-          localStorage.removeItem('dc_pending_purchase_time');
-        } catch {}
+      if (
+        params.get('payment_success') ||
+        params.get('payment_cancelled') ||
+        params.get('session_id') ||
+        params.get('pkg')
+      ) {
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
       }
-    } catch (err) {
-      console.warn('Payment return redirect check error:', err);
-    }
+      localStorage.removeItem('dc_pending_purchase_pkg');
+      localStorage.removeItem('dc_pending_purchase_custom_pkg');
+      localStorage.removeItem('dc_pending_purchase_time');
+    } catch {}
   }, []);
 
   const triggerSpin = useCallback(
@@ -3554,7 +3456,7 @@ export default function App() {
                 setPaymentModalTab('store');
                 setPaymentModalOpen(true);
               }}
-              title="Buy Gold Coins bundles & receive FREE Bonus Sweeps Coins (Stripe / Chime)"
+              title="Buy Gold Coins bundles & receive FREE Bonus Sweeps Coins (Crypto / Cash App)"
             >
               <ShoppingCart size={15} className="pay-btn-icon" />
               <div className="pay-btn-labels">

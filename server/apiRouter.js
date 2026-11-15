@@ -26,30 +26,15 @@ export class ApiRouter {
         null,
       initialAccounts: options.initialAccounts || {},
     });
-    this.stripeSecretKey =
-      options.stripeSecretKey ||
-      (typeof process !== 'undefined' && process.env?.STRIPE_SECRET_KEY) ||
-      '';
-    this.stripeWebhookSecret =
-      options.stripeWebhookSecret ||
-      (typeof process !== 'undefined' && process.env?.STRIPE_WEBHOOK_SECRET) ||
-      '';
     this.redemptionQueue = [];
+    this.ordersQueue = [];
   }
 
   /**
-   * Creates a live Stripe Checkout Session via the Stripe REST API (fetch-based, 100% Cloudflare Workers & Node compatible)
+   * Resolves a store/custom package for order creation (custom amounts computed server-side
+   * to match the client-side calculateCustomPackage economics).
    */
-  async createStripeCheckoutSession({
-    packageId,
-    customAmountUsd = null,
-    goldCoins = null,
-    freeSweepsCoins = null,
-    paymentMethod = 'card',
-    origin = 'https://oopsiwon.com',
-    customerEmail = '',
-    userId = '',
-  }) {
+  resolvePackage(packageId, customAmountUsd = null, goldCoins = null, freeSweepsCoins = null) {
     const allPackages = [
       ...(SWEEPSTAKES_CONFIG.storePackages || []),
       ...(SWEEPSTAKES_CONFIG.featuredRoyalPackage ? [SWEEPSTAKES_CONFIG.featuredRoyalPackage] : []),
@@ -58,7 +43,6 @@ export class ApiRouter {
     ];
     let pkg = allPackages.find((p) => p.id === packageId);
 
-    // Support Custom Amount packages dynamically
     if (!pkg && (String(packageId || '').startsWith('pkg_custom') || Number(customAmountUsd) >= 1)) {
       const priceUsd = Number(Math.max(1, Math.min(1000000, Number(customAmountUsd) || 25)).toFixed(2));
       const bonusRate =
@@ -75,131 +59,96 @@ export class ApiRouter {
           : 0;
       const gcPerDollar =
         priceUsd >= 100 ? 4000 : priceUsd >= 50 ? 3500 : priceUsd >= 20 ? 3000 : priceUsd >= 10 ? 2500 : 2000;
-      const computedGC = Number(goldCoins) > 0 ? Math.round(Number(goldCoins)) : Math.round(priceUsd * gcPerDollar);
-      const computedSC =
-        Number(freeSweepsCoins) > 0
-          ? Number(Number(freeSweepsCoins).toFixed(2))
-          : Number((priceUsd * (1 + bonusRate)).toFixed(2));
-
       pkg = {
         id: packageId || `pkg_custom_${priceUsd}`,
         priceUsd,
-        goldCoins: computedGC,
-        freeSweepsCoins: computedSC,
+        goldCoins: Number(goldCoins) > 0 ? Math.round(Number(goldCoins)) : Math.round(priceUsd * gcPerDollar),
+        freeSweepsCoins:
+          Number(freeSweepsCoins) > 0
+            ? Number(Number(freeSweepsCoins).toFixed(2))
+            : Number((priceUsd * (1 + bonusRate)).toFixed(2)),
         isCustom: true,
       };
     }
 
-    if (!pkg) {
-      pkg = SWEEPSTAKES_CONFIG.storePackages[2];
-    }
-
-    const secretKey =
-      this.stripeSecretKey ||
-      (typeof process !== 'undefined' && process.env?.STRIPE_SECRET_KEY) ||
-      '';
-
-    const cleanOrigin = origin.replace(/\/$/, '');
-    const successUrl = `${cleanOrigin}/?payment_success=true&pkg=${encodeURIComponent(pkg.id)}&amount=${encodeURIComponent(pkg.priceUsd)}&gc=${encodeURIComponent(pkg.goldCoins)}&sc=${encodeURIComponent(pkg.freeSweepsCoins)}&session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${cleanOrigin}/?payment_cancelled=true&pkg=${encodeURIComponent(pkg.id)}`;
-
-    // For Cash App Pay, route directly to the live $Cashtag payment link ($Daniel-Collins-168/<amount>)
-    if (paymentMethod === 'cashapp') {
-      const cashAppDirectUrl =
-        pkg.cashAppPaymentLink ||
-        `https://cash.app/$Daniel-Collins-168/${Number(pkg.priceUsd) % 1 === 0 ? Number(pkg.priceUsd) : Number(pkg.priceUsd).toFixed(2)}`;
-      return {
-        success: true,
-        url: cashAppDirectUrl,
-        sessionId: `cs_live_cashapp_${Date.now()}`,
-        mode: 'cashapp_live',
-        package: pkg,
-      };
-    }
-
-    // If Stripe Secret Key is available, create a real Stripe Checkout Session via api.stripe.com
-    let stripeErrorMessage = '';
-    if (secretKey && (secretKey.startsWith('sk_') || secretKey.startsWith('rk_'))) {
-      try {
-        const params = new URLSearchParams();
-        params.append('mode', 'payment');
-        params.append('success_url', successUrl);
-        params.append('cancel_url', cancelUrl);
-        params.append('client_reference_id', pkg.id);
-
-        const unitAmountCents = Math.round(Number(pkg.priceUsd) * 100);
-        params.append('line_items[0][price_data][currency]', 'usd');
-        params.append('line_items[0][price_data][unit_amount]', String(unitAmountCents));
-        params.append(
-          'line_items[0][price_data][product_data][name]',
-          `${pkg.goldCoins.toLocaleString()} Digital Game Tokens (${pkg.tierTitle || 'Arcade Token Pack'})`
-        );
-        params.append(
-          'line_items[0][price_data][product_data][description]',
-          `Pharaoh's Chakra Dynasty Digital Entertainment Token Pack — Includes ${pkg.goldCoins.toLocaleString()} Gold Coins for social arcade gameplay.`
-        );
-        params.append('line_items[0][quantity]', '1');
-
-        params.append('metadata[packageId]', pkg.id);
-        params.append('metadata[goldCoins]', String(pkg.goldCoins));
-        params.append('metadata[bonusTokens]', String(pkg.freeSweepsCoins));
-        params.append('metadata[freeSweepsCoins]', String(pkg.freeSweepsCoins));
-        params.append('metadata[paymentMethod]', paymentMethod);
-        if (userId) {
-          params.append('metadata[userId]', userId);
-        }
-
-        const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params.toString(),
-        });
-
-        const sessionData = await stripeRes.json();
-        if (stripeRes.ok && sessionData.url) {
-          return {
-            success: true,
-            url: sessionData.url,
-            sessionId: sessionData.id,
-            mode: 'stripe_checkout_session',
-            package: pkg,
-          };
-        }
-        if (sessionData && sessionData.error && sessionData.error.message) {
-          stripeErrorMessage = sessionData.error.message;
-        }
-      } catch (err) {
-        console.warn('[Stripe Checkout Session Error]:', err.message);
-      }
-    }
-
-    // If the Stripe account is still pending live charges activation, signal inline card checkout fallback
-    if (stripeErrorMessage) {
-      return {
-        success: true,
-        url: null,
-        sessionId: `cs_inline_${Date.now()}`,
-        mode: 'inline_card_checkout',
-        package: pkg,
-      };
-    }
-
-    // Fallback to dedicated Card Stripe Payment Link (when no secretKey is configured locally)
-    const fallbackLink = pkg.stripePaymentLink || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
-    const sep = fallbackLink.includes('?') ? '&' : '?';
-    const url = `${fallbackLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
-
-    return {
-      success: true,
-      url,
-      sessionId: `cs_link_${Date.now()}`,
-      mode: 'payment_link',
-      package: pkg,
-    };
+    return pkg || SWEEPSTAKES_CONFIG.storePackages[2] || null;
   }
+
+  /**
+   * Creates a reconcilable deposit order (Cash App P2P / manual bank / crypto-by-reference).
+   * The operator confirms the funds arrived via /api/orders/update, which credits the player.
+   */
+  createDepositOrder({
+    packageId = '',
+    customAmountUsd = null,
+    goldCoins = null,
+    freeSweepsCoins = null,
+    processorId = 'cashapp',
+    orderRef = '',
+    userId = '',
+    senderTag = '',
+  } = {}) {
+    const pkg = this.resolvePackage(packageId, customAmountUsd, goldCoins, freeSweepsCoins);
+    if (!pkg) throw new Error('Unknown package.');
+    const entry = {
+      id: `ord_${Date.now().toString(36).toUpperCase()}_${Math.floor(Math.random() * 999)}`,
+      packageId: pkg.id,
+      amountUsd: pkg.priceUsd,
+      goldCoins: pkg.goldCoins,
+      freeSweepsCoins: pkg.freeSweepsCoins,
+      processorId,
+      orderRef: orderRef || '',
+      userId: userId || 'guest',
+      senderTag: senderTag || '',
+      status: 'awaiting_confirmation',
+      createdAt: new Date().toISOString(),
+    };
+    this.ordersQueue.unshift(entry);
+    this.ordersQueue = this.ordersQueue.slice(0, 200);
+    if (this.server?.ledger) {
+      this.server.ledger.append({
+        userId: entry.userId,
+        type: 'DEPOSIT_ORDER_CREATED',
+        currency: 'USD',
+        amount: entry.amountUsd,
+        balanceBefore: 0,
+        balanceAfter: 0,
+        metadata: { orderId: entry.id, orderRef, processorId, packageId: pkg.id },
+      });
+    }
+    return entry;
+  }
+
+  /**
+   * Operator confirmation of a deposit order -> credits player wallet.
+   * Idempotent: confirming the same order twice is a no-op.
+   */
+  async confirmDepositOrder(orderId, operatorNote = '') {
+    const idx = this.ordersQueue.findIndex((o) => o.id === orderId);
+    if (idx === -1) throw new Error(`Order not found: ${orderId}`);
+    const order = this.ordersQueue[idx];
+    if (order.status === 'confirmed') {
+      return { order, alreadyConfirmed: true };
+    }
+    if (order.status === 'rejected') {
+      throw new Error('Order was already rejected.');
+    }
+    const credit = await this.server.wallet.processPurchaseCredit(order.userId, {
+      goldCoinsToAdd: order.goldCoins,
+      freeSweepsCoinsToAdd: order.freeSweepsCoins,
+      packageId: order.packageId,
+      paymentRef: `${order.processorId}:${order.orderRef || order.id}`,
+    });
+    this.ordersQueue[idx] = {
+      ...order,
+      status: 'confirmed',
+      confirmedAt: new Date().toISOString(),
+      operatorNote: operatorNote || '',
+      credit,
+    };
+    return { order: this.ordersQueue[idx], alreadyConfirmed: false };
+  }
+
 
   /**
    * Universal Dispatcher
@@ -211,18 +160,11 @@ export class ApiRouter {
    * @returns {Promise<{ status: number, headers: object, body: any }>}
    */
   async handleRequest(method, path, headers = {}, body = {}, env = {}) {
-    if (env && env.STRIPE_SECRET_KEY && !this.stripeSecretKey) {
-      this.stripeSecretKey = env.STRIPE_SECRET_KEY;
-    }
-    if (env && env.STRIPE_WEBHOOK_SECRET && !this.stripeWebhookSecret) {
-      this.stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET;
-    }
-
     // Standard CORS headers
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Stripe-Signature',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
       'Content-Type': 'application/json',
     };
 
@@ -385,20 +327,46 @@ export class ApiRouter {
         return { status: 200, headers: corsHeaders, body: { success: true, message: 'Logged out' } };
       }
 
-      // 5. STRIPE CHECKOUT SESSION CREATION
-      if ((path === '/api/checkout/create-session' || path === '/api/stripe/create-checkout-session') && method === 'POST') {
-        const reqOrigin = headers['origin'] || headers['Origin'] || parsedBody.origin || 'https://oopsiwon.com';
-        const sessionRes = await this.createStripeCheckoutSession({
+      // 5. DEPOSIT ORDERS (Cash App P2P / manual rails — operator-confirmed crediting)
+      if (path === '/api/orders' && method === 'POST') {
+        const entry = this.createDepositOrder({
           packageId: parsedBody.packageId,
-          customAmountUsd: parsedBody.customAmountUsd,
-          goldCoins: parsedBody.goldCoins,
-          freeSweepsCoins: parsedBody.freeSweepsCoins,
-          paymentMethod: parsedBody.paymentMethod || 'card',
-          origin: reqOrigin,
-          customerEmail: parsedBody.email || '',
-          userId: parsedBody.userId || '',
+          customAmountUsd: parsedBody.amountUsd ?? parsedBody.customAmountUsd ?? null,
+          goldCoins: parsedBody.goldCoins ?? null,
+          freeSweepsCoins: parsedBody.freeSweepsCoins ?? null,
+          processorId: parsedBody.processorId || 'cashapp',
+          orderRef: parsedBody.orderRef || '',
+          userId: parsedBody.userId || parsedBody.playerEmail || 'guest',
+          senderTag: parsedBody.senderTag || '',
         });
-        return { status: 200, headers: corsHeaders, body: sessionRes };
+        return { status: 201, headers: corsHeaders, body: { success: true, order: entry } };
+      }
+
+      if (path === '/api/orders' && method === 'GET') {
+        // Order queue may contain player identifiers — ADMIN role required
+        if (!token) {
+          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
+        }
+        this.server.authService.validateSession(token, 'ADMIN');
+        return { status: 200, headers: corsHeaders, body: { success: true, orders: this.ordersQueue } };
+      }
+
+      if (path === '/api/orders/update' && method === 'POST') {
+        // Confirming deposits credits real player balances — ADMIN role required
+        if (!token) {
+          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
+        }
+        this.server.authService.validateSession(token, 'ADMIN');
+        const { orderId, action, operatorNote } = parsedBody;
+        if (action === 'confirm') {
+          const res = await this.confirmDepositOrder(orderId, operatorNote || '');
+          return { status: 200, headers: corsHeaders, body: { success: true, ...res } };
+        }
+        const idx = this.ordersQueue.findIndex((o) => o.id === orderId);
+        if (idx !== -1) {
+          this.ordersQueue[idx] = { ...this.ordersQueue[idx], status: action === 'reject' ? 'rejected' : this.ordersQueue[idx].status, operatorNote: operatorNote || '' };
+        }
+        return { status: 200, headers: corsHeaders, body: { success: true, orderId, action } };
       }
 
       // 6. ADMINISTRATOR ENDPOINTS
@@ -460,24 +428,16 @@ export class ApiRouter {
         return { status: 200, headers: corsHeaders, body: { success: true, history } };
       }
 
-      // 8. STRIPE PAYMENT WEBHOOK
-      if ((path === '/api/webhooks/stripe' || path === '/api/stripe/webhook') && method === 'POST') {
-        const signature = headers['stripe-signature'] || headers['Stripe-Signature'];
-        const rawBody = typeof body === 'string' ? body : '';
-        const webhookSecret =
-          this.stripeWebhookSecret ||
-          env?.STRIPE_WEBHOOK_SECRET ||
-          (typeof process !== 'undefined' && process.env?.STRIPE_WEBHOOK_SECRET) ||
-          '';
-        const res = await this.server.handleStripeWebhook({
-          eventId: parsedBody.id || parsedBody.eventId || `evt_${Date.now()}`,
-          eventType: parsedBody.type || parsedBody.eventType || 'checkout.session.completed',
-          dataObject: parsedBody.data?.object || parsedBody.dataObject || {},
-          signatureHeader: signature,
-          webhookSecret,
-          rawBody,
-        });
-        return { status: 200, headers: corsHeaders, body: res };
+      // 8. PAYMENT STATUS CALLBACKS (reserved for processor webhooks — Skrill status URL, etc.)
+      // Crypto deposits are verified on-chain via /api/crypto/verify; Cash App orders are
+      // confirmed by the operator via /api/orders/update. Processor-specific callbacks
+      // (e.g. Skrill) plug in here when those rails are enabled.
+      if (path === '/api/payments/status' && method === 'POST') {
+        return {
+          status: 200,
+          headers: corsHeaders,
+          body: { success: true, received: true, timestamp: new Date().toISOString() },
+        };
       }
 
       // 8.5 LIVE ON-CHAIN CRYPTO VERIFICATION & WALLET STATUS
@@ -516,7 +476,7 @@ export class ApiRouter {
         return {
           status: 200,
           headers: corsHeaders,
-          body: { status: 'healthy', version: '2.1.0-stripe-cashier', timestamp: new Date().toISOString() },
+          body: { status: 'healthy', version: '3.0.0-multi-rail-cashier', timestamp: new Date().toISOString() },
         };
       }
 

@@ -222,7 +222,6 @@ let lowRedemptionBlocked = false;
 try {
   await server.handleRedemptionRequest(aliceToken, {
     amountSC: 20.0, // Below 50.00 SC minimum
-    payoutMethod: 'stripe_connect',
     destinationMasked: 'acct_...1234',
   });
 } catch (e) {
@@ -246,11 +245,9 @@ const webhookPayload = {
   },
 };
 
-const firstProcess = await server.handleStripeWebhook(webhookPayload);
 assert.strictEqual(firstProcess.status, 'processed', 'First webhook event must be credited');
 
 // Attempt Replay Attack with same eventId
-const replayProcess = await server.handleStripeWebhook(webhookPayload);
 assert.strictEqual(replayProcess.status, 'ignored', 'Duplicate webhook event MUST be ignored');
 console.log('  ✔ [PASS] Webhook replay attack defeated: duplicate payment event ignored');
 

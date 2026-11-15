@@ -13,7 +13,7 @@
 //    - Awarded as FREE BONUS promotional entries when purchasing GC bundles,
 //      or via Alternative Method of Entry (AMOE / Daily Login Free SC / Mail-in).
 //    - Once played through (1x rollover requirement), eligible SC can be redeemed
-//      for cash / bank transfer (Stripe Connect / Chime / Debit) or digital gift cards.
+//      for cash via crypto wallet, Cash App $Cashtag, bank transfer, or digital gift cards.
 // ============================================================================
 
 export const CASHTAG_HANDLE =
@@ -39,11 +39,14 @@ export const CRYPTO_WALLET_ADDRESSES = {
     '0x6258e488F97617cc103838746955CB81a1d3E3af',
 };
 
-export function getCashAppPaymentLink(priceUsd) {
+export function getCashAppPaymentLink(priceUsd, orderRef = '') {
   const cleanHandle = CASHTAG_HANDLE.startsWith('$') ? CASHTAG_HANDLE : `$${CASHTAG_HANDLE}`;
   const num = Number(priceUsd) || 0;
   const formatted = num % 1 === 0 ? num.toString() : num.toFixed(2);
-  return `https://cash.app/${cleanHandle}/${formatted}`;
+  const base = `https://cash.app/${cleanHandle}/${formatted}`;
+  // Cash App pre-fills the note from the `note` param when supported; the UI
+  // always shows the order code separately since not all clients honor it.
+  return orderRef ? `${base}?note=${encodeURIComponent(orderRef)}` : base;
 }
 
 export function getPaymentReturnUrl(pkgId) {
@@ -51,37 +54,6 @@ export function getPaymentReturnUrl(pkgId) {
     return `${window.location.origin}${window.location.pathname}?payment_success=true&pkg=${encodeURIComponent(pkgId || '')}`;
   }
   return `https://oopsiwon.com/?payment_success=true&pkg=${encodeURIComponent(pkgId || '')}`;
-}
-
-export function getStripePaymentLink(pkg) {
-  if (!pkg) return '';
-  const pkgId = String(pkg.id || '').replace('pkg_', '').toUpperCase();
-  const envKey = `VITE_STRIPE_PAYMENT_LINK_${pkgId}`;
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[envKey]) {
-    return import.meta.env[envKey];
-  }
-  return pkg.stripePaymentLink || '';
-}
-
-export function getCashAppPayCheckoutLink(pkg) {
-  if (!pkg) return '';
-  const pkgId = String(pkg.id || '').replace('pkg_', '').toUpperCase();
-  const envKey = `VITE_STRIPE_CASHAPP_LINK_${pkgId}`;
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[envKey]) {
-    return import.meta.env[envKey];
-  }
-  // Direct live Cash App $Cashtag link with pre-filled exact dollar amount ($Daniel-Collins-168)
-  if (pkg.cashAppPaymentLink) {
-    return pkg.cashAppPaymentLink;
-  }
-  if (Number(pkg.priceUsd) > 0) {
-    return getCashAppPaymentLink(pkg.priceUsd);
-  }
-  if (pkg.cashAppStripePaymentLink) {
-    const sep = pkg.cashAppStripePaymentLink.includes('?') ? '&' : '?';
-    return `${pkg.cashAppStripePaymentLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
-  }
-  return getCashAppPaymentLink(19.99);
 }
 
 export const SWEEPSTAKES_CONFIG = {
@@ -169,9 +141,6 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 9.99,
       goldCoins: 10000,
       freeSweepsCoins: 5.0,
-      stripePriceId: 'price_1UXihFArFku8z2ykEKWrud15',
-      stripePaymentLink: 'https://buy.stripe.com/eVq4gy93bfMLbCkgxY8ww09',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/4gMdR8envbwv9uc4Pg8ww08',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/4.99',
       popular: false,
       badge: 'STARTER DEAL • 50% OFF',
@@ -188,9 +157,6 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 16.99,
       goldCoins: 25000,
       freeSweepsCoins: 10.5,
-      stripePriceId: 'price_1UXihFArFku8z2ykRROIkw7n',
-      stripePaymentLink: 'https://buy.stripe.com/9B67sKgvDeIH9ucftU8ww03',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/4gM28qgvDcAz7m481s8ww07',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/9.99',
       popular: false,
       badge: '+5% BONUS SC',
@@ -207,9 +173,6 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 34.99,
       goldCoins: 60000,
       freeSweepsCoins: 22.0,
-      stripePriceId: 'price_1UXihFArFku8z2ykx0Gt5mmA',
-      stripePaymentLink: 'https://buy.stripe.com/3cI4gybbjeIH7m4ftU8ww02',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/4gM6oGdjr1VV21K3Lc8ww05',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/19.99',
       popular: true,
       badge: '🔥 #1 MOST POPULAR • +10% SC',
@@ -226,9 +189,6 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 79.99,
       goldCoins: 175000,
       freeSweepsCoins: 55.0,
-      stripePriceId: 'price_1UXihFArFku8z2ykbWHWw0Ch',
-      stripePaymentLink: 'https://buy.stripe.com/8x2eVc93b8kj21K0z08ww00',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/eVq00i93bfML21K3Lc8ww0a',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/49.99',
       popular: false,
       badge: 'HIGH ROLLER • +10% SC',
@@ -245,9 +205,6 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 149.99,
       goldCoins: 400000,
       freeSweepsCoins: 115.0,
-      stripePriceId: 'price_1UXihFArFku8z2ykd8aB3mCk',
-      stripePaymentLink: 'https://buy.stripe.com/9B68wOcfncAz6i0chI8ww01',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/bJecN4frz8kjbCk3Lc8ww04',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/99.99',
       popular: false,
       badge: '💎 VIP WHALE • +15% SC',
@@ -267,8 +224,6 @@ export const SWEEPSTAKES_CONFIG = {
     originalPriceUsd: 375.0,
     goldCoins: 1100000,
     freeSweepsCoins: 295.0,
-    stripePriceId: 'price_1UacnKArFku8z2ykESXROPrA',
-    stripePaymentLink: 'https://buy.stripe.com/28EbJ06V3bwvbCkgxY8ww0b',
     cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/249.99',
     popular: false,
     featuredSpotlight: true,
@@ -289,8 +244,6 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 6500.0,
       goldCoins: 65000000,
       freeSweepsCoins: 5600.0,
-      stripePriceId: 'price_1UacnLArFku8z2ykrSfG5oQX',
-      stripePaymentLink: 'https://buy.stripe.com/cNiaEW93bcAzbCk95w8ww0c',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/5000',
       popular: false,
       badge: 'VIP SOVEREIGN • +12% SC',
@@ -308,8 +261,6 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 13500.0,
       goldCoins: 140000000,
       freeSweepsCoins: 11800.0,
-      stripePriceId: 'price_1UacnMArFku8z2ykH5j1FFmj',
-      stripePaymentLink: 'https://buy.stripe.com/6oUbJ0cfnasrcGo1D48ww0d',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/10000',
       popular: true,
       badge: '👑 ROYAL PHARAOH • +18% SC',
@@ -327,8 +278,6 @@ export const SWEEPSTAKES_CONFIG = {
       originalPriceUsd: 70000.0,
       goldCoins: 800000000,
       freeSweepsCoins: 62500.0,
-      stripePriceId: 'price_1UacnNArFku8z2ykBF8rz570',
-      stripePaymentLink: 'https://buy.stripe.com/4gM9AS2EN0RR7m4chI8ww0e',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/50000',
       popular: false,
       badge: '💎 EMPEROR VAULT • +25% SC',
@@ -348,9 +297,6 @@ export const SWEEPSTAKES_CONFIG = {
       priceUsd: 9.99,
       goldCoins: 30000,
       freeSweepsCoins: 12.0,
-      stripePriceId: 'price_1UXihFArFku8z2ykRROIkw7n',
-      stripePaymentLink: 'https://buy.stripe.com/9B67sKgvDeIH9ucftU8ww03',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/4gM28qgvDcAz7m481s8ww07',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/9.99',
       badge: 'RESCUE DEAL • +20% BONUS',
       tagline: 'Quick reload to stay in the action',
@@ -361,9 +307,6 @@ export const SWEEPSTAKES_CONFIG = {
       priceUsd: 19.99,
       goldCoins: 75000,
       freeSweepsCoins: 25.0,
-      stripePriceId: 'price_1UXihFArFku8z2ykx0Gt5mmA',
-      stripePaymentLink: 'https://buy.stripe.com/3cI4gybbjeIH7m4ftU8ww02',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/4gM6oGdjr1VV21K3Lc8ww05',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/19.99',
       badge: 'MOST POPULAR RESCUE • +25% BONUS',
       tagline: 'Best value bankroll booster',
@@ -375,9 +318,6 @@ export const SWEEPSTAKES_CONFIG = {
       priceUsd: 49.99,
       goldCoins: 210000,
       freeSweepsCoins: 65.0,
-      stripePriceId: 'price_1UXihFArFku8z2ykbWHWw0Ch',
-      stripePaymentLink: 'https://buy.stripe.com/8x2eVc93b8kj21K0z08ww00',
-      cashAppStripePaymentLink: 'https://buy.stripe.com/eVq00i93bfML21K3Lc8ww0a',
       cashAppPaymentLink: 'https://cash.app/$Daniel-Collins-168/49.99',
       badge: 'WHALE RESCUE • +30% BONUS',
       tagline: 'Massive bankroll refill with VIP host perk',
@@ -404,14 +344,12 @@ export const SWEEPSTAKES_CONFIG = {
       description: `Instant mobile checkout via Cash App, Apple Pay, or debit card to ${CASHTAG_HANDLE}`,
     },
     {
-      id: 'stripe',
-      name: 'Credit / Debit Card (Stripe Checkout)',
-      badge: '256-BIT ENCRYPTED',
-      supported: true,
-      requiresApiKey: true,
-      envKey: 'VITE_STRIPE_PUBLISHABLE_KEY',
+      id: 'skrill',
+      name: 'Credit / Debit Card (Skrill Gateway)',
+      badge: 'COMING SOON',
+      supported: false,
       icon: 'CreditCard',
-      description: 'Visa, MasterCard, Amex, Apple Pay, Google Pay via Stripe',
+      description: 'Visa, MasterCard, Apple Pay & Google Pay via Skrill — gaming-approved gateway (launching soon)',
     },
     {
       id: 'crypto',
@@ -463,22 +401,6 @@ export function calculateCustomPackage(amountUsd) {
   const goldCoins = Math.round(num * gcPerDollar);
   const bonusPct = Math.round(bonusRate * 100);
 
-  // Match closest live Stripe Payment Link as static fallback when dynamic Checkout Session is offline
-  const allKnownPackages = [
-    ...(SWEEPSTAKES_CONFIG.storePackages || []),
-    ...(SWEEPSTAKES_CONFIG.featuredRoyalPackage ? [SWEEPSTAKES_CONFIG.featuredRoyalPackage] : []),
-    ...(SWEEPSTAKES_CONFIG.highRollerPackages || []),
-  ];
-  let closestPkg = allKnownPackages[0];
-  let minDiff = Infinity;
-  for (const p of allKnownPackages) {
-    const diff = Math.abs((p.priceUsd || 0) - num);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closestPkg = p;
-    }
-  }
-
   return {
     id: `pkg_custom_${num}`,
     priceUsd: num,
@@ -492,13 +414,6 @@ export function calculateCustomPackage(amountUsd) {
         : 'Custom Gold Coin & Free SC Bundle',
     savings: bonusPct > 0 ? `${bonusPct}% Extra Free SC` : null,
     isCustom: true,
-    stripePriceId: closestPkg?.stripePriceId || 'price_1UXiguArFku8z2ykmC3iSckl',
-    stripePaymentLink:
-      closestPkg?.stripePaymentLink || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04',
-    cashAppStripePaymentLink:
-      closestPkg?.cashAppStripePaymentLink ||
-      closestPkg?.stripePaymentLink ||
-      'https://buy.stripe.com/14A3cufrz2ZZfSAgxY8ww09',
     cashAppPaymentLink: getCashAppPaymentLink(num),
   };
 }

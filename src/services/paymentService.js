@@ -1,26 +1,25 @@
 // Payment & Sweepstakes Gateway Service
-// Supports live Stripe Checkout Sessions, Stripe Payment Links, Cash App Pay, Crypto, and Embedded Stripe Card Checkout.
+// Supports on-chain Crypto (BTC/ETH/SOL/USDT), Cash App P2P with order references,
+// and a processor-plugin architecture ready for Skrill and Apple/Google Pay.
 
 import {
   SWEEPSTAKES_CONFIG,
-  getStripePaymentLink,
-  getCashAppPayCheckoutLink,
   getCashAppPaymentLink,
-  getPaymentReturnUrl,
 } from '../config/sweepstakesConfig.js';
+import { paymentProcessorRegistry } from '../payments/processorRegistry.js';
 import {
   verifyCryptoDeposit,
   getLiveWalletBalancesStatus,
 } from './cryptoVerifierService.js';
 
 const STORAGE_KEYS = {
-  STRIPE_KEY: 'dc_stripe_api_key',
   CHIME_KEY: 'dc_chime_api_key',
   CHIME_HANDLE: 'dc_chime_user_handle',
   TX_HISTORY: 'dc_payment_transactions',
   CLAIMED_CRYPTO_TXS: 'dc_claimed_crypto_tx_hashes',
   PLAYTHROUGH_STATE: 'dc_sc_playthrough_state',
   REDEMPTION_QUEUE: 'dc_redemption_queue',
+  CASHAPP_ORDERS: 'dc_cashapp_orders_v1',
   PROVABLY_FAIR_STATE: 'dc_provably_fair_state_v1',
   SPIN_RECEIPTS: 'dc_provably_fair_spin_receipts_v1',
   RESPONSIBLE_GAMING: 'dc_responsible_gaming_state_v1',
@@ -138,12 +137,55 @@ function generateSecureHex(byteLen = 16) {
 }
 
 export const paymentService = {
-  // Publishable keys come from build-time env
-  getKeys() {
-    return {
-      stripePublishableKey:
-        (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) || '',
+  /** List of enabled payment processors (rails) from the plugin registry */
+  getAvailableProcessors() {
+    return paymentProcessorRegistry.getRails();
+  },
+
+  /**
+   * CASH APP ORDER LEDGER — unique reference-coded P2P deposits.
+   * Orders are mirrored to the server queue (/api/orders) for operator
+   * reconciliation against the Cash App activity feed.
+   */
+  getCashAppOrders() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.CASHAPP_ORDERS);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveCashAppOrders(orders) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CASHAPP_ORDERS, JSON.stringify(orders));
+    } catch {}
+  },
+
+  createCashAppOrder({ packageId = '', amountUsd = 0, goldCoins = 0, freeSweepsCoins = 0, orderRef = '', senderTag = '' }) {
+    const order = {
+      id: `ord_${Date.now().toString(36).toUpperCase()}`,
+      orderRef,
+      packageId,
+      amountUsd: Number(amountUsd) || 0,
+      goldCoins: Math.round(Number(goldCoins) || 0),
+      freeSweepsCoins: Number(Number(freeSweepsCoins).toFixed(2)) || 0,
+      senderTag: senderTag || '',
+      status: 'awaiting_confirmation',
+      createdAt: new Date().toISOString(),
     };
+    const orders = [order, ...this.getCashAppOrders()].slice(0, 50);
+    this.saveCashAppOrders(orders);
+    // Best-effort server mirror for the admin queue — never blocks the UX
+    try {
+      fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order),
+      }).catch(() => {});
+    } catch {}
+    return order;
   },
 
   /**
@@ -294,7 +336,7 @@ export const paymentService = {
   },
 
   /**
-   * Records a completed purchase (Card, Cash App Pay, or Crypto) to the local transaction history
+   * Records a completed purchase (Cash App P2P or verified Crypto) to the local transaction history
    * and updates the 1x playthrough tracker for any free bonus SC included.
    */
   recordPurchase({
@@ -302,7 +344,7 @@ export const paymentService = {
     amountUsd,
     goldCoins,
     sweepsCoins,
-    method = 'stripe_card',
+    method = 'cashapp_instant',
     status = 'completed',
     sessionId = null,
     cardLast4 = null,
@@ -591,80 +633,23 @@ export const paymentService = {
   },
 
   /**
-   * Creates a server-side Stripe Checkout Session via /api/checkout/create-session,
-   * falling back to configured Stripe Payment Links if offline.
+   * Processes an inline purchase (Cash App P2P with order reference / crypto-verified on-chain)
    */
-  async createStripeCheckoutSession(pkg, paymentMethod = 'card', user = null) {
-    if (!pkg) throw new Error('No package selected.');
-
-    try {
-      localStorage.setItem('dc_pending_purchase_pkg', pkg.id);
-      localStorage.setItem('dc_pending_purchase_custom_pkg', JSON.stringify(pkg));
-      localStorage.setItem('dc_pending_purchase_time', String(Date.now()));
-    } catch {}
-
-    try {
-      const origin =
-        typeof window !== 'undefined' && window.location
-          ? window.location.origin
-          : 'https://oopsiwon.com';
-
-      const response = await fetch('/api/checkout/create-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId: pkg.id,
-          customAmountUsd: pkg.priceUsd,
-          goldCoins: pkg.goldCoins,
-          freeSweepsCoins: pkg.freeSweepsCoins,
-          paymentMethod,
-          origin,
-          email: user?.email || '',
-          userId: user?.id || '',
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data && (data.url || data.mode === 'inline_card_checkout')) {
-          return {
-            success: true,
-            url: data.url || null,
-            sessionId: data.sessionId,
-            mode: data.mode || 'stripe_checkout_session',
-            stripeWarning: data.stripeWarning,
-          };
-        }
-      }
-    } catch (err) {
-      // Fallback to Payment Link below
-    }
-
-    const baseLink =
-      paymentMethod === 'cashapp'
-        ? getCashAppPayCheckoutLink(pkg) || getCashAppPaymentLink(pkg?.priceUsd || 19.99)
-        : getStripePaymentLink(pkg) || 'https://buy.stripe.com/28EdR893bcAz0XGezQ8ww04';
-
-    let fallbackUrl = baseLink;
-    if (baseLink && !baseLink.startsWith('https://cash.app/')) {
-      const sep = baseLink.includes('?') ? '&' : '?';
-      fallbackUrl = `${baseLink}${sep}client_reference_id=${encodeURIComponent(pkg.id)}`;
-    }
-
-    return {
-      success: true,
-      url: fallbackUrl,
-      sessionId: `cs_live_${Date.now()}`,
-      mode: 'payment_link',
-    };
-  },
-
-  /**
-   * Processes an inline purchase (Card / Apple Pay / Google Pay / Cash App Pay)
-   */
-  async processPurchase(pkg, method = 'stripe_card', details = {}) {
+  async processPurchase(pkg, method = 'cashapp_instant', details = {}) {
     if (!pkg) throw new Error('Invalid package selected.');
     await new Promise((r) => setTimeout(r, 650));
+
+    // Cash App P2P deposits get a reconcilable order in the ledger
+    if (method === 'cashapp_instant') {
+      this.createCashAppOrder({
+        packageId: pkg.id,
+        amountUsd: pkg.priceUsd,
+        goldCoins: pkg.goldCoins,
+        freeSweepsCoins: pkg.freeSweepsCoins,
+        orderRef: details.orderRef || '',
+        senderTag: details.senderTag || '',
+      });
+    }
 
     return this.recordPurchase({
       packageId: pkg.id,
@@ -673,7 +658,7 @@ export const paymentService = {
       sweepsCoins: pkg.freeSweepsCoins,
       method,
       status: 'completed',
-      cardLast4: details.cardLast4 || '4242',
+      cardLast4: details.cardLast4 || details.orderRef || 'CASH',
     });
   },
 

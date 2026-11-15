@@ -194,7 +194,7 @@ export class ServerWallet {
   }
 
   /**
-   * Process verified purchase credit (Stripe / Chime)
+   * Process verified purchase credit (operator-confirmed orders / processor callbacks)
    */
   async processPurchaseCredit(userId, { goldCoinsToAdd, freeSweepsCoinsToAdd, packageId, paymentRef }) {
     await this.acquireLock(userId);

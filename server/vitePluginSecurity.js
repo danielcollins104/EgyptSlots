@@ -29,9 +29,7 @@ function loadEnvLocal() {
  */
 export function securityApiPlugin() {
   const envLocal = loadEnvLocal();
-  const router = new ApiRouter({
-    stripeSecretKey: envLocal.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY || '',
-  });
+  const router = new ApiRouter({});
 
   return {
     name: 'security-api-plugin',

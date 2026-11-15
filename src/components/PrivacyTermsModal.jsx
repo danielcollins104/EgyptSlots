@@ -168,7 +168,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept }) {
                   Your personal information is protected under industry-standard 256-bit AES encryption and TLS in transit.
                   We never sell, rent, or trade player information to third-party data brokers. Data is shared exclusively
                   with certified compliance vendors (identity verification, fraud detection) and regulated payment processors
-                  (Stripe, banking partners) solely to execute requested transactions.
+                  (cryptocurrency networks, Cash App, and regulated payment partners) solely to execute requested transactions.
                 </p>
               </div>
 
