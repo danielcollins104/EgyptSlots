@@ -5970,7 +5970,7 @@ export default function App() {
 
       {/* Legal & Compliance Footer — Sweepstakes Rules (AMOE / No Purchase Necessary) always one tap away */}
       <footer className="dc-legal-footer" aria-label="Legal and compliance links">
-        <span className="dc-legal-brand">&copy; {new Date().getFullYear()} DC Enterprises</span>
+        <span className="dc-legal-brand">&copy; {new Date().getFullYear()} AI Service Hub LLC</span>
         <nav className="dc-legal-links">
           <button type="button" onClick={() => openLegalSection('sweeps')}>Sweepstakes Rules</button>
           <button type="button" onClick={() => openLegalSection('privacy')}>Privacy Policy</button>

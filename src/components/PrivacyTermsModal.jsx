@@ -26,7 +26,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
           <div className="header-left">
             <div className="brand-badge">
               <Scale size={14} className="scale-icon" />
-              <span>{CASINO_BRAND?.casinoFullTitle || 'DC ENTERPRISES CASINO'} &bull; LEGAL &amp; COMPLIANCE</span>
+              <span>{CASINO_BRAND?.casinoFullTitle || 'DC ENTERPRISES CASINO'} &bull; OPERATED BY AI SERVICE HUB LLC</span>
             </div>
             <h2 id="privacy-terms-title" className="modal-title">
               Privacy Policy, Terms of Service &amp; Sweeps Rules
@@ -100,7 +100,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
               <div className="legal-text-block highlight-block">
                 <h4>1. Operational Reserves &amp; Settlement-Based Payouts</h4>
                 <p>
-                  <strong>DC Enterprises (&ldquo;Pharaoh&rsquo;s Chakra Dynasty&rdquo;)</strong> operates as an independent,
+                  <strong>AI Service Hub LLC</strong> (&ldquo;DC Enterprises&rdquo; / &ldquo;Pharaoh&rsquo;s Chakra Dynasty&rdquo; branding) operates as an independent,
                   emerging sweepstakes gaming platform. Because we are a growing startup and emerging gaming studio,
                   all promotional Sweeps Coin prize redemptions are fulfilled and disbursed on a
                   <strong> rolling liquidity and cash-flow availability schedule</strong> as merchant processing,
@@ -150,7 +150,8 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
           {/* SECTION 2: PRIVACY POLICY */}
           {activeSection === 'privacy' && (
             <div className="legal-section-content">
-              <h3>DC Enterprises Player Privacy Policy</h3>
+              <h3>AI Service Hub LLC &mdash; Player Privacy Policy</h3>
+              <p className="legal-text-block" style={{ marginTop: '-6px' }}>Operator: <strong>AI Service Hub LLC</strong> (DC Enterprises Casino brand)</p>
               <p className="effective-date">Last Updated: November 2026 &bull; CCPA &amp; GDPR Compliant</p>
 
               <div className="legal-text-block">
@@ -242,7 +243,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                 <ul>
                   <li><strong>Daily Login Rewards:</strong> Claim free Gold Coins and promotional SC every 24 hours in-game.</li>
                   <li><strong>Promotional Social Giveaways:</strong> Official contests on verified DC Enterprises social channels.</li>
-                  <li><strong>Standard Mail-In Request (AMOE):</strong> Hand-written mail-in index card requests sent to DC Enterprises Sweepstakes Department, receiving 5.00 free SC per verified qualifying envelope.</li>
+                  <li><strong>Standard Mail-In Request (AMOE):</strong> Hand-written mail-in index card requests sent to the AI Service Hub LLC &mdash; Sweepstakes Department, receiving 5.00 free SC per verified qualifying envelope.</li>
                 </ul>
               </div>
 
