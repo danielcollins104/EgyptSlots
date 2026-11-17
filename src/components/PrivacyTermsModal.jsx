@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Scale, FileText, AlertTriangle, CheckCircle, Lock, Coins, Gem, ChevronRight } from 'lucide-react';
 import { CASINO_BRAND } from '../config/slotConfig';
 import { SWEEPSTAKES_CONFIG } from '../config/sweepstakesConfig';
+import Readable from './Readable';
 
 export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSection = 'liquidity' }) {
   const [activeSection, setActiveSection] = useState(initialSection); // 'liquidity' | 'privacy' | 'terms' | 'sweeps'
@@ -97,7 +98,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                 </div>
               </div>
 
-              <div className="legal-text-block highlight-block">
+              <Readable className="legal-text-block highlight-block">
                 <h4>1. Operational Reserves &amp; Settlement-Based Payouts</h4>
                 <p>
                   <strong>AI Service Hub LLC</strong> (&ldquo;DC Enterprises&rdquo; / &ldquo;Pharaoh&rsquo;s Chakra Dynasty&rdquo; branding) operates as an independent,
@@ -113,9 +114,9 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                   Gold Coin packages, or requesting redemptions, you explicitly understand, acknowledge, and agree
                   to this liquidity schedule.
                 </p>
-              </div>
+              </Readable>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>2. Standard Processing Windows &amp; Staged Tranches</h4>
                 <ul>
                   <li>
@@ -133,9 +134,9 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                     transparency through their real-time transaction ledger.
                   </li>
                 </ul>
-              </div>
+              </Readable>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>3. Minimum Thresholds &amp; 1× Rollover Requirement</h4>
                 <p>
                   In accordance with U.S. promotional sweepstakes laws, promotional Sweeps Coins received for free
@@ -143,7 +144,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                   (rollover) requirement</strong> before becoming eligible for redemption. The minimum redemption
                   threshold is <strong>50.00 SC ($50.00 USD)</strong>.
                 </p>
-              </div>
+              </Readable>
             </div>
           )}
 
@@ -154,7 +155,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
               <p className="legal-text-block" style={{ marginTop: '-6px' }}>Operator: <strong>AI Service Hub LLC</strong> (DC Enterprises Casino brand)</p>
               <p className="effective-date">Last Updated: November 2026 &bull; CCPA &amp; GDPR Compliant</p>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>1. Information We Collect</h4>
                 <p>
                   We collect information necessary to provide a secure social gaming and sweepstakes experience:
@@ -165,9 +166,9 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                   <li><strong>Transaction &amp; Gameplay History:</strong> Spin logs, coin balances, purchases, and redemption records stored in encrypted ledgers.</li>
                   <li><strong>Device &amp; Telemetry Data:</strong> IP address, device model, operating system, and session tokens to combat fraud and multi-account botting.</li>
                 </ul>
-              </div>
+              </Readable>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>2. How We Use and Protect Your Data</h4>
                 <p>
                   Your personal information is protected under industry-standard 256-bit AES encryption and TLS in transit.
@@ -175,16 +176,16 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                   with certified compliance vendors (identity verification, fraud detection) and regulated payment processors
                   (cryptocurrency networks, Cash App, and regulated payment partners) solely to execute requested transactions.
                 </p>
-              </div>
+              </Readable>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>3. Your Privacy Rights</h4>
                 <p>
                   You retain the right to review, update, export, or request deletion of your account data at any time
                   by contacting privacy@dcenterprises.casino. Data required for financial reporting and anti-money laundering
                   compliance is retained for the minimum period mandated by law.
                 </p>
-              </div>
+              </Readable>
             </div>
           )}
 
@@ -194,7 +195,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
               <h3>Terms of Service &amp; Social Gaming Agreement</h3>
               <p className="effective-date">Effective Date: November 2026</p>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>1. Eligibility &amp; Age Restriction</h4>
                 <p>
                   Pharaoh&rsquo;s Chakra Dynasty is open exclusively to legal residents of eligible jurisdictions who are at least
@@ -202,9 +203,9 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                   Washington state, Idaho, Nevada, and Michigan are excluded from promotional Sweeps Coins play in compliance
                   with local regulations.
                 </p>
-              </div>
+              </Readable>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>2. Nature of Social Virtual Currencies</h4>
                 <p>
                   <strong>Gold Coins (GC):</strong> Virtual tokens designed exclusively for social, recreational play.
@@ -215,16 +216,16 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                   Eligible, won Sweeps Coins may be redeemed for cash prizes at the rate of 1.00 SC = $1.00 USD, subject
                   to the Payout &amp; Liquidity Schedule set forth in Section 1.
                 </p>
-              </div>
+              </Readable>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>3. Account Integrity &amp; Single-User Policy</h4>
                 <p>
                   Each individual is permitted exactly one registered account. Any use of automated scripts, botting,
                   emulator spoofing, or syndicate multi-accounting will result in immediate disqualification, account termination,
                   and forfeiture of unredeemed virtual balances.
                 </p>
-              </div>
+              </Readable>
             </div>
           )}
 
@@ -234,7 +235,7 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
               <h3>Official Promotional Sweepstakes Rules</h3>
               <p className="effective-date">No Purchase Necessary to Enter or Win &bull; A Purchase Does Not Increase Odds of Winning</p>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>1. Free Alternative Method of Entry (AMOE)</h4>
                 <p>
                   In accordance with federal and state sweepstakes statutes, players may obtain free promotional Sweeps Coins
@@ -245,16 +246,16 @@ export default function PrivacyTermsModal({ isOpen, onClose, onAccept, initialSe
                   <li><strong>Promotional Social Giveaways:</strong> Official contests on verified DC Enterprises social channels.</li>
                   <li><strong>Standard Mail-In Request (AMOE):</strong> Hand-written mail-in index card requests sent to the AI Service Hub LLC &mdash; Sweepstakes Department, receiving 5.00 free SC per verified qualifying envelope.</li>
                 </ul>
-              </div>
+              </Readable>
 
-              <div className="legal-text-block">
+              <Readable className="legal-text-block">
                 <h4>2. Random Number Generator (RNG) Integrity</h4>
                 <p>
                   Game outcomes are driven by an authentic certified physical reel-strip mathematical random number generator
                   calibrated for true fair play. Spin outcomes are deterministic from seed generation and independent of player
                   balance, purchase volume, or device category.
                 </p>
-              </div>
+              </Readable>
             </div>
           )}
         </div>

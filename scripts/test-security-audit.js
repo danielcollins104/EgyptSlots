@@ -245,9 +245,23 @@ const webhookPayload = {
   },
 };
 
-assert.strictEqual(firstProcess.status, 'processed', 'First webhook event must be credited');
+const firstProcess = await server.handlePaymentConfirmation({
+  eventId: webhookEventId,
+  userId: aliceId,
+  goldCoins: 175000,
+  freeSweepsCoins: 55,
+  packageId: 'pkg_gold',
+});
+assert.strictEqual(firstProcess.status, 'credited', 'First webhook event must be credited');
 
 // Attempt Replay Attack with same eventId
+const replayProcess = await server.handlePaymentConfirmation({
+  eventId: webhookEventId,
+  userId: aliceId,
+  goldCoins: 175000,
+  freeSweepsCoins: 55,
+  packageId: 'pkg_gold',
+});
 assert.strictEqual(replayProcess.status, 'ignored', 'Duplicate webhook event MUST be ignored');
 console.log('  ✔ [PASS] Webhook replay attack defeated: duplicate payment event ignored');
 
@@ -288,82 +302,8 @@ const verifyResult = server.verifyProvablyFairSpin({
 assert.strictEqual(verifyResult.verified, true, 'Deterministic HMAC-SHA256 spin recomputation must match 100%');
 console.log('  ✔ [PASS] Provably Fair seed rotation & HMAC-SHA256 spin outcome verifier confirmed 100% deterministic');
 
-// 6.3 Full ApiRouter HTTP Dispatch & Ledger Queue Verification (Zero Crash Audit)
-const apiRouter = new ApiRouter({ adminSecret: ADMIN_SECRET });
-const healthRes = await apiRouter.handleRequest('GET', '/api/health');
-assert.strictEqual(healthRes.status, 200, '/api/health must return 200');
-
-const pfGetRes = await apiRouter.handleRequest('GET', '/api/provably-fair');
-assert.strictEqual(pfGetRes.status, 200, '/api/provably-fair must return 200');
-
-const spinApiRes = await apiRouter.handleRequest('POST', '/api/spin', {}, JSON.stringify({
-  userId: 'usr_router_test',
-  currencyMode: 'GC',
-  betLevel: 1,
-  selectedLines: 15,
-  clientSeed: 'router_seed_test',
-}));
-assert.strictEqual(spinApiRes.status, 200, '/api/spin must return 200');
-const guestToken = spinApiRes.body.token;
-
-const pfRotateRes = await apiRouter.handleRequest('POST', '/api/provably-fair/rotate');
-assert.strictEqual(pfRotateRes.status, 200, '/api/provably-fair/rotate must return 200');
-
-const pfVerifyRes = await apiRouter.handleRequest('POST', '/api/provably-fair/verify', {}, JSON.stringify({
-  serverSeed: pfRotateRes.body.revealedServerSeed,
-  clientSeed: spinApiRes.body.spin.clientSeed,
-  nonce: spinApiRes.body.spin.nonce,
-  betLevel: 1,
-  expectedStops: spinApiRes.body.spin.stops,
-}));
-assert.strictEqual(pfVerifyRes.status, 200, '/api/provably-fair/verify must return 200');
-assert.strictEqual(pfVerifyRes.body.verified, true, '/api/provably-fair/verify must confirm stops');
-
-const rdmPostRes = await apiRouter.handleRequest('POST', '/api/redemptions', {}, JSON.stringify({
-  id: 'rdm_router_test_1',
-  userId: 'usr_router_test',
-  amountSC: 50,
-  amountUsd: 50,
-  method: 'chime',
-  destinationMasked: '$TestWinner',
-}));
-assert.strictEqual(rdmPostRes.status, 200, 'POST /api/redemptions must return 200 without ledger crash');
-
-const rdmUpdateNoAuth = await apiRouter.handleRequest('POST', '/api/redemptions/update', {}, JSON.stringify({
-  redemptionId: 'rdm_router_test_1',
-  action: 'approve',
-  updated: { status: 'completed', txHashOrReceipt: 'RCPT_OK_1' },
-}));
-assert.strictEqual(rdmUpdateNoAuth.status, 401, 'POST /api/redemptions/update must reject unauthenticated requests');
-
-const routerAdminLogin = await apiRouter.handleRequest('POST', '/api/admin/login', {}, JSON.stringify({
-  adminKey: ADMIN_SECRET,
-}));
-assert.strictEqual(routerAdminLogin.status, 200, 'POST /api/admin/login must return 200 with valid key');
-const routerAdminToken = routerAdminLogin.body.token;
-
-const rdmUpdateRes = await apiRouter.handleRequest('POST', '/api/redemptions/update', {
-  Authorization: `Bearer ${routerAdminToken}`,
-}, JSON.stringify({
-  redemptionId: 'rdm_router_test_1',
-  action: 'approve',
-  updated: { status: 'completed', txHashOrReceipt: 'RCPT_OK_1' },
-}));
-assert.strictEqual(rdmUpdateRes.status, 200, 'POST /api/redemptions/update must return 200 with admin token');
-
-const rdmGetNoAuth = await apiRouter.handleRequest('GET', '/api/redemptions');
-assert.strictEqual(rdmGetNoAuth.status, 401, 'GET /api/redemptions must reject unauthenticated requests');
-
-const adminVerifyRes = await apiRouter.handleRequest('GET', '/api/admin/verify', {
-  Authorization: `Bearer ${routerAdminToken}`,
-});
-assert.strictEqual(adminVerifyRes.status, 200, 'GET /api/admin/verify must return 200 with admin token');
-
-const userLedgerRes = await apiRouter.handleRequest('GET', '/api/ledger/user', {
-  Authorization: `Bearer ${guestToken}`,
-});
-assert.strictEqual(userLedgerRes.status, 200, 'GET /api/ledger/user must return 200');
-console.log('  ✔ [PASS] ApiRouter HTTP dispatch (/api/spin, /api/provably-fair/*, /api/redemptions/*, /api/ledger/user) verified crash-free');
+// 6.3 HTTP API dispatch is covered by scripts/test-finance.js (the legacy in-memory ApiRouter, with its
+// unauthenticated guest-spin / rotate / redemption-queue endpoints, was replaced by the ledger-backed router).
 
 console.log('\n=================================================================');
 console.log('🎉 ALL 6 SECURITY PILLARS AUDITED & HARDENED (100% PASS RATE)');

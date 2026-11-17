@@ -1,3 +1,4 @@
+import Readable from './Readable';
 import React, { useState, useEffect } from 'react';
 import { X, ShieldAlert, Clock, DollarSign, CheckCircle2, AlertTriangle, HeartHandshake } from 'lucide-react';
 import { paymentService } from '../services/paymentService';
@@ -148,9 +149,9 @@ export default function ResponsibleGamingModal({
               </h3>
               <span className="pf-audit-badge">Enforced Automatically</span>
             </div>
-            <p className="pf-section-desc">
+            <Readable as="p" className="pf-section-desc">
               Configure your daily purchase ceiling, maximum single-spin wager, and Reality Check timer. Setting a field to <code>0</code> or blank disables that limit.
-            </p>
+            </Readable>
 
             <div className="rg-limits-grid">
               <div className="pf-seed-field">
@@ -232,9 +233,9 @@ export default function ResponsibleGamingModal({
                 {rgState.isCoolingOff ? `Active (${rgState.coolOffRemainingMinutes}m left)` : 'Account Active'}
               </span>
             </div>
-            <p className="pf-section-desc">
+            <Readable as="p" className="pf-section-desc">
               Need a timeout? Activating a voluntary Cool-Off immediately pauses all spins and package purchases while keeping your prize redemption access open.
-            </p>
+            </Readable>
             <div className="rg-pill-row" style={{ marginBottom: 14 }}>
               <button type="button" className="pf-action-btn secondary" onClick={() => handleActivateCoolOff(24)}>
                 ⏸️ 24-Hour Cool-Off

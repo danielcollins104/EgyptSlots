@@ -18,8 +18,13 @@ Thumbs.db
 *.log
 .env
 .env.*
+!.env.example
 external/
 sovereign-ai-platform/
 *CRYPTO_WALLETS*
 *SECRET*
 *PRIVATE_KEY*
+data/
+*.db
+*.db-wal
+*.db-shm

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ApiRouter } from './apiRouter.js';
+import { createFinance } from './finance/index.js';
 
 function loadEnvLocal() {
   try {
@@ -28,12 +29,14 @@ function loadEnvLocal() {
  * Directly mounts the DC Enterprises Server-Authoritative Security Engine into Vite
  */
 export function securityApiPlugin() {
-  const envLocal = loadEnvLocal();
-  const router = new ApiRouter({});
+  loadEnvLocal();
+  let router = null; // created lazily and ONLY for the dev server (never during `vite build`)
 
   return {
     name: 'security-api-plugin',
     configureServer(server) {
+      // Dev API: local SQLite file, development defaults (sandbox provider only, dev-only secrets).
+      router = new ApiRouter({ finance: createFinance({ env: { ...process.env, NODE_ENV: 'development' }, dbFile: './data/dev.db' }) });
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || '';
         if (url.startsWith('/api/')) {
@@ -47,7 +50,7 @@ export function securityApiPlugin() {
 
           req.on('end', async () => {
             try {
-              const response = await router.handleRequest(req.method, pathname, req.headers, body);
+              const response = await router.handleRequest(req.method, pathname, req.headers, body, {}, { ip: req.socket.remoteAddress });
               res.statusCode = response.status;
               for (const [k, v] of Object.entries(response.headers)) {
                 res.setHeader(k, v);

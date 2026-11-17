@@ -1,494 +1,179 @@
-import { SecurityServer } from './SecurityServer.js';
-import { SWEEPSTAKES_CONFIG } from '../src/config/sweepstakesConfig.js';
-import {
-  verifyCryptoDeposit,
-  getLiveWalletBalancesStatus,
-} from '../src/services/cryptoVerifierService.js';
+import { createFinance } from './finance/index.js';
+import { AppError, bad } from './finance/ledger.js';
+
+/** Fixed-window in-memory limiter (single-process). Use an edge/WAF limiter in multi-instance deployments. */
+export class RateLimiter {
+  constructor() { this.buckets = new Map(); }
+  hit(key, limit, windowMs) {
+    const now = Date.now();
+    const b = this.buckets.get(key);
+    if (!b || now > b.reset) { this.buckets.set(key, { n: 1, reset: now + windowMs }); return true; }
+    b.n++;
+    if (this.buckets.size > 50000) this.buckets.clear();
+    return b.n <= limit;
+  }
+}
+
+const SECURITY_HEADERS = {
+  'Content-Type': 'application/json; charset=utf-8',
+  'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+};
 
 /**
- * Universal API Request Handler for DC Enterprises Casino
- * Can be mounted on Node http, Express, Vite middleware, or Cloudflare Workers
+ * HTTP API for the server-authoritative casino back office.
+ * Clients only REQUEST actions; every balance, outcome and approval is decided here.
+ * Auth: Bearer session tokens (no cookies => no CSRF surface). POST bodies must be JSON objects.
  */
 export class ApiRouter {
   constructor(options = {}) {
-    this.server = new SecurityServer({
-      ledgerSecret:
-        options.ledgerSecret ||
-        (typeof process !== 'undefined' && process.env?.DC_LEDGER_SECRET) ||
-        'dc_pharaoh_chakra_ledger_master_secret_2026_salt_99x',
-      signingKey:
-        options.signingKey ||
-        (typeof process !== 'undefined' && process.env?.DC_SPIN_SIGNING_KEY) ||
-        'dc_spin_master_signing_key_pharaoh_777',
-      adminSecret:
-        options.adminSecret ||
-        (typeof process !== 'undefined' && process.env?.DC_ADMIN_SECRET) ||
-        null,
-      initialAccounts: options.initialAccounts || {},
-    });
-    this.redemptionQueue = [];
-    this.ordersQueue = [];
+    this.f = options.finance || createFinance(options);
+    this.limiter = new RateLimiter();
+    this.routes = [];
+    this._define();
+  }
+
+  // ---- routing helpers -------------------------------------------------------
+  _r(method, pattern, opts, handler) {
+    const keys = [];
+    const re = new RegExp('^' + pattern.replace(/:([a-zA-Z]+)/g, (_, k) => { keys.push(k); return '([^/]+)'; }) + '$');
+    this.routes.push({ method, re, keys, opts, handler });
+  }
+
+  _cors(headers) {
+    const origin = headers.origin || headers.Origin;
+    const allowed = this.f.config.corsOrigins;
+    const out = { ...SECURITY_HEADERS, Vary: 'Origin' };
+    if (origin && allowed.includes(origin)) {
+      out['Access-Control-Allow-Origin'] = origin;
+      out['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS';
+      out['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Idempotency-Key';
+      out['Access-Control-Max-Age'] = '600';
+    }
+    return out;
   }
 
   /**
-   * Resolves a store/custom package for order creation (custom amounts computed server-side
-   * to match the client-side calculateCustomPackage economics).
+   * @param {string} method @param {string} path @param {object} headers (lower-case keys)
+   * @param {string|object} body raw string (preferred) @param {object} [_env] unused (Node only)
+   * @param {{ip?:string}} [ctx]
    */
-  resolvePackage(packageId, customAmountUsd = null, goldCoins = null, freeSweepsCoins = null) {
-    const allPackages = [
-      ...(SWEEPSTAKES_CONFIG.storePackages || []),
-      ...(SWEEPSTAKES_CONFIG.featuredRoyalPackage ? [SWEEPSTAKES_CONFIG.featuredRoyalPackage] : []),
-      ...(SWEEPSTAKES_CONFIG.highRollerPackages || []),
-      ...(SWEEPSTAKES_CONFIG.rescuePackages || []),
-    ];
-    let pkg = allPackages.find((p) => p.id === packageId);
-
-    if (!pkg && (String(packageId || '').startsWith('pkg_custom') || Number(customAmountUsd) >= 1)) {
-      const priceUsd = Number(Math.max(1, Math.min(1000000, Number(customAmountUsd) || 25)).toFixed(2));
-      const bonusRate =
-        priceUsd >= 50000
-          ? 0.25
-          : priceUsd >= 10000
-          ? 0.18
-          : priceUsd >= 100
-          ? 0.15
-          : priceUsd >= 20
-          ? 0.10
-          : priceUsd >= 10
-          ? 0.05
-          : 0;
-      const gcPerDollar =
-        priceUsd >= 100 ? 4000 : priceUsd >= 50 ? 3500 : priceUsd >= 20 ? 3000 : priceUsd >= 10 ? 2500 : 2000;
-      pkg = {
-        id: packageId || `pkg_custom_${priceUsd}`,
-        priceUsd,
-        goldCoins: Number(goldCoins) > 0 ? Math.round(Number(goldCoins)) : Math.round(priceUsd * gcPerDollar),
-        freeSweepsCoins:
-          Number(freeSweepsCoins) > 0
-            ? Number(Number(freeSweepsCoins).toFixed(2))
-            : Number((priceUsd * (1 + bonusRate)).toFixed(2)),
-        isCustom: true,
-      };
-    }
-
-    return pkg || SWEEPSTAKES_CONFIG.storePackages[2] || null;
-  }
-
-  /**
-   * Creates a reconcilable deposit order (Cash App P2P / manual bank / crypto-by-reference).
-   * The operator confirms the funds arrived via /api/orders/update, which credits the player.
-   */
-  createDepositOrder({
-    packageId = '',
-    customAmountUsd = null,
-    goldCoins = null,
-    freeSweepsCoins = null,
-    processorId = 'cashapp',
-    orderRef = '',
-    userId = '',
-    senderTag = '',
-  } = {}) {
-    const pkg = this.resolvePackage(packageId, customAmountUsd, goldCoins, freeSweepsCoins);
-    if (!pkg) throw new Error('Unknown package.');
-    const entry = {
-      id: `ord_${Date.now().toString(36).toUpperCase()}_${Math.floor(Math.random() * 999)}`,
-      packageId: pkg.id,
-      amountUsd: pkg.priceUsd,
-      goldCoins: pkg.goldCoins,
-      freeSweepsCoins: pkg.freeSweepsCoins,
-      processorId,
-      orderRef: orderRef || '',
-      userId: userId || 'guest',
-      senderTag: senderTag || '',
-      status: 'awaiting_confirmation',
-      createdAt: new Date().toISOString(),
-    };
-    this.ordersQueue.unshift(entry);
-    this.ordersQueue = this.ordersQueue.slice(0, 200);
-    if (this.server?.ledger) {
-      this.server.ledger.append({
-        userId: entry.userId,
-        type: 'DEPOSIT_ORDER_CREATED',
-        currency: 'USD',
-        amount: entry.amountUsd,
-        balanceBefore: 0,
-        balanceAfter: 0,
-        metadata: { orderId: entry.id, orderRef, processorId, packageId: pkg.id },
-      });
-    }
-    return entry;
-  }
-
-  /**
-   * Operator confirmation of a deposit order -> credits player wallet.
-   * Idempotent: confirming the same order twice is a no-op.
-   */
-  async confirmDepositOrder(orderId, operatorNote = '') {
-    const idx = this.ordersQueue.findIndex((o) => o.id === orderId);
-    if (idx === -1) throw new Error(`Order not found: ${orderId}`);
-    const order = this.ordersQueue[idx];
-    if (order.status === 'confirmed') {
-      return { order, alreadyConfirmed: true };
-    }
-    if (order.status === 'rejected') {
-      throw new Error('Order was already rejected.');
-    }
-    const credit = await this.server.wallet.processPurchaseCredit(order.userId, {
-      goldCoinsToAdd: order.goldCoins,
-      freeSweepsCoinsToAdd: order.freeSweepsCoins,
-      packageId: order.packageId,
-      paymentRef: `${order.processorId}:${order.orderRef || order.id}`,
-    });
-    this.ordersQueue[idx] = {
-      ...order,
-      status: 'confirmed',
-      confirmedAt: new Date().toISOString(),
-      operatorNote: operatorNote || '',
-      credit,
-    };
-    return { order: this.ordersQueue[idx], alreadyConfirmed: false };
-  }
-
-
-  /**
-   * Universal Dispatcher
-   * @param {string} method - 'GET' | 'POST' | 'OPTIONS'
-   * @param {string} path - URL path (e.g. '/api/spin')
-   * @param {object} headers - HTTP request headers
-   * @param {object|string} body - Parsed JSON body or raw string
-   * @param {object} env - Optional Cloudflare Worker env bindings
-   * @returns {Promise<{ status: number, headers: object, body: any }>}
-   */
-  async handleRequest(method, path, headers = {}, body = {}, env = {}) {
-    // Standard CORS headers
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      'Content-Type': 'application/json',
-    };
-
-    if (method === 'OPTIONS') {
-      return { status: 204, headers: corsHeaders, body: null };
-    }
-
-    // Extract Bearer token
-    const authHeader = headers['authorization'] || headers['Authorization'] || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (authHeader || null);
-
-    let parsedBody = {};
-    try {
-      parsedBody = typeof body === 'string' && body.length > 0 ? JSON.parse(body) : (body || {});
-    } catch {
-      parsedBody = {};
-    }
+  async handleRequest(method, path, headers = {}, body = '', _env = {}, ctx = {}) {
+    const h = Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]));
+    const outHeaders = this._cors(h);
+    const ip = ctx.ip || 'unknown';
+    const reply = (status, payload) => ({ status, headers: outHeaders, body: payload });
+    if (method === 'OPTIONS') return { status: 204, headers: outHeaders, body: null };
 
     try {
-      // 1. GAME OUTCOME & SPIN
-      if (path === '/api/spin' && method === 'POST') {
-        let activeToken = token;
-        if (!activeToken) {
-          // Guest session auto-creation with guest scope
-          const guestSession = this.server.authService.createSession({
-            id: parsedBody.userId || 'usr_guest_' + Date.now().toString(36),
-            role: 'PLAYER',
-            name: 'Guest Player',
-            email: 'guest@oopsiwon.com',
-          });
-          activeToken = guestSession.token;
-        }
+      const route = this.routes.find((r) => r.method === method && r.re.test(path));
+      if (!route) return reply(404, { success: false, error: { code: 'NOT_FOUND', message: 'Not found.' } });
 
-        const result = await this.server.handleSpinRequest(activeToken, {
-          currencyMode: parsedBody.currencyMode || 'GC',
-          betLevel: parsedBody.betLevel || 1,
-          clientSeed: parsedBody.clientSeed,
-          currentBetSC: parsedBody.currentBetSC,
-        });
+      const cls = route.opts.limit || 'general';
+      const [limit, win] = { auth: [10, 60000], webhook: [300, 60000], spin: [8, 1000], general: [180, 60000] }[cls];
+      if (!this.limiter.hit(`${cls}:${ip}`, limit, win)) throw new AppError(429, 'RATE_LIMITED', 'Too many requests.');
 
-        return {
-          status: 200,
-          headers: corsHeaders,
-          body: { success: true, ...result, token: activeToken },
-        };
+      const rawBody = typeof body === 'string' ? body : JSON.stringify(body || {});
+      let json = {};
+      if (method === 'POST' && !route.opts.raw && rawBody.length > 0) {
+        if (!String(h['content-type'] || '').toLowerCase().startsWith('application/json')) throw new AppError(415, 'UNSUPPORTED_MEDIA_TYPE', 'JSON required.');
+        try { json = JSON.parse(rawBody); } catch { throw bad('INVALID_JSON', 'Malformed JSON.'); }
+        if (json === null || typeof json !== 'object' || Array.isArray(json)) throw bad('INVALID_JSON', 'JSON object required.');
       }
 
-      // 2. GET USER BALANCE
-      if (path === '/api/balance' && (method === 'GET' || method === 'POST')) {
-        let activeToken = token;
-        if (!activeToken && parsedBody.userId) {
-          const s = this.server.authService.createSession({ id: parsedBody.userId, role: 'PLAYER' });
-          activeToken = s.token;
-        }
-        if (!activeToken) {
-          return { status: 401, headers: corsHeaders, body: { error: 'Authentication required' } };
-        }
-        const balance = await this.server.getBalance(activeToken);
-        return { status: 200, headers: corsHeaders, body: { success: true, balance } };
-      }
+      const m = route.re.exec(path);
+      const params = Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
+      const authz = String(h.authorization || '');
+      const token = authz.startsWith('Bearer ') ? authz.slice(7).trim() : null;
 
-      // 3. PRIZE REDEMPTION & ADMIN PAYOUT QUEUE
-      if (path === '/api/redeem' && method === 'POST') {
-        if (!token) return { status: 401, headers: corsHeaders, body: { error: 'Authentication required' } };
-        const res = await this.server.handleRedemptionRequest(token, parsedBody);
-        return { status: 200, headers: corsHeaders, body: { success: true, ...res } };
+      const ctxObj = { f: this.f, params, body: json, rawBody, headers: h, ip, token, idem: h['idempotency-key'] || json.idempotencyKey };
+      if (route.opts.auth) {
+        const a = this.f.accounts.authenticate(token, route.opts.role || null);
+        ctxObj.user = a.user;
+        ctxObj.session = a.session;
+        if (route.opts.stepUp) this.f.accounts.requireStepUp(a.session);
       }
-
-      if (path === '/api/redemptions' && method === 'GET') {
-        // Payout queue contains player payout destinations (PII) — ADMIN role required
-        if (!token) {
-          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
-        }
-        this.server.authService.validateSession(token, 'ADMIN');
-        return {
-          status: 200,
-          headers: corsHeaders,
-          body: { success: true, redemptions: this.redemptionQueue },
-        };
+      const data = await route.handler(ctxObj);
+      return reply(200, { success: true, ...data });
+    } catch (e) {
+      if (e instanceof AppError) {
+        return { status: e.status, headers: outHeaders, body: { success: false, error: { code: e.code, message: e.message } } };
       }
-
-      if (path === '/api/redemptions' && method === 'POST') {
-        const entry = {
-          id: parsedBody.id || `rdm_${Date.now().toString(36).toUpperCase()}`,
-          timestamp: parsedBody.timestamp || new Date().toISOString(),
-          status: parsedBody.status || 'processing',
-          ...parsedBody,
-        };
-        this.redemptionQueue.unshift(entry);
-        this.redemptionQueue = this.redemptionQueue.slice(0, 100);
-        if (this.server && this.server.ledger) {
-          this.server.ledger.append({
-            userId: entry.userId || entry.playerEmail || 'SYSTEM_REDEMPTION_QUEUE',
-            type: 'REDEMPTION_QUEUED',
-            currency: 'SC',
-            amount: -(Number(entry.amountSC) || 0),
-            balanceBefore: Number(entry.balanceBefore) || 0,
-            balanceAfter: Number(entry.balanceAfter) || 0,
-            metadata: {
-              redemptionId: entry.id,
-              amountSC: entry.amountSC,
-              amountUsd: entry.amountUsd,
-              method: entry.method,
-              destinationMasked: entry.destinationMasked,
-            },
-          });
-        }
-        return { status: 200, headers: corsHeaders, body: { success: true, redemption: entry } };
-      }
-
-      if (path === '/api/redemptions/update' && method === 'POST') {
-        // Approving / rejecting payouts moves real money — ADMIN role required
-        if (!token) {
-          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
-        }
-        this.server.authService.validateSession(token, 'ADMIN');
-        const { redemptionId, action, updated } = parsedBody;
-        const idx = this.redemptionQueue.findIndex((r) => r.id === redemptionId);
-        if (idx !== -1 && updated) {
-          this.redemptionQueue[idx] = { ...this.redemptionQueue[idx], ...updated };
-        } else if (updated) {
-          this.redemptionQueue.unshift(updated);
-        }
-        if (this.server && this.server.ledger) {
-          this.server.ledger.append({
-            userId: updated?.userId || 'ADMIN_OPERATOR',
-            type: 'REDEMPTION_UPDATED',
-            currency: 'SC',
-            amount: 0,
-            balanceBefore: 0,
-            balanceAfter: 0,
-            metadata: {
-              redemptionId,
-              action,
-              status: updated?.status,
-              txHashOrReceipt: updated?.txHashOrReceipt,
-            },
-          });
-        }
-        return { status: 200, headers: corsHeaders, body: { success: true, redemptionId, action } };
-      }
-
-      // 4. PLAYER AUTHENTICATION
-      if (path === '/api/auth/register' && method === 'POST') {
-        const { email, password, name } = parsedBody;
-        const res = this.server.authService.registerUser({ email, password, name });
-        // Initialize balance in server wallet
-        this.server.wallet.getAccount(res.user.id);
-        return { status: 201, headers: corsHeaders, body: { success: true, ...res } };
-      }
-
-      if (path === '/api/auth/login' && method === 'POST') {
-        const { email, password } = parsedBody;
-        const res = this.server.authService.loginUser(email, password);
-        return { status: 200, headers: corsHeaders, body: { success: true, ...res } };
-      }
-
-      if (path === '/api/auth/logout' && method === 'POST') {
-        if (token) this.server.authService.revokeSession(token);
-        return { status: 200, headers: corsHeaders, body: { success: true, message: 'Logged out' } };
-      }
-
-      // 5. DEPOSIT ORDERS (Cash App P2P / manual rails — operator-confirmed crediting)
-      if (path === '/api/orders' && method === 'POST') {
-        const entry = this.createDepositOrder({
-          packageId: parsedBody.packageId,
-          customAmountUsd: parsedBody.amountUsd ?? parsedBody.customAmountUsd ?? null,
-          goldCoins: parsedBody.goldCoins ?? null,
-          freeSweepsCoins: parsedBody.freeSweepsCoins ?? null,
-          processorId: parsedBody.processorId || 'cashapp',
-          orderRef: parsedBody.orderRef || '',
-          userId: parsedBody.userId || parsedBody.playerEmail || 'guest',
-          senderTag: parsedBody.senderTag || '',
-        });
-        return { status: 201, headers: corsHeaders, body: { success: true, order: entry } };
-      }
-
-      if (path === '/api/orders' && method === 'GET') {
-        // Order queue may contain player identifiers — ADMIN role required
-        if (!token) {
-          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
-        }
-        this.server.authService.validateSession(token, 'ADMIN');
-        return { status: 200, headers: corsHeaders, body: { success: true, orders: this.ordersQueue } };
-      }
-
-      if (path === '/api/orders/update' && method === 'POST') {
-        // Confirming deposits credits real player balances — ADMIN role required
-        if (!token) {
-          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
-        }
-        this.server.authService.validateSession(token, 'ADMIN');
-        const { orderId, action, operatorNote } = parsedBody;
-        if (action === 'confirm') {
-          const res = await this.confirmDepositOrder(orderId, operatorNote || '');
-          return { status: 200, headers: corsHeaders, body: { success: true, ...res } };
-        }
-        const idx = this.ordersQueue.findIndex((o) => o.id === orderId);
-        if (idx !== -1) {
-          this.ordersQueue[idx] = { ...this.ordersQueue[idx], status: action === 'reject' ? 'rejected' : this.ordersQueue[idx].status, operatorNote: operatorNote || '' };
-        }
-        return { status: 200, headers: corsHeaders, body: { success: true, orderId, action } };
-      }
-
-      // 6. ADMINISTRATOR ENDPOINTS
-      if (path === '/api/admin/login' && method === 'POST') {
-        const { adminKey } = parsedBody;
-        const res = this.server.adminLogin(adminKey);
-        return { status: 200, headers: corsHeaders, body: { success: true, ...res } };
-      }
-
-      if (path === '/api/admin/verify' && method === 'GET') {
-        if (!token) {
-          return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
-        }
-        const session = this.server.authService.validateSession(token, 'ADMIN');
-        return {
-          status: 200,
-          headers: corsHeaders,
-          body: {
-            success: true,
-            user: { id: session.userId, name: session.name, email: session.email, role: session.role },
-            expiresAt: session.expiresAt,
-          },
-        };
-      }
-
-      if (path === '/api/admin/adjust-balance' && method === 'POST') {
-        if (!token) return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
-        const res = await this.server.adminAdjustBalance(token, parsedBody);
-        return { status: 200, headers: corsHeaders, body: { success: true, ...res } };
-      }
-
-      if (path === '/api/admin/ledger' && method === 'GET') {
-        if (!token) return { status: 401, headers: corsHeaders, body: { error: 'Admin token required' } };
-        const chain = this.server.adminGetFullLedger(token, 100);
-        const integrity = this.server.verifyLedgerIntegrity(token);
-        return { status: 200, headers: corsHeaders, body: { success: true, chain, integrity } };
-      }
-
-      // 7. PROVABLY FAIR PUBLIC COMMITMENT, SEED ROTATION & SPIN VERIFIER
-      if (path === '/api/provably-fair' && method === 'GET') {
-        const commitment = this.server.getProvablyFairCommitment();
-        return { status: 200, headers: corsHeaders, body: { success: true, ...commitment } };
-      }
-
-      if (path === '/api/provably-fair/rotate' && method === 'POST') {
-        const rotated = this.server.rotateProvablyFairSeed();
-        return { status: 200, headers: corsHeaders, body: { success: true, ...rotated } };
-      }
-
-      if (path === '/api/provably-fair/verify' && method === 'POST') {
-        const verification = this.server.verifyProvablyFairSpin(parsedBody);
-        return { status: 200, headers: corsHeaders, body: { success: true, ...verification } };
-      }
-
-      // 7.5 USER PERSONAL AUDIT LEDGER
-      if (path === '/api/ledger/user' && (method === 'GET' || method === 'POST')) {
-        if (!token) return { status: 401, headers: corsHeaders, body: { error: 'Authentication required' } };
-        const history = this.server.getUserAuditHistory(token, Number(parsedBody?.limit) || 50);
-        return { status: 200, headers: corsHeaders, body: { success: true, history } };
-      }
-
-      // 8. PAYMENT STATUS CALLBACKS (reserved for processor webhooks — Skrill status URL, etc.)
-      // Crypto deposits are verified on-chain via /api/crypto/verify; Cash App orders are
-      // confirmed by the operator via /api/orders/update. Processor-specific callbacks
-      // (e.g. Skrill) plug in here when those rails are enabled.
-      if (path === '/api/payments/status' && method === 'POST') {
-        return {
-          status: 200,
-          headers: corsHeaders,
-          body: { success: true, received: true, timestamp: new Date().toISOString() },
-        };
-      }
-
-      // 8.5 LIVE ON-CHAIN CRYPTO VERIFICATION & WALLET STATUS
-      if ((path === '/api/crypto/verify' || path === '/api/verify-crypto-tx') && method === 'POST') {
-        const verification = await verifyCryptoDeposit({
-          symbol: parsedBody.symbol || 'USDT',
-          expectedAmount: Number(parsedBody.expectedAmount) || 0,
-          txHash: parsedBody.txHash || '',
-          minTimestampSec: Number(parsedBody.minTimestampSec) || 0,
-        });
-        return {
-          status: 200,
-          headers: corsHeaders,
-          body: {
-            success: verification.verified,
-            ...verification,
-            timestamp: new Date().toISOString(),
-          },
-        };
-      }
-
-      if (path === '/api/crypto/wallets-status' && (method === 'GET' || method === 'POST')) {
-        const status = await getLiveWalletBalancesStatus();
-        return {
-          status: 200,
-          headers: corsHeaders,
-          body: {
-            success: true,
-            ...status,
-          },
-        };
-      }
-
-      // 9. HEALTH CHECK
-      if (path === '/api/health') {
-        return {
-          status: 200,
-          headers: corsHeaders,
-          body: { status: 'healthy', version: '3.0.0-multi-rail-cashier', timestamp: new Date().toISOString() },
-        };
-      }
-
-      return { status: 404, headers: corsHeaders, body: { error: `Endpoint not found: ${path}` } };
-    } catch (err) {
-      console.error(`[API ERROR] ${path}:`, err.message);
-      const isAuth = err.message.includes('Unauthorized') || err.message.includes('Forbidden');
-      return {
-        status: isAuth ? 403 : 400,
-        headers: corsHeaders,
-        body: { error: err.message, timestamp: new Date().toISOString() },
-      };
+      console.error(`[API ERROR] ${method} ${path}:`, e?.stack || e);
+      return { status: 500, headers: outHeaders, body: { success: false, error: { code: 'INTERNAL', message: 'Internal error.' } } };
     }
+  }
+
+  // ---- route table -----------------------------------------------------------
+  _define() {
+    const P = { auth: true };
+    const S = { auth: true, role: 'SUPPORT' };
+    const F = { auth: true, role: 'FINANCE' };
+    const FS = { auth: true, role: 'FINANCE', stepUp: true };
+    const AS = { auth: true, role: 'ADMIN', stepUp: true };
+
+    this._r('GET', '/api/health', {}, () => ({ status: 'healthy', version: '4.0.0-ledger' }));
+
+    // Auth
+    this._r('POST', '/api/auth/register', { limit: 'auth' }, ({ f, body, ip }) => f.accounts.register(body, ip));
+    this._r('POST', '/api/auth/login', { limit: 'auth' }, ({ f, body, ip }) => f.accounts.login(body, ip));
+    this._r('POST', '/api/auth/logout', P, ({ f, token }) => { f.accounts.logout(token); return {}; });
+    this._r('POST', '/api/auth/step-up', { ...P, limit: 'auth' }, ({ f, token, body }) => f.accounts.stepUp(token, body.password));
+    this._r('GET', '/api/me', P, ({ f, user }) => ({ user: f.accounts.publicUser(user), balance: f.accounts.balance(user.id) }));
+    this._r('GET', '/api/balance', P, ({ f, user }) => ({ balance: f.accounts.balance(user.id) }));
+    this._r('GET', '/api/ledger', P, ({ f, user }) => ({ history: f.ledger.history(user.id, 100) }));
+    this._r('POST', '/api/promo/daily', P, ({ f, user }) => ({ granted: f.accounts.claimDaily(user), balance: f.accounts.balance(user.id) }));
+    this._r('POST', '/api/account/self-exclude', P, ({ f, user, body }) => f.accounts.selfExclude(user.id, Number(body.days)));
+
+    // Cashier
+    this._r('GET', '/api/payments/packages', {}, ({ f }) => ({ packages: f.payments.listPackages() }));
+    this._r('GET', '/api/payments/methods', {}, ({ f }) => ({ providers: f.payments.listMethods(), crypto: f.gateway.options() }));
+    this._r('POST', '/api/payments/intents', P, ({ f, user, body, idem }) => f.payments.createIntent(user, { ...body, idempotencyKey: idem }));
+    this._r('GET', '/api/payments/intents', P, ({ f, user }) => ({ payments: f.payments.listForUser(user.id) }));
+    this._r('GET', '/api/payments/intents/:id', P, ({ f, user, params }) => ({ payment: f.payments.publicIntent(f.payments.getIntentForUser(user.id, params.id)) }));
+    this._r('POST', '/api/payments/intents/:id/charge', P, async ({ f, user, params, body }) => f.payments.chargeWithSource(user, params.id, body.sourceId));
+    this._r('POST', '/api/payments/webhook/:provider', { raw: true, limit: 'webhook' }, async ({ f, params, rawBody, headers }) => f.payments.handleWebhook(params.provider, rawBody, headers));
+
+    // Game
+    this._r('POST', '/api/game/spin', { ...P, limit: 'spin' }, ({ f, user, body, idem }) => ({ spin: f.spins.spin(user, { ...body, idempotencyKey: idem }) }));
+    this._r('GET', '/api/game/seed', P, ({ f, user }) => ({ commitment: f.spins.commitment(user.id) }));
+    this._r('POST', '/api/game/seed/rotate', P, ({ f, user }) => f.spins.rotateSeed(user.id));
+    this._r('GET', '/api/game/history', P, ({ f, user }) => ({ spins: f.spins.history(user.id) }));
+    this._r('GET', '/api/game/verify/:id', P, ({ f, user, params }) => ({ verification: f.spins.verifySpin(user.id, params.id) }));
+
+    // Redemption center
+    this._r('GET', '/api/redemptions/methods', {}, ({ f }) => ({ methods: f.redemptions.methods() }));
+    this._r('GET', '/api/redemptions/destinations', P, ({ f, user }) => ({ destinations: f.redemptions.listDestinations(user.id) }));
+    this._r('POST', '/api/redemptions/destinations', { ...P, stepUp: true }, ({ f, user, body }) => f.redemptions.addDestination(user, body));
+    this._r('DELETE', '/api/redemptions/destinations/:id', P, ({ f, user, params }) => f.redemptions.removeDestination(user.id, params.id));
+    this._r('POST', '/api/redemptions', P, ({ f, user, body, idem }) => f.redemptions.request(user, { ...body, idempotencyKey: idem }));
+    this._r('GET', '/api/redemptions', P, ({ f, user }) => ({ redemptions: f.redemptions.listForUser(user.id) }));
+    this._r('POST', '/api/redemptions/:id/cancel', P, ({ f, user, params }) => ({ redemption: f.redemptions.cancel(user, params.id) }));
+
+    // Staff / admin
+    this._r('GET', '/api/admin/purchases', S, ({ f, headers }) => ({ purchases: f.admin.purchases({}) }));
+    this._r('GET', '/api/admin/failed-payments', S, ({ f }) => ({ payments: f.admin.failedPayments() }));
+    this._r('GET', '/api/admin/redemptions', F, ({ f }) => ({ redemptions: f.admin.redemptionList({}) }));
+    this._r('GET', '/api/admin/crypto-transfers', F, ({ f }) => ({ transfers: f.admin.cryptoTransfers() }));
+    this._r('GET', '/api/admin/players/:id', S, ({ f, params }) => f.admin.playerOverview(params.id));
+    this._r('GET', '/api/admin/players/:id/ledger', S, ({ f, params }) => ({ ledger: f.admin.playerLedger(params.id) }));
+    this._r('GET', '/api/admin/reconciliation', F, ({ f }) => ({ report: f.admin.reconciliation() }));
+    this._r('GET', '/api/admin/audit', F, ({ f }) => ({ audit: f.admin.auditTrail(200) }));
+    this._r('POST', '/api/admin/redemptions/:id/approve', FS, ({ f, user, params }) => ({ redemption: f.redemptions.approve(user, params.id) }));
+    this._r('POST', '/api/admin/redemptions/:id/reject', FS, ({ f, user, params, body }) => ({ redemption: f.redemptions.reject(user, params.id, body.reason) }));
+    this._r('POST', '/api/admin/redemptions/:id/processing', FS, ({ f, user, params, body }) => ({ redemption: f.redemptions.markProcessing(user, params.id, body.txHash) }));
+    this._r('POST', '/api/admin/redemptions/:id/verify', FS, async ({ f, user, params }) => f.redemptions.verifyAndComplete(user, params.id));
+    this._r('POST', '/api/admin/redemptions/:id/fail', FS, ({ f, user, params, body }) => ({ redemption: f.redemptions.fail(user, params.id, body.reason) }));
+    this._r('POST', '/api/admin/players/:id/kyc', FS, ({ f, user, params, body }) => f.admin.setKyc(user, params.id, body.status, body.note));
+    this._r('POST', '/api/admin/players/:id/status', AS, ({ f, user, params, body }) => f.admin.setAccountStatus(user, params.id, body.status, body.reason));
+    this._r('POST', '/api/admin/players/:id/adjust', AS, ({ f, user, params, body }) => f.admin.adjustBalance(user, { ...body, userId: params.id }));
+    this._r('POST', '/api/admin/crypto-transfers/:id/resolve', FS, ({ f, user, params, body }) => f.admin.resolveCryptoTransfer(user, params.id, body));
+    this._r('POST', '/api/admin/crypto/scan', FS, async ({ f, body }) => {
+      const out = {};
+      for (const n of Object.keys(f.gateway.networks)) if (!body.network || body.network === n) out[n] = await f.gateway.scanNetwork(n);
+      return { scanned: out };
+    });
   }
 }

@@ -61,3 +61,6 @@ cd android && ./gradlew connectedDebugAndroidTest
 - [`android/app/src/test/java/com/dcenterprises/egyptslots/FakeCasinoConfigRepository.java`](../android/app/src/test/java/com/dcenterprises/egyptslots/FakeCasinoConfigRepository.java): Deterministic in-memory fake for local unit & Robolectric tests.
 - [`android/app/src/test/java/com/dcenterprises/egyptslots/CasinoUnitTest.java`](../android/app/src/test/java/com/dcenterprises/egyptslots/CasinoUnitTest.java): JUnit4 + Robolectric test suite testing the 9 window size classes (`400, 610, 900 dp` × `400, 500, 1000 dp`), `1.5f` font scale, deep-link security, fake asset states, and `cap sync` bundle presence.
 - [`android/app/src/androidTest/java/com/dcenterprises/egyptslots/CasinoInstrumentedTest.java`](../android/app/src/androidTest/java/com/dcenterprises/egyptslots/CasinoInstrumentedTest.java): Instrumented `AndroidJUnit4` + `ActivityScenario` + `UiDevice` (UI Automator) test suite verifying adaptive orientation freedom, foldable configuration recreation, and E2E display bounds.
+
+## Finance backend
+- [`scripts/test-finance.js`](../scripts/test-finance.js) (`npm run test:finance`): 48 tests for the ledger, payments/webhooks, crypto gateway, redemptions, server spins, admin/RBAC and API hardening. See [`payments-and-security.md`](payments-and-security.md).

@@ -322,26 +322,21 @@ SWEEPSTAKES_CONFIG.storePackages.forEach((pkg) => {
   assert(pkg.priceUsd > 0, `Package [${pkg.id}] has positive USD price ($${pkg.priceUsd})`);
   assert(pkg.goldCoins > 0, `Package [${pkg.id}] provides Gold Coins (${pkg.goldCoins.toLocaleString()} GC)`);
   assert(pkg.freeSweepsCoins > 0, `Package [${pkg.id}] provides Free SC (${pkg.freeSweepsCoins} SC)`);
-  assert(
-  );
-  assert(
-  );
+  assert(!('stripePaymentLink' in pkg), `Package [${pkg.id}] carries no legacy payment-link (prices/coins are resolved server-side)`);
 });
 
 assert(
-  SWEEPSTAKES_CONFIG.featuredRoyalPackage &&
+  SWEEPSTAKES_CONFIG.featuredRoyalPackage && SWEEPSTAKES_CONFIG.featuredRoyalPackage.priceUsd > 0,
+  'Featured Royal Package is configured'
 );
 
 SWEEPSTAKES_CONFIG.highRollerPackages.forEach((pkg) => {
-  assert(
-  );
+  assert(pkg.priceUsd > 0 && pkg.goldCoins > 0, `High-Roller Package [${pkg.id}] is valid`);
 });
 
 assert(SWEEPSTAKES_CONFIG.rescuePackages.length >= 3, 'Rescue low-balance refill bundles configured');
 SWEEPSTAKES_CONFIG.rescuePackages.forEach((pkg) => {
   assert(pkg.priceUsd > 0 && pkg.goldCoins > 0 && pkg.freeSweepsCoins > 0, `Rescue package [${pkg.id}] is valid`);
-  assert(
-  );
 });
 
 // ----------------------------------------------------------------------------
@@ -667,64 +662,22 @@ assert(
   'Cash App & Crypto Vault rails accurately compute +5% extra Sweeps Coins without jump-to-2000 corruption'
 );
 
-const futureYear2 = ((new Date().getFullYear() + 2) % 100).toString().padStart(2, '0');
-const pastYear2 = ((new Date().getFullYear() - 1) % 100).toString().padStart(2, '0');
-const validVisa = sweepstakesCheckoutController.validateCardInput({
-  cardNumber: '4242 4242 4242 4242',
-  cardExpiry: `12/${futureYear2}`,
-  cardCvc: '123',
-});
-const expiredVisa = sweepstakesCheckoutController.validateCardInput({
-  cardNumber: '4242 4242 4242 4242',
-  cardExpiry: `01/${pastYear2}`,
-  cardCvc: '123',
-});
-const validAmex = sweepstakesCheckoutController.validateCardInput({
-  cardNumber: '3782 822463 10005',
-  cardExpiry: `12/${futureYear2}`,
-  cardCvc: '1234',
-});
-assert(
-  validVisa.valid && validVisa.brand === 'VISA' && validVisa.last4 === '4242' && !expiredVisa.valid,
-  'Dynamic card validator accepts valid Visa and rejects expired card dates'
-);
-assert(
-  validAmex.valid && validAmex.brand === 'AMEX' && validAmex.last4 === '0005',
-  'Amex 15-digit 4-6-5 format and 4-digit CID validate cleanly'
-);
-
-const savedToken = sweepstakesCheckoutController.saveCardForOneClick({
-  brand: 'VISA',
-  last4: '4242',
-  expiry: `12/${futureYear2}`,
-  holderName: 'Daniel VIP',
-});
-const rawSavedCards = localStorage.getItem('dc_saved_payment_cards_v1') || '';
-assert(
-  Boolean(savedToken?.id) &&
-    !rawSavedCards.includes('42424242') &&
-    !rawSavedCards.includes('cardCvc'),
-  '1-Click Saved Card vault stores tokenized last4 metadata only (never raw PAN or CVC)'
-);
+// (Card-form validation and saved-card vault tests removed: the in-app card rail was deleted in the
+// crypto/Cash-App rebuild. Card data must never touch this app; PCI scope stays with the payment provider.)
 
 const webhookSecServer = new SecurityServer();
 const balBeforeWebhook = webhookSecServer.wallet.getAccount('usr_webhook_custom_tester').sweepsCoins;
-  id: 'evt_custom_bonus_tokens_sync_1',
-  type: 'checkout.session.completed',
-  data: {
-    object: {
-      metadata: {
-        packageId: 'pkg_custom_25',
-        userId: 'usr_webhook_custom_tester',
-        goldCoins: '50000',
-        bonusTokens: '25.00',
-      },
-    },
-  },
+const webhookRes = await webhookSecServer.handlePaymentConfirmation({
+  eventId: 'evt_custom_bonus_tokens_sync_1',
+  userId: 'usr_webhook_custom_tester',
+  goldCoins: 50000,
+  freeSweepsCoins: 25,
+  packageId: 'pkg_custom_25',
 });
 const balAfterWebhook = webhookSecServer.wallet.getAccount('usr_webhook_custom_tester').sweepsCoins;
 assert(
-  webhookRes.status === 'processed' && Number((balAfterWebhook - balBeforeWebhook).toFixed(2)) === 25,
+  webhookRes.status === 'credited' && Number((balAfterWebhook - balBeforeWebhook).toFixed(2)) === 25,
+  'Legacy SecurityServer payment confirmation credits exact +25.00 custom-pack SC'
 );
 
 // ----------------------------------------------------------------------------

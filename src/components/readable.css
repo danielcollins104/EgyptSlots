@@ -1,0 +1,71 @@
+/* Readable text + optional read-aloud speaker. Comfortable measure, size, spacing and contrast. */
+.readable {
+  position: relative;
+  font-size: clamp(15px, 0.9rem + 0.2vw, 17.5px);
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  word-spacing: 0.04em;
+  hyphens: manual;
+  text-wrap: pretty;
+}
+.readable.has-reader { padding-right: 46px; }
+.readable p,
+.readable li { max-width: 72ch; line-height: 1.75; color: inherit; opacity: 1; }
+.readable p { margin: 0 0 0.85em; }
+.readable ul,
+.readable ol { padding-left: 1.3em; margin: 0 0 0.9em; }
+.readable li { margin-bottom: 0.55em; }
+.readable h3,
+.readable h4 { line-height: 1.35; margin: 0 0 0.6em; letter-spacing: 0.02em; }
+.readable strong { font-weight: 800; }
+.readable small,
+.readable .cx-note,
+.readable .cx-legal { font-size: 0.92em; opacity: 1; }
+
+/* Tiny speaker: small glyph, but a full 52px touch target for accessibility. */
+.readable-speaker {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: rgba(255, 217, 120, 0.85);
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+}
+.readable-speaker::before {
+  content: '';
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 217, 120, 0.4);
+  background: rgba(20, 12, 36, 0.55);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.readable-speaker > svg { position: relative; }
+.readable-speaker:hover::before,
+.readable-speaker:focus-visible::before { background: rgba(255, 217, 120, 0.2); border-color: #ffd978; }
+.readable-speaker:focus-visible { outline: none; }
+.readable-speaker:focus-visible::before { box-shadow: 0 0 0 2px #ffd978; }
+.readable-speaker.is-playing { color: #fff; }
+.readable-speaker.is-playing::before {
+  background: rgba(212, 169, 74, 0.55);
+  border-color: #ffd978;
+  animation: readable-pulse 1.4s ease-in-out infinite;
+}
+@keyframes readable-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 217, 120, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 217, 120, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .readable-speaker.is-playing::before { animation: none; }
+}

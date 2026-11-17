@@ -77,11 +77,15 @@ import { smoothPerformance } from './plugins/smoothPerformancePlugin';
 import './App.css';
 
 // Lazy-loaded secondary modals & bonus stages (cuts critical boot JS parse/eval time by >55% on mobile CPUs)
-const loadPaymentModal = () => import('./components/PaymentModal');
+// Demo forced-outcome buttons: dev builds, or explicitly enabled via VITE_ENABLE_DEMO_FORCED_OUTCOMES=true (GC mode only).
+const DEMO_FORCED_OUTCOMES_ENABLED = Boolean(
+  import.meta.env?.DEV || import.meta.env?.VITE_ENABLE_DEMO_FORCED_OUTCOMES === 'true'
+);
+const loadPaymentModal = () => import('./components/CashierModal');
 const loadPaytableModal = () => import('./components/PaytableModal');
 const loadAuthModal = () => import('./components/AuthModal');
 const PaymentModal = lazy(loadPaymentModal);
-const AdminPayoutCenter = lazy(() => import('./components/AdminPayoutCenter'));
+const AdminPayoutCenter = lazy(() => import('./components/AdminFinanceConsole'));
 const LowBalanceOfferModal = lazy(() => import('./components/LowBalanceOfferModal'));
 const VipPromoAdModal = lazy(() => import('./components/VipPromoAdModal'));
 const ResponsibleGamingModal = lazy(() => import('./components/ResponsibleGamingModal'));
@@ -2445,6 +2449,11 @@ export default function App() {
 
   const triggerSpin = useCallback(
     (forcedMode = null, overrideBet = null) => {
+      // SECURITY: demo "forced outcome" spins (bigwin/megawin/bonus/...) are a GC-mode showcase only. They are
+      // disabled in SC (prize-eligible) mode and in production builds unless explicitly enabled, so they can
+      // never mint value that could later be redeemed.
+      if (forcedMode && !(DEMO_FORCED_OUTCOMES_ENABLED && currencyMode === 'GC')) forcedMode = null;
+
       // PRELOAD GUARD: Player cannot spin until 100% of game assets are pre-cached
       if (!isAssetsLoaded) {
         setStatusMessage('PRE-CACHING 3D RELICS & ASSETS... PLEASE WAIT.');
