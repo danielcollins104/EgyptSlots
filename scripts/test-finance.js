@@ -846,6 +846,37 @@ test('charge still succeeds when order/customer enrichment fails (best-effort)',
   assert.ok(f.db.get("SELECT 1 x FROM audit_log WHERE action = 'SQUARE_ORDER_ENRICHMENT_FAILED' AND target_id = ?", intent.id));
 });
 
+console.log('\n--- 15. Square refunds ---');
+test('admin refund goes through Square Refunds API once; clawback happens on webhook', async () => {
+  const extra = {};
+  const f = fresh({ providers: { enabled: ['square'], square: squareCfg } }, { fetchImpl: async (url, opts) => {
+    if (url.endsWith('/v2/refunds')) { extra.refundBody = JSON.parse(opts.body); return { ok: true, json: async () => ({ refund: { id: 'RFD1', status: 'PENDING' } }) }; }
+    return { ok: true, json: async () => ({}) };
+  } });
+  const u = mkUser(f);
+  const { intent } = f.payments.createIntent(user(f, u.id), { packageId: 'pkg_starter', provider: 'square', method: 'card', idempotencyKey: crypto.randomUUID() });
+  f.db.run("UPDATE payment_intents SET provider_ref = 'PAYR', status = 'succeeded', credited_at = ? WHERE id = ?", new Date().toISOString(), intent.id);
+  f.db.tx(() => f.payments.creditIntent(intent.id, 'test-setup'));
+  const before = f.accounts.balance(u.id);
+  assert.ok(before.gc >= 10000);
+
+  const r = await f.payments.refundIntent(intent.id, { reason: 'Customer request', actor: 'admin1' });
+  assert.equal(r.refundId, 'RFD1');
+  assert.equal(extra.refundBody.payment_id, 'PAYR');
+  assert.equal(extra.refundBody.amount_money.amount, 499);
+  await assert.rejects(() => f.payments.refundIntent(intent.id, { reason: 'again', actor: 'admin1' }), (e) => e.code === 'ALREADY_REFUNDED');
+  assert.ok(f.db.get("SELECT 1 x FROM audit_log WHERE action = 'REFUND_INITIATED' AND target_id = ?", intent.id));
+  // Coins are NOT clawed back until the verified refund.updated webhook arrives:
+  const still = f.accounts.balance(u.id);
+  assert.equal(still.gc, before.gc);
+});
+test('refundIntent rejects non-succeeded and non-refundable intents', async () => {
+  const f = fresh({ providers: { enabled: ['square'], square: squareCfg } }, { fetchImpl: async () => ({ ok: true, json: async () => ({}) }) });
+  const u = mkUser(f);
+  const { intent } = f.payments.createIntent(user(f, u.id), { packageId: 'pkg_starter', provider: 'square', method: 'card', idempotencyKey: crypto.randomUUID() });
+  await assert.rejects(() => f.payments.refundIntent(intent.id, { actor: 'a' }), (e) => e.code === 'BAD_STATE');
+});
+
 await runAll();
 console.log(`\nFINANCE TESTS: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

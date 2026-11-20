@@ -169,5 +169,24 @@ export function squareProvider(config, fetchImpl = globalThis.fetch) {
         intentId: p?.reference_id,
       };
     },
+    /** Square Refunds API: full refund of a captured payment. Idempotent per payment id. */
+    async refundPayment({ providerRef, amountUsdCents, reason }) {
+      const res = await fetchImpl(`${base}/v2/refunds`, {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({
+          idempotency_key: `refund:${providerRef}`,
+          payment_id: providerRef,
+          amount_money: { amount: amountUsdCents, currency: 'USD' },
+          reason: String(reason || 'Customer refund').slice(0, 192),
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok || !body.refund?.id) {
+        const e = new Error('Square refund failed');
+        e.details = body.errors;
+        throw e;
+      }
+      return { refundId: body.refund.id, status: body.refund.status };
+    },
   };
 }

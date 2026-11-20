@@ -162,6 +162,7 @@ export class ApiRouter {
     this._r('GET', '/api/admin/reconciliation', F, ({ f }) => ({ report: f.admin.reconciliation() }));
     this._r('POST', '/api/admin/payments/catalog/sync', FS, async ({ f }) => ({ result: await f.squareCatalog.sync(f.db) }));
     this._r('GET', '/api/admin/payments/catalog', S, ({ f }) => ({ items: f.db.all('SELECT * FROM square_catalog_items ORDER BY price_cents') }));
+    this._r('POST', '/api/admin/payments/:id/refund', FS, async ({ f, user, params, body }) => ({ refund: await f.payments.refundIntent(params.id, { reason: body.reason, actor: user.id }) }));
     this._r('GET', '/api/admin/audit', F, ({ f }) => ({ audit: f.admin.auditTrail(200) }));
     this._r('POST', '/api/admin/redemptions/:id/approve', FS, ({ f, user, params }) => ({ redemption: f.redemptions.approve(user, params.id) }));
     this._r('POST', '/api/admin/redemptions/:id/reject', FS, ({ f, user, params, body }) => ({ redemption: f.redemptions.reject(user, params.id, body.reason) }));

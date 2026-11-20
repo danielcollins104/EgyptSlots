@@ -192,6 +192,24 @@ export class PaymentService {
   }
 
   /**
+   * Initiate a provider-side refund. Does NOT claw back coins: the existing verified
+   * refund.updated webhook handler performs the clawback exactly once. Nothing is deleted.
+   */
+  async refundIntent(intentId, { reason, actor } = {}) {
+    const i = this.db.get('SELECT * FROM payment_intents WHERE id = ?', intentId);
+    if (!i) throw notFound('NOT_FOUND', 'Intent not found.');
+    if (i.status !== 'succeeded') throw conflict('BAD_STATE', 'Only succeeded payments can be refunded.');
+    const prov = this.providers.get(i.provider);
+    if (!prov?.refundPayment) throw bad('NOT_REFUNDABLE', 'This provider does not support API refunds.');
+    if (!i.provider_ref) throw conflict('BAD_STATE', 'Payment has no provider reference.');
+    const dup = this.db.get("SELECT 1 x FROM audit_log WHERE action = 'REFUND_INITIATED' AND target_type = 'payment_intent' AND target_id = ?", intentId);
+    if (dup) throw conflict('ALREADY_REFUNDED', 'A refund was already initiated for this payment.');
+    const { refundId, status } = await prov.refundPayment({ providerRef: i.provider_ref, amountUsdCents: i.amount_usd_cents, reason });
+    this.audit.record({ action: 'REFUND_INITIATED', targetType: 'payment_intent', targetId: intentId, details: { refundId, provider: i.provider, reason: reason || null, actor: actor || null } });
+    return { refundId, status: status === 'COMPLETED' ? 'completed' : 'processing' };
+  }
+
+  /**
    * Webhook entry point. Order of operations:
    *  1. verify provider signature   2. dedupe event id   3. independent provider confirmation
    *  4. match intent + amount       5. atomic credit + event record
