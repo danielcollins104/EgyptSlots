@@ -809,6 +809,43 @@ test('catalog sync fails closed without credentials', async () => {
   await assert.rejects(() => f.squareCatalog.sync(f.db), /credentials|SQUARE_ACCESS_TOKEN/i);
 });
 
+console.log('\n--- 14. Square charge enrichment (orders + customers) ---');
+test('square charge includes order_id + customer_id when catalog synced; amount always from DB', async () => {
+  let paymentBody = null;
+  const fetchImpl = async (url, opts) => {
+    if (url.endsWith('/v2/customers/search')) return { ok: true, json: async () => ({ customers: [{ id: 'CUST1' }] }) };
+    if (url.endsWith('/v2/orders')) return { ok: true, json: async () => ({ order: { id: 'ORD1' } }) };
+    if (url.endsWith('/v2/payments')) { paymentBody = JSON.parse(opts.body); return { ok: true, json: async () => ({ payment: { id: 'PAY1' } }) }; }
+    return { ok: true, json: async () => ({}) };
+  };
+  const f = fresh({ providers: { enabled: ['square'], square: squareCfg } }, { fetchImpl });
+  f.db.run("INSERT INTO square_catalog_items (package_id, catalog_item_id, variation_id, version, variation_version, price_cents, synced_at) VALUES ('pkg_starter','SQ_pkg_starter','SQ_pkg_starter_var',1,1,499,'2026-11-20T00:00:00.000Z')");
+  const u = mkUser(f);
+  const { intent } = f.payments.createIntent(user(f, u.id), { packageId: 'pkg_starter', provider: 'square', method: 'card', idempotencyKey: crypto.randomUUID() });
+  const r = await f.payments.chargeWithSource(user(f, u.id), intent.id, 'cnon:card-nonce-ok');
+  assert.equal(r.status, 'processing');
+  assert.equal(paymentBody.amount_money.amount, 499, 'server-side package price, never client input');
+  assert.equal(paymentBody.order_id, 'ORD1');
+  assert.equal(paymentBody.customer_id, 'CUST1');
+  assert.equal(paymentBody.idempotency_key, intent.id);
+  const row = f.db.get('SELECT metadata FROM payment_intents WHERE id = ?', intent.id);
+  assert.equal(JSON.parse(row.metadata).square.orderId, 'ORD1');
+});
+test('charge still succeeds when order/customer enrichment fails (best-effort)', async () => {
+  let paymentBody = null;
+  const fetchImpl = async (url, opts) => {
+    if (url.endsWith('/v2/payments')) { paymentBody = JSON.parse(opts.body); return { ok: true, json: async () => ({ payment: { id: 'PAY2' } }) }; }
+    return { ok: false, status: 500, json: async () => ({ errors: [{ code: 'BOOM' }] }) };
+  };
+  const f = fresh({ providers: { enabled: ['square'], square: squareCfg } }, { fetchImpl });
+  const u = mkUser(f);
+  const { intent } = f.payments.createIntent(user(f, u.id), { packageId: 'pkg_starter', provider: 'square', method: 'card', idempotencyKey: crypto.randomUUID() });
+  const r = await f.payments.chargeWithSource(user(f, u.id), intent.id, 'cnon:card-nonce-ok');
+  assert.equal(r.status, 'processing');
+  assert.equal(paymentBody.order_id, undefined);
+  assert.ok(f.db.get("SELECT 1 x FROM audit_log WHERE action = 'SQUARE_ORDER_ENRICHMENT_FAILED' AND target_id = ?", intent.id));
+});
+
 await runAll();
 console.log(`\nFINANCE TESTS: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

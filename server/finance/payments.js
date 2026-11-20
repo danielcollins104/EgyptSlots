@@ -107,9 +107,28 @@ export class PaymentService {
     if (!prov?.charge) throw bad('NOT_CHARGEABLE', 'This intent is not chargeable.');
     if (intent.status !== 'pending') throw conflict('BAD_STATE', 'Payment is not pending.');
     if (typeof sourceId !== 'string' || sourceId.length < 8 || sourceId.length > 200) throw bad('INVALID_SOURCE', 'Invalid payment source.');
+
+    // Best-effort enrichment (Square customer + catalog-backed order). Never blocks the charge;
+    // never changes the amount, which always comes from our DB intent.
+    let orderId = null, customerId = null;
+    if (intent.provider === 'square') {
+      try {
+        if (prov.findOrCreateCustomer && user.email) customerId = await prov.findOrCreateCustomer({ email: user.email });
+        const cat = this.db.get('SELECT variation_id FROM square_catalog_items WHERE package_id = ?', intent.package_id);
+        if (prov.createOrder) orderId = await prov.createOrder({ intent, itemVariationId: cat?.variation_id || null, customerId });
+      } catch (e) {
+        this.audit.record({ action: 'SQUARE_ORDER_ENRICHMENT_FAILED', targetType: 'payment_intent', targetId: intent.id, details: { message: e.message } });
+      }
+    }
+
     try {
-      const { providerRef } = await prov.charge({ intent, sourceId });
+      const { providerRef } = await prov.charge({ intent, sourceId, orderId, customerId });
       this.db.run('UPDATE payment_intents SET provider_ref = ?, updated_at = ? WHERE id = ? AND provider_ref IS NULL', providerRef, nowIso(), intent.id);
+      if (orderId || customerId) {
+        const meta = JSON.parse(intent.metadata || '{}');
+        meta.square = { orderId, customerId };
+        this.db.run('UPDATE payment_intents SET metadata = ? WHERE id = ?', JSON.stringify(meta), intent.id);
+      }
     } catch {
       this.db.run("UPDATE payment_intents SET status = 'failed', failure_reason = 'charge_declined', updated_at = ? WHERE id = ? AND status = 'pending'", nowIso(), intent.id);
       throw new AppError(402, 'PAYMENT_FAILED', 'Payment could not be completed.');

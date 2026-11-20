@@ -78,8 +78,45 @@ export function squareProvider(config, fetchImpl = globalThis.fetch) {
         clientAction: { type: 'square_web_payments', applicationId: c.applicationId, locationId: c.locationId, referenceId: intent.id, environment: c.environment },
       };
     },
+    /** Square Customers API: reuse an existing customer by email, else create. */
+    async findOrCreateCustomer({ email }) {
+      const s = await fetchImpl(`${base}/v2/customers/search`, {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({ query: { filter: { email_address: { exact: String(email).toLowerCase() } } }, limit: 1 }),
+      });
+      const sb = await s.json();
+      if (s.ok && sb.customers?.[0]?.id) return sb.customers[0].id;
+      const cr = await fetchImpl(`${base}/v2/customers`, {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({ idempotency_key: crypto.randomUUID(), email_address: String(email).toLowerCase() }),
+      });
+      const cb = await cr.json();
+      if (!cr.ok || !cb.customer?.id) throw new Error('Square customer creation failed');
+      return cb.customer.id;
+    },
+    /** Square Orders API: one line item referencing the synced catalog variation when available. */
+    async createOrder({ intent, itemVariationId, customerId }) {
+      const line = itemVariationId
+        ? { catalog_object_id: itemVariationId, quantity: '1' }
+        : { name: intent.package_id, quantity: '1', base_price_money: { amount: intent.amount_usd_cents, currency: 'USD' } };
+      const res = await fetchImpl(`${base}/v2/orders`, {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({
+          idempotency_key: `order:${intent.id}`,
+          order: {
+            location_id: c.locationId,
+            reference_id: intent.id,
+            ...(customerId ? { customer_id: customerId } : {}),
+            line_items: [line],
+          },
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok || !body.order?.id) throw new Error('Square order creation failed');
+      return body.order.id;
+    },
     /** Server-side charge using a single-use source token from the Square Web Payments SDK. */
-    async charge({ intent, sourceId }) {
+    async charge({ intent, sourceId, orderId = null, customerId = null }) {
       const res = await fetchImpl(`${base}/v2/payments`, {
         method: 'POST',
         headers: headers(),
@@ -90,6 +127,8 @@ export function squareProvider(config, fetchImpl = globalThis.fetch) {
           location_id: c.locationId,
           reference_id: intent.id,
           autocomplete: true,
+          ...(orderId ? { order_id: orderId } : {}),
+          ...(customerId ? { customer_id: customerId } : {}),
         }),
       });
       const body = await res.json();
