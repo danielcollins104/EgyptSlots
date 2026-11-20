@@ -335,4 +335,14 @@ CREATE TABLE IF NOT EXISTS promo_claims (
   created_at TEXT NOT NULL,
   PRIMARY KEY (user_id, promo_id, period_key)
 );
+
+CREATE TABLE IF NOT EXISTS square_catalog_items (
+  package_id TEXT PRIMARY KEY,
+  catalog_item_id TEXT NOT NULL,
+  variation_id TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 0,
+  variation_version INTEGER NOT NULL DEFAULT 0,
+  price_cents INTEGER NOT NULL,
+  synced_at TEXT NOT NULL
+);
 `;

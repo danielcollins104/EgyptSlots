@@ -746,6 +746,15 @@ test('square provider exposes all four Web Payments SDK methods and is unconfigu
   assert.equal(sq.configured, true);
 });
 
+test('square_catalog_items table persists package->catalog mapping with upsert', () => {
+  const f = fresh();
+  f.db.run("INSERT INTO square_catalog_items (package_id, catalog_item_id, variation_id, version, variation_version, price_cents, synced_at) VALUES ('pkg_starter','ITM1','VAR1',1,1,499,'2026-11-20T00:00:00.000Z')");
+  f.db.run("INSERT INTO square_catalog_items (package_id, catalog_item_id, variation_id, version, variation_version, price_cents, synced_at) VALUES ('pkg_starter','ITM1','VAR1',2,2,499,'2026-11-20T01:00:00.000Z') ON CONFLICT(package_id) DO UPDATE SET version=excluded.version, synced_at=excluded.synced_at");
+  const row = f.db.get("SELECT * FROM square_catalog_items WHERE package_id = 'pkg_starter'");
+  assert.equal(row.catalog_item_id, 'ITM1');
+  assert.equal(row.version, 2);
+});
+
 await runAll();
 console.log(`\nFINANCE TESTS: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
