@@ -732,6 +732,20 @@ test('double-entry: journal is immutable and a missing/forged counter-entry is d
   assert.equal(f.ledger.reconcile().ok, false);
 });
 
+console.log('\n--- 12. Square configuration ---');
+test('SQUARE_API_VERSION env is honoured and defaults pinned', () => {
+  const f1 = fresh({ providers: { square: { apiVersion: '2024-10-17' } } });
+  assert.equal(f1.config.providers.square.apiVersion, '2024-10-17');
+  const f2 = createFinance({ dbFile: ':memory:', env: { ...process.env, SQUARE_API_VERSION: '2025-01-23' } });
+  assert.equal(f2.config.providers.square.apiVersion, '2025-01-23');
+});
+test('square provider exposes all four Web Payments SDK methods and is unconfigured without secrets', () => {
+  const f = fresh({ providers: { enabled: ['square'], square: { environment: 'sandbox', accessToken: 't', applicationId: 'a', locationId: 'l', webhookSignatureKey: 'k', webhookUrl: 'https://x.test/api/payments/webhook/square' } } });
+  const sq = f.payments.providers.get('square');
+  assert.deepEqual(sq.methods, ['card', 'applepay', 'googlepay', 'cashapp']);
+  assert.equal(sq.configured, true);
+});
+
 await runAll();
 console.log(`\nFINANCE TESTS: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

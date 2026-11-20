@@ -120,6 +120,7 @@ export function loadConfig(env = process.env, overrides = {}) {
         locationId: env.SQUARE_LOCATION_ID || null,
         webhookSignatureKey: env.SQUARE_WEBHOOK_SIGNATURE_KEY || null,
         webhookUrl: env.SQUARE_WEBHOOK_URL || null,
+        apiVersion: env.SQUARE_API_VERSION || '2024-10-17',
       },
     },
 

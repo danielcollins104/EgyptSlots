@@ -65,12 +65,12 @@ export function squareProvider(config, fetchImpl = globalThis.fetch) {
   const headers = () => ({
     Authorization: `Bearer ${c.accessToken}`,
     'Content-Type': 'application/json',
-    'Square-Version': '2024-10-17',
+    'Square-Version': c.apiVersion || '2024-10-17',
   });
   return {
     id: 'square',
     label: 'Cash App Pay / Card (Square)',
-    methods: ['cashapp', 'card'],
+    methods: ['card', 'applepay', 'googlepay', 'cashapp'],
     configured: Boolean(c.accessToken && c.applicationId && c.locationId && c.webhookSignatureKey && c.webhookUrl),
     createSession({ intent }) {
       return {
