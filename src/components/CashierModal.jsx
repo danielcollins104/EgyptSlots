@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, ShieldCheck, Wallet, Clock, CheckCircle2, AlertTriangle, Copy, LogOut } from 'lucide-react';
 import { api, ApiError } from '../services/cashierApi';
+import SquareCheckout from './SquareCheckout';
 import Readable from './Readable';
 
 /**
@@ -201,7 +202,8 @@ function StorePanel({ flash, refresh }) {
     const out = [];
     for (const p of methods.providers || []) {
       if (p.provider === 'crypto') continue;
-      for (const m of p.methods) out.push({ key: `${p.provider}:${m}`, provider: p.provider, method: m, label: p.provider === 'square' ? (m === 'cashapp' ? 'Cash App Pay' : 'Card') : p.label });
+      const SQUARE_LABELS = { card: 'Credit / Debit Card', applepay: 'Apple Pay', googlepay: 'Google Pay', cashapp: 'Cash App Pay' };
+      for (const m of p.methods) out.push({ key: `${p.provider}:${m}`, provider: p.provider, method: m, label: p.provider === 'square' ? (SQUARE_LABELS[m] || 'Card') : p.label });
     }
     for (const c of methods.crypto || []) for (const t of c.tokens) out.push({ key: `crypto:${c.network}:${t}`, provider: 'crypto', method: t.toLowerCase(), network: c.network, token: t, label: `${t} on ${c.label}` });
     return out;
@@ -252,7 +254,9 @@ function StorePanel({ flash, refresh }) {
           </Readable>
         )}
         {a.type === 'sandbox' && <p className="cx-note">Sandbox payment — waiting for a signed provider event. (Development only.)</p>}
-        {a.type === 'square_web_payments' && <p className="cx-note">Complete the secure Cash App Pay / card step in the provider window. Coins are credited only after the provider confirms the payment.</p>}
+        {a.type === 'square_web_payments' && status?.status === 'pending' && (
+          <SquareCheckout intent={active.intent} clientAction={a} method={active.intent.method} />
+        )}
         {status?.status === 'failed' && <div className="cx-err">This payment failed. No coins were credited and you were not charged by us. You can try again.</div>}
         {status?.status === 'expired' && <div className="cx-err">This payment request expired. If you already paid, contact support with your order number.</div>}
         {status?.status === 'review' && <div className="cx-err">Your payment needs a manual check by our team. Your order number: {active.intent.id}.</div>}
