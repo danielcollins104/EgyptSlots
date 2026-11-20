@@ -755,6 +755,60 @@ test('square_catalog_items table persists package->catalog mapping with upsert',
   assert.equal(row.version, 2);
 });
 
+console.log('\n--- 13. Square catalog sync ---');
+const squareCfg = { environment: 'sandbox', accessToken: 't', applicationId: 'a', locationId: 'l', webhookSignatureKey: 'k', webhookUrl: 'https://x.test/w', apiVersion: '2024-10-17' };
+test('catalog sync batch-upserts every store package with server prices and records mapping', async () => {
+  const calls = [];
+  const fetchImpl = async (url, opts) => {
+    calls.push({ url, body: JSON.parse(opts.body) });
+    if (url.endsWith('/v2/catalog/batch-upsert')) {
+      const mappings = [];
+      for (const o of opts.body ? JSON.parse(opts.body).batches[0].objects : []) {
+        mappings.push({ client_object_id: o.id, object_id: `SQ_${o.id.slice(1)}` });
+        for (const v of o.item_data.variations) mappings.push({ client_object_id: v.id, object_id: `SQ_${v.id.slice(1)}` });
+      }
+      return { ok: true, json: async () => ({ id_mappings: mappings }) };
+    }
+    return { ok: true, json: async () => ({ objects: [] }) };
+  };
+  const f = fresh({ providers: { square: squareCfg } }, { fetchImpl });
+  const res = await f.squareCatalog.sync(f.db);
+  assert.ok(res.count >= 12, `expected >=12 packages, got ${res.count}`);
+  const row = f.db.get("SELECT * FROM square_catalog_items WHERE package_id = 'pkg_starter'");
+  assert.equal(row.catalog_item_id, 'SQ_pkg_starter');
+  assert.equal(row.price_cents, 499);
+  const upsert = calls.find((c) => c.url.endsWith('batch-upsert'));
+  const starter = upsert.body.batches[0].objects.find((o) => o.id === '#pkg_starter');
+  assert.equal(starter.item_data.variations[0].item_variation_data.price_money.amount, 499);
+  assert.equal(starter.item_data.variations[0].item_variation_data.price_money.currency, 'USD');
+  const auditRow = f.db.get("SELECT * FROM audit_log WHERE action = 'SQUARE_CATALOG_SYNC'");
+  assert.ok(auditRow, 'sync is audit-logged');
+});
+test('second sync updates existing catalog objects instead of duplicating', async () => {
+  const upserts = [];
+  const fetchImpl = async (url, opts) => {
+    const body = opts?.body ? JSON.parse(opts.body) : {};
+    if (url.endsWith('/v2/catalog/batch-retrieve')) {
+      return { ok: true, json: async () => ({ objects: (body.object_ids || []).map((id) => ({ id, version: 7, type: 'ITEM', item_data: { variations: [{ id: `${id}_var`, version: 3 }] } })) }) };
+    }
+    if (url.endsWith('/v2/catalog/batch-upsert')) { upserts.push(body); return { ok: true, json: async () => ({ id_mappings: [] }) }; }
+    return { ok: true, json: async () => ({}) };
+  };
+  const f = fresh({ providers: { square: squareCfg } }, { fetchImpl });
+  f.db.run("INSERT INTO square_catalog_items (package_id, catalog_item_id, variation_id, version, variation_version, price_cents, synced_at) VALUES ('pkg_starter','SQ_pkg_starter','SQ_pkg_starter_var',1,1,499,'2026-11-20T00:00:00.000Z')");
+  const { createSquareCatalog } = await import('../server/finance/squareCatalog.js');
+  const cat = createSquareCatalog({ config: f.config, fetchImpl, audit: f.audit, packages: [{ id: 'pkg_starter', tierTitle: 'Root Chakra Royal Scepter Pack', priceUsd: 4.99, goldCoins: 10000, freeSweepsCoins: 5 }] });
+  await cat.sync(f.db);
+  const obj = upserts[0].batches[0].objects[0];
+  assert.equal(obj.id, 'SQ_pkg_starter', 'uses stored catalog id (update, not duplicate)');
+  assert.equal(obj.version, 7, 'sends current version from batch-retrieve');
+  assert.equal(obj.item_data.variations[0].id, 'SQ_pkg_starter_var');
+});
+test('catalog sync fails closed without credentials', async () => {
+  const f = fresh();
+  await assert.rejects(() => f.squareCatalog.sync(f.db), /credentials|SQUARE_ACCESS_TOKEN/i);
+});
+
 await runAll();
 console.log(`\nFINANCE TESTS: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

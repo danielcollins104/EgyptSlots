@@ -7,6 +7,7 @@ import { CryptoGateway } from './crypto.js';
 import { RedemptionService } from './redemptions.js';
 import { SpinService } from './spin.js';
 import { AdminService } from './admin.js';
+import { createSquareCatalog } from './squareCatalog.js';
 
 /**
  * Composition root for the server-authoritative finance backend.
@@ -23,5 +24,6 @@ export function createFinance(opts = {}) {
   const redemptions = new RedemptionService({ db, ledger, audit, accounts, config, gateway });
   const spins = new SpinService({ db, ledger, accounts, config });
   const admin = new AdminService({ db, ledger, audit, accounts, payments, redemptions, gateway, config });
-  return { config, db, ledger, audit, accounts, payments, gateway, redemptions, spins, admin };
+  const squareCatalog = createSquareCatalog({ config, fetchImpl: opts.fetchImpl, audit });
+  return { config, db, ledger, audit, accounts, payments, gateway, redemptions, spins, admin, squareCatalog };
 }

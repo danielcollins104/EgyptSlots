@@ -25,6 +25,7 @@
     "desktop": "electron electron/main.cjs",
     "desktop:dev": "electron electron/main.cjs",
     "test:finance": "node scripts/test-finance.js",
+    "square:sync": "node scripts/square-sync-catalog.js",
     "test:api": "node scripts/test-api-router.js",
     "admin:create": "node scripts/create-staff.js"
   },
