@@ -106,6 +106,7 @@ export class PaymentService {
     const prov = this.providers.get(intent.provider);
     if (!prov?.charge) throw bad('NOT_CHARGEABLE', 'This intent is not chargeable.');
     if (intent.status !== 'pending') throw conflict('BAD_STATE', 'Payment is not pending.');
+    if (intent.provider_ref) throw conflict('ALREADY_CHARGED', 'This payment was already submitted to the provider.');
     if (typeof sourceId !== 'string' || sourceId.length < 8 || sourceId.length > 200) throw bad('INVALID_SOURCE', 'Invalid payment source.');
 
     // Best-effort enrichment (Square customer + catalog-backed order). Never blocks the charge;

@@ -60,6 +60,7 @@ export const api = {
   methods: () => request('GET', '/api/payments/methods'),
   createPayment: (p) => request('POST', '/api/payments/intents', p, { idempotent: true }),
   payment: (id) => request('GET', `/api/payments/intents/${encodeURIComponent(id)}`),
+  chargePayment: (id, sourceId) => request('POST', `/api/payments/intents/${encodeURIComponent(id)}/charge`, { sourceId }),
   payments: () => request('GET', '/api/payments/intents'),
 
   redemptionMethods: () => request('GET', '/api/redemptions/methods'),

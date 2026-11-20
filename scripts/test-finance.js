@@ -877,6 +877,32 @@ test('refundIntent rejects non-succeeded and non-refundable intents', async () =
   await assert.rejects(() => f.payments.refundIntent(intent.id, { actor: 'a' }), (e) => e.code === 'BAD_STATE');
 });
 
+console.log('\n--- 16. Square client API surface ---');
+test('charge route accepts a source token and marks the intent via provider', async () => {
+  const f = fresh({ providers: { enabled: ['square'], square: squareCfg } }, { fetchImpl: async (url, opts) => {
+    if (url.endsWith('/v2/payments')) return { ok: true, json: async () => ({ payment: { id: 'PAYC' } }) };
+    return { ok: true, json: async () => ({}) };
+  } });
+  const router = new ApiRouter({ finance: f });
+  const u = mkUser(f);
+  const login = f.accounts.login({ email: u.email, password: PW }, '9.9.9.9');
+  const created = await router.handleRequest('POST', '/api/payments/intents', { authorization: `Bearer ${login.token}`, 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() }, JSON.stringify({ packageId: 'pkg_starter', provider: 'square', method: 'card' }));
+  const intentId = created.body.intent.id;
+  const bad = await router.handleRequest('POST', `/api/payments/intents/${intentId}/charge`, { authorization: `Bearer ${login.token}`, 'content-type': 'application/json' }, JSON.stringify({ sourceId: 'x' }));
+  assert.equal(bad.status, 400);
+  const ok = await router.handleRequest('POST', `/api/payments/intents/${intentId}/charge`, { authorization: `Bearer ${login.token}`, 'content-type': 'application/json' }, JSON.stringify({ sourceId: 'cnon:card-nonce-ok' }));
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.status, 'processing');
+  const again = await router.handleRequest('POST', `/api/payments/intents/${intentId}/charge`, { authorization: `Bearer ${login.token}`, 'content-type': 'application/json' }, JSON.stringify({ sourceId: 'cnon:card-nonce-ok' }));
+  assert.equal(again.status, 409, 'non-pending intent cannot be re-charged');
+});
+test('charge route requires auth', async () => {
+  const f = fresh({ providers: { enabled: ['square'], square: squareCfg } });
+  const router = new ApiRouter({ finance: f });
+  const res = await router.handleRequest('POST', '/api/payments/intents/pi_x/charge', { 'content-type': 'application/json' }, JSON.stringify({ sourceId: 'cnon:card-nonce-ok' }));
+  assert.equal(res.status, 401);
+});
+
 await runAll();
 console.log(`\nFINANCE TESTS: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
+import { installEgyptPerf } from './polish/egyptPerf.js';
+import './polish/egyptPolish.css';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -116,7 +118,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.installEgyptPerf(); createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
