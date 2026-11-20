@@ -118,7 +118,8 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-ReactDOM.installEgyptPerf(); createRoot(document.getElementById('root')).render(
+installEgyptPerf();
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
